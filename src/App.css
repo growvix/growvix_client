@@ -1,0 +1,15 @@
+.heading_font {
+  font-family: "Manrope", sans-serif;
+  font-weight: 900;
+}
+.heading_font2 {
+  font-family: "Inter", sans-serif;
+}
+.text-ellipsis{
+white-space: nowrap;      /* Prevents text from wrapping to a new line */
+  overflow: hidden;         /* Hides text that goes outside the box */
+  text-overflow: ellipsis;
+}
+.cardSelect:hover {
+  cursor: pointer;
+}
