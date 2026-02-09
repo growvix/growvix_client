@@ -4,8 +4,9 @@ import { useBreadcrumb } from "@/context/breadcrumb-context"
 import LoaderScreen from "@/components/ui/loader-screen"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { gql } from '@apollo/client'
-import { useQuery } from '@apollo/client/react'
+import { useQuery, useMutation } from '@apollo/client/react'
 import axios from 'axios'
+import { toast } from 'sonner'
 import { apolloClient } from '@/lib/apolloClient'
 import { getCookie } from '@/utils/cookies'
 import { API_URL } from '@/config/api'
@@ -59,6 +60,7 @@ const GET_LEAD_BY_ID = gql`
                 location
             }
             stage
+            status
             prefered {
                 location
                 budget
@@ -83,6 +85,22 @@ const GET_LEAD_BY_ID = gql`
             }
             createdAt
             updatedAt
+        }
+    }
+`;
+
+// GraphQL mutation to create lead activity
+const CREATE_LEAD_ACTIVITY = gql`
+    mutation CreateLeadActivity($organization: String!, $input: CreateLeadActivityInput!) {
+        createLeadActivity(organization: $organization, input: $input) {
+            id
+            profile_id
+            lead_id
+            user_id
+            stage
+            status
+            notes
+            createdAt
         }
     }
 `;
@@ -119,8 +137,15 @@ export default function LeadDetail() {
     const [leadId, setLeadId] = useState<string | undefined>(undefined);
     const [stages, setStages] = useState<Stage[]>([])
     const [selectedStage, setSelectedStage] = useState<string | undefined>(undefined)
+    const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined)
     const [availableNextStages, setAvailableNextStages] = useState<Stage[]>([])
+    const [isStageUpdating, setIsStageUpdating] = useState(false)
+    const [isStatusUpdating, setIsStatusUpdating] = useState(false)
     const organization = getCookie("organization") || "";
+    const userId = getCookie("profile_id") || "";
+
+    // GraphQL mutation hook
+    const [createLeadActivity] = useMutation(CREATE_LEAD_ACTIVITY);
     const { setBreadcrumbs } = useBreadcrumb()
     const leadName = leadDetail?.profile?.name;
     const initials = getUserAvatar(leadName);
@@ -154,10 +179,10 @@ export default function LeadDetail() {
                     if (organization) {
                         const { data } = await apolloClient.query<GetLeadByIdQueryResponse, GetLeadByIdQueryVariables>({
                             query: GET_LEAD_BY_ID,
-                            variables: { organization, id: "3" },
+                            variables: { organization, id },
                             fetchPolicy: 'network-only'
                         })
-                        console.log('Lead Details Response:', id)
+                        console.log('Lead Details Response:', data)
                         setLeadDetail(data?.getLeadById || null)
                         setLoading(false)
                     }
@@ -208,6 +233,9 @@ export default function LeadDetail() {
             if (leadData.getLeadById.stage) {
                 setSelectedStage(leadData.getLeadById.stage);
             }
+            if (leadData.getLeadById.status) {
+                setSelectedStatus(leadData.getLeadById.status);
+            }
         }
     }, [leadData]);
 
@@ -233,18 +261,86 @@ export default function LeadDetail() {
     }, [selectedStage, stages]);
     console.log(currentStageObject?.color);
     const handleStageChange = async (stageName: string) => {
-        setSelectedStage(stageName);
+        console.log('handleStageChange called with:', stageName);
+        console.log('Debug values:', {
+            profile_id: leadDetail?.profile_id,
+            organization,
+            userId,
+            lead_id: leadDetail?._id
+        });
 
-        // TODO: Add API call to update the lead stage
-        // try {
-        //     await axios.put(`${API_URL}/api/leads/update-stage`, {
-        //         leadId: leadId,
-        //         stageName: stageName,
-        //         organization
-        //     });
-        // } catch (error) {
-        //     console.error("Failed to update stage:", error);
-        // }
+        if (leadDetail?.profile_id == null || !organization || !userId) {
+            toast.error('Missing required data for stage update');
+            return;
+        }
+
+        const previousStage = selectedStage;
+        setSelectedStage(stageName);
+        setIsStageUpdating(true);
+
+        try {
+            await createLeadActivity({
+                variables: {
+                    organization,
+                    input: {
+                        profile_id: leadDetail.profile_id,
+                        lead_id: leadDetail._id,
+                        user_id: userId,
+                        stage: stageName,
+                        status: selectedStatus,
+                        notes: `Stage changed to ${stageName}`
+                    }
+                }
+            });
+            toast.success(`Stage updated to ${stageName}`);
+        } catch (error) {
+            console.error('Failed to update stage:', error);
+            setSelectedStage(previousStage);
+            toast.error('Failed to update stage');
+        } finally {
+            setIsStageUpdating(false);
+        }
+    };
+
+    const handleStatusChange = async (status: string) => {
+        if (leadDetail?.profile_id == null || !organization || !userId) {
+            toast.error('Missing required data for status update');
+            return;
+        }
+
+        const previousStatus = selectedStatus;
+        setSelectedStatus(status);
+        setIsStatusUpdating(true);
+
+        try {
+            console.log("profile_id:", leadDetail.profile_id,
+                "lead_id:", leadDetail._id,
+                "user_id:", "2",
+                "stage:", selectedStage || '',
+                "status:", status,
+                "notes:", `Status changed to ${status}`);
+
+            await createLeadActivity({
+                variables: {
+                    organization,
+                    input: {
+                        profile_id: leadDetail.profile_id,
+                        lead_id: leadDetail._id,
+                        user_id: userId,
+                        stage: selectedStage || '',
+                        status: status || "",
+                        notes: `Status changed to ${status}`
+                    }
+                }
+            });
+            toast.success(`Status updated to ${status}`);
+        } catch (error) {
+            console.error('Failed to update status:', error);
+            setSelectedStatus(previousStatus);
+            toast.error('Failed to update status');
+        } finally {
+            setIsStatusUpdating(false);
+        }
     };
 
 
@@ -569,8 +665,9 @@ export default function LeadDetail() {
                                     <Select
                                         value={selectedStage}
                                         onValueChange={handleStageChange}
+                                        disabled={isStageUpdating}
                                     >
-                                        <SelectTrigger className="w-full">
+                                        <SelectTrigger className="w-full" disabled={isStageUpdating}>
                                             <SelectValue placeholder="select stage">
                                                 {currentStageObject && (
                                                     <div className="flex items-center gap-2">
@@ -607,10 +704,12 @@ export default function LeadDetail() {
                                 </div>
                                 <div className="flex-1">
                                     <Label htmlFor="Status" className="mb-2 ml-3 text-xs sm:text-sm font-bold text-primary">Status</Label>
-                                    <Select>
-
-
-                                        <SelectTrigger className="w-full">
+                                    <Select
+                                        value={selectedStatus}
+                                        onValueChange={handleStatusChange}
+                                        disabled={isStatusUpdating}
+                                    >
+                                        <SelectTrigger className="w-full" disabled={isStatusUpdating}>
                                             <SelectValue placeholder="select status" />
                                         </SelectTrigger>
                                         <SelectContent>

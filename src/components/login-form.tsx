@@ -51,7 +51,7 @@ export function LoginForm({
       setCookie('token', data.token);
       setCookie('role', data.role);
       toast("Login successful.")
-      console.log("Login successful:", data)
+      console.log("Login successful:", data.profile_id)
       navigate("/dashboard") // Redirect to dashboard
     } catch (error: any) {
       console.error("Login failed:", error)

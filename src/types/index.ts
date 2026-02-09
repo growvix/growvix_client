@@ -100,6 +100,7 @@ export interface Lead {
     _id: string;
   }[];
   stage?: string;
+  status?: string;
   createdAt: string;
   updatedAt: string;
 }
