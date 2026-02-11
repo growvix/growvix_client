@@ -41,12 +41,12 @@ export function NavUser({
     avatar: string
   }
 }) {
-  const { isMobile } = useSidebar()
+  const { isMobile, setLocked } = useSidebar()
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={setLocked} modal={false}>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"

@@ -38,6 +38,8 @@ type SidebarContextProps = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
+  isLocked: boolean
+  setLocked: (locked: boolean) => void
 }
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
@@ -52,7 +54,7 @@ function useSidebar() {
 }
 
 function SidebarProvider({
-  defaultOpen = true,
+  defaultOpen = false,
   open: openProp,
   onOpenChange: setOpenProp,
   className,
@@ -66,6 +68,7 @@ function SidebarProvider({
 }) {
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
+  const [isLocked, setLocked] = React.useState(false)
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -119,9 +122,11 @@ function SidebarProvider({
       isMobile,
       openMobile,
       setOpenMobile,
+      isLocked,
+      setLocked,
       toggleSidebar,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [state, open, setOpen, isMobile, openMobile, setOpenMobile, isLocked, setLocked, toggleSidebar]
   )
 
   return (
@@ -161,7 +166,44 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const { isMobile, state, openMobile, setOpenMobile, setOpen, isLocked } = useSidebar()
+  const collapseTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isHoveringRef = React.useRef(false)
+
+  // Cleanup timer on unmount
+  React.useEffect(() => {
+    return () => {
+      if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current)
+    }
+  }, [])
+
+  // Collapse when unlocked if mouse is not hovering
+  React.useEffect(() => {
+    if (!isLocked && !isHoveringRef.current && collapsible === "icon") {
+      setOpen(false)
+    }
+  }, [isLocked, collapsible, setOpen])
+
+  const handleMouseEnter = React.useCallback(() => {
+    isHoveringRef.current = true
+    if (collapsible !== "icon") return
+    // Cancel any pending collapse
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current)
+      collapseTimerRef.current = null
+    }
+    setOpen(true)
+  }, [collapsible, setOpen])
+
+  const handleMouseLeave = React.useCallback(() => {
+    isHoveringRef.current = false
+    if (collapsible !== "icon" || isLocked) return
+    // Delay collapse so popovers/dropdowns in portals have time to capture mouse
+    collapseTimerRef.current = setTimeout(() => {
+      setOpen(false)
+      collapseTimerRef.current = null
+    }, 50)
+  }, [collapsible, setOpen, isLocked])
 
   if (collapsible === "none") {
     return (
@@ -211,23 +253,25 @@ function Sidebar({
       data-variant={variant}
       data-side={side}
       data-slot="sidebar"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      {/* This is what handles the sidebar gap on desktop */}
+      {/* This spacer always stays at icon width so content never shifts */}
       <div
         data-slot="sidebar-gap"
         className={cn(
-          "relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
+          "relative bg-transparent transition-[width] duration-100 ease-in-out",
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
-          variant === "floating" || variant === "inset"
-            ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)"
+          collapsible === "icon"
+            ? "w-(--sidebar-width-icon)"
+            : "w-(--sidebar-width)"
         )}
       />
       <div
         data-slot="sidebar-container"
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex",
+          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-100 ease-in-out md:flex",
           side === "left"
             ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
@@ -242,7 +286,10 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
+          className={cn(
+            "bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm",
+            state === "expanded" && collapsible === "icon" && "shadow-xl"
+          )}
         >
           {children}
         </div>
@@ -278,19 +325,15 @@ function SidebarTrigger({
 }
 
 function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
-  const { toggleSidebar } = useSidebar()
-
   return (
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
       aria-label="Toggle Sidebar"
       tabIndex={-1}
-      onClick={toggleSidebar}
       title="Toggle Sidebar"
       className={cn(
-
-        "hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
+        "hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-in-out group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
         "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
         "hover:group-data-[collapsible=offcanvas]:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full",
@@ -375,7 +418,7 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
       className={cn(
         "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden sidebar-scroll",
         className
-      )} 
+      )}
       {...props}
     />
   )
@@ -567,7 +610,7 @@ function SidebarMenuAction({
         "peer-data-[size=lg]/menu-button:top-2.5",
         "group-data-[collapsible=icon]:hidden",
         showOnHover &&
-          "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
+        "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
         className
       )}
       {...props}

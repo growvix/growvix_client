@@ -21,7 +21,7 @@ export function PageBreadcrumb({ items }: PageBreadcrumbProps) {
   if (items.length === 0) return null
 
   return (
-    <div className="px-1 ">
+    <div className="ps-4 ">
       <Breadcrumb>
         <BreadcrumbList>
           {items.map((item, idx) => (

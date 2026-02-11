@@ -28,7 +28,7 @@ export function TeamSwitcher({
     plan: string
   }[]
 }) {
-  const { isMobile } = useSidebar()
+  const { isMobile, setLocked } = useSidebar()
   const [activeTeam, setActiveTeam] = React.useState(teams[0])
 
   if (!activeTeam) {
@@ -38,7 +38,7 @@ export function TeamSwitcher({
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={setLocked} modal={false}>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"

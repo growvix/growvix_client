@@ -23,7 +23,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarRail,
 } from "@/components/ui/sidebar"
 import { getCookie } from "@/utils/cookies"
 const organization = getCookie('organization') || 'org'
@@ -153,7 +152,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <NavUser user={user} />
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   )
 }
