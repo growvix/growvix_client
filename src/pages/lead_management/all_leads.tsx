@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select"
 
 export type Lead = {
+  lead_id: string
   profile_id: number
   name: string
   campaign: string
@@ -45,6 +46,7 @@ type Filters = {
   status: string
   source: string
 }
+
 
 // Helper function to format date
 const formatDate = (dateString: string) => {
@@ -61,7 +63,7 @@ const formatDate = (dateString: string) => {
   }
 }
 
-export const columns: ColumnDef<Lead>[] = [
+export const getColumns = (navigate: ReturnType<typeof useNavigate>): ColumnDef<Lead>[] => [
   {
     accessorKey: "profile_id",
     header: ({ column }) => {
@@ -74,7 +76,7 @@ export const columns: ColumnDef<Lead>[] = [
         </Button>
       )
     },
-    cell: ({ row }) => <div className="font-medium">{row.getValue("profile_id")}</div>,
+    cell: ({ row }) => <div className="font-medium pl-10 cursor-pointer hover:underline" onClick={() => navigate(`/lead_detail/${row.original.lead_id.toString()}`)}>#{row.getValue("profile_id")}</div>,
   },
   {
     accessorKey: "name",
@@ -155,9 +157,11 @@ export const columns: ColumnDef<Lead>[] = [
 ]
 
 export default function AllLeads() {
+  const navigate = useNavigate()
   const { setBreadcrumbs } = useBreadcrumb()
   const organization = getCookie("organization") || ""
-  const navigate = useNavigate();
+  const columns = getColumns(navigate)
+
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -168,6 +172,15 @@ export default function AllLeads() {
       { label: "All Leads" }
     ])
   }, [setBreadcrumbs])
+
+  const [filters, setFilters] = useState<Filters>({
+    name: "",
+    company: "",
+    status: "",
+    source: "",
+  })
+
+  const [appliedFilters, setAppliedFilters] = useState<Filters | null>(null)
 
   // Fetch leads using gRPC client
   useEffect(() => {
@@ -180,15 +193,27 @@ export default function AllLeads() {
       try {
         setLoading(true)
         setError(null)
-        const grpcLeads = await leadClient.getAllLeads({ organization })
+
+        // Build filters payload from appliedFilters
+        const filterPayload: Record<string, string> = {}
+        if (appliedFilters?.name) filterPayload.name = appliedFilters.name
+        if (appliedFilters?.source) filterPayload.source = appliedFilters.source
+        if (appliedFilters?.company) filterPayload.campaign = appliedFilters.company
+        if (appliedFilters?.status) filterPayload.status = appliedFilters.status
+
+        const grpcLeads = await leadClient.getAllLeads({
+          organization,
+          filters: Object.keys(filterPayload).length > 0 ? filterPayload : undefined,
+        })
 
         // Transform gRPC response to match existing Lead type
         const transformedLeads: Lead[] = grpcLeads.map((lead: GrpcLead) => ({
-          profile_id: lead.profileId,
+          lead_id: lead.lead_id,
+          profile_id: lead.profile_id,
           name: lead.name,
           campaign: lead.campaign,
           source: lead.source,
-          sub_source: lead.subSource,
+          sub_source: lead.sub_source,
           received: lead.received,
         }))
 
@@ -201,16 +226,7 @@ export default function AllLeads() {
     }
 
     fetchLeads()
-  }, [organization])
-
-  const [filters, setFilters] = useState<Filters>({
-    name: "",
-    company: "",
-    status: "",
-    source: "",
-  })
-
-  const [appliedFilters, setAppliedFilters] = useState<Filters | null>(null)
+  }, [organization, appliedFilters])
 
   function handleChange<K extends keyof Filters>(key: K, value: string) {
     setFilters((s) => ({ ...s, [key]: value }))
@@ -225,12 +241,9 @@ export default function AllLeads() {
   function handleReset() {
     const empty = { name: "", company: "", status: "", source: "" }
     setFilters(empty)
-    setAppliedFilters(null)
+    setAppliedFilters(empty)
   }
 
-  const handleRowClick = (lead: Lead) => {
-    navigate(`/lead_detail/${lead.profile_id}`)
-  }
 
   if (loading) {
     return <LoaderScreen />
@@ -255,6 +268,7 @@ export default function AllLeads() {
             </Label>
             <Input
               id="filter-name"
+              className="bg-background dark:bg-background"
               value={filters.name}
               onChange={(e) => handleChange("name", e.target.value)}
               placeholder="Search by name..."
@@ -268,6 +282,7 @@ export default function AllLeads() {
             </Label>
             <Input
               id="filter-source"
+              className="bg-background dark:bg-background"
               value={filters.source}
               onChange={(e) => handleChange("source", e.target.value)}
               placeholder="e.g. Facebook, Google"
@@ -281,6 +296,7 @@ export default function AllLeads() {
             </Label>
             <Input
               id="filter-company"
+              className="bg-background dark:bg-background"
               value={filters.company}
               onChange={(e) => handleChange("company", e.target.value)}
               placeholder="Campaign name"
@@ -293,7 +309,7 @@ export default function AllLeads() {
               Status
             </Label>
 
-            <Select>
+            <Select value={filters.status} onValueChange={(value) => handleChange("status", value)}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
@@ -324,7 +340,7 @@ export default function AllLeads() {
           data={leads}
           columns={columns}
           initialPageSize={15}
-          onRowClick={handleRowClick}
+
         />
       </div>
     </div>

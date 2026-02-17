@@ -101,6 +101,15 @@ export interface Lead {
   }[];
   stage?: string;
   status?: string;
+  activities?: {
+    id: string;
+    user_id: string;
+    stage: string;
+    status: string;
+    notes: string;
+    createdAt: string;
+    updatedAt: string;
+  }[];
   createdAt: string;
   updatedAt: string;
 }

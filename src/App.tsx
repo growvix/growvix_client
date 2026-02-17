@@ -78,7 +78,7 @@ function SidebarLayout() {
       <SidebarProvider >
         <AppSidebar />
         <SidebarInset >
-          <header className="sticky backdrop-blur-[5px] top-0 bg-white/5 flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 mb-1">
+          <header className="sticky z-5 top-0 bg-white dark:bg-black flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 mb-1">
 
             <PageBreadcrumb items={breadcrumbItems} />
 

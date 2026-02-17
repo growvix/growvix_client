@@ -1,15 +1,22 @@
 // gRPC Client Types
 export interface Lead {
-    profileId: number;
+    lead_id: BinaryType;
+    profile_id: number;
     name: string;
     campaign: string;
     source: string;
-    subSource: string;
+    sub_source: string;
     received: string;
 }
 
 export interface GetAllLeadsRequest {
     organization: string;
+    filters?: {
+        name?: string;
+        source?: string;
+        campaign?: string;
+        status?: string;
+    };
 }
 
 export interface GetAllLeadsResponse {

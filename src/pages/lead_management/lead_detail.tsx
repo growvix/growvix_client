@@ -85,6 +85,15 @@ const GET_LEAD_BY_ID = gql`
             }
             createdAt
             updatedAt
+            activities {
+                id
+                user_id
+                stage
+                status
+                notes
+                createdAt
+                updatedAt
+            }
         }
     }
 `;
@@ -104,6 +113,7 @@ const CREATE_LEAD_ACTIVITY = gql`
         }
     }
 `;
+
 
 
 
@@ -175,6 +185,7 @@ export default function LeadDetail() {
 
                 // Fetch lead details via GraphQL
                 if (id) {
+
                     const organization = getCookie('organization') || ''
                     if (organization) {
                         const { data } = await apolloClient.query<GetLeadByIdQueryResponse, GetLeadByIdQueryVariables>({
@@ -207,8 +218,14 @@ export default function LeadDetail() {
             variables: { organization, id: id || "" },
             skip: !organization || !id
         }
-
     );
+
+    // Log activities when lead data is fetched
+    useEffect(() => {
+        if (leadData?.getLeadById?.activities) {
+            console.log('Lead Activities:', leadData.getLeadById.activities);
+        }
+    }, [leadData]);
 
     // Fetch stages
     useEffect(() => {
@@ -259,7 +276,6 @@ export default function LeadDetail() {
         if (!selectedStage || stages.length === 0) return null;
         return stages.find(s => s.name.toLowerCase() === selectedStage.toLowerCase()) || null;
     }, [selectedStage, stages]);
-    console.log(currentStageObject?.color);
     const handleStageChange = async (stageName: string) => {
         console.log('handleStageChange called with:', stageName);
         console.log('Debug values:', {
@@ -375,7 +391,7 @@ export default function LeadDetail() {
                                 </Avatar>
                                 <div className="flex flex-col">
                                     <CardDescription className="text-xs sm:text-sm opacity-70 tracking-wide text-black dark:text-dark">
-                                        Lead Id <span className=""> #{leadId ?? ""}</span>
+                                        Lead Id <span className=""> #{leadDetail?.profile_id ?? ""}</span>
                                     </CardDescription>
                                     <CardTitle className="text-lg sm:text-xl md:text-2xl font-semibold text-black dark:text-dark">
                                         {leadName}
@@ -572,7 +588,7 @@ export default function LeadDetail() {
                                                 <p>Follow ups</p>
                                             </TooltipContent>
                                         </Tooltip>
-                                        <SheetContent>
+                                        <SheetContent className="w-lg">
                                             <SheetHeader>
                                                 <SheetTitle>Follow Ups</SheetTitle>
                                                 <SheetDescription>

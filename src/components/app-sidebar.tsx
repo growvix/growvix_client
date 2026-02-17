@@ -67,6 +67,7 @@ const data = {
       title: "Lead Directory",
       url: "#",
       icon: ClipboardList,
+      isActive: true,
       items: [
         {
           title: "Total Leads",
@@ -76,16 +77,13 @@ const data = {
           title: "Add New Lead",
           url: "/NewLead",
         },
-        {
-          title: "Quantum",
-          url: "#",
-        },
       ],
     },
     {
       title: "Inventory",
       url: "#",
       icon: Package,
+      isActive: true,
       items: [
         {
           title: "Projects",
@@ -101,6 +99,7 @@ const data = {
       title: "Settings",
       url: "#",
       icon: Settings2,
+      isActive: true,
       items: [
         {
           title: "General",
