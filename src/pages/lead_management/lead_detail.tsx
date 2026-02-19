@@ -34,7 +34,7 @@ import {
     MessagesSquare,
     History,
 } from "lucide-react";
-import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, Stage } from "@/types"
+import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -114,11 +114,16 @@ const CREATE_LEAD_ACTIVITY = gql`
     }
 `;
 
-
-
-
-
-
+// GraphQL mutation to update lead details (stage, status)
+const UPDATE_LEAD = gql`
+    mutation UpdateLead($organization: String!, $id: String!, $input: UpdateLeadInput!) {
+        updateLead(organization: $organization, id: $id, input: $input) {
+            _id
+            stage
+            status
+        }
+    }
+`;
 
 interface StageStatCardProps {
     value: string | number;
@@ -149,13 +154,12 @@ export default function LeadDetail() {
     const [selectedStage, setSelectedStage] = useState<string | undefined>(undefined)
     const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined)
     const [availableNextStages, setAvailableNextStages] = useState<Stage[]>([])
-    const [isStageUpdating, setIsStageUpdating] = useState(false)
-    const [isStatusUpdating, setIsStatusUpdating] = useState(false)
     const organization = getCookie("organization") || "";
     const userId = getCookie("profile_id") || "";
 
-    // GraphQL mutation hook
+    // GraphQL mutation hooks
     const [createLeadActivity] = useMutation(CREATE_LEAD_ACTIVITY);
+    const [updateLead] = useMutation<UpdateLeadMutationResponse, UpdateLeadMutationVariables>(UPDATE_LEAD);
     const { setBreadcrumbs } = useBreadcrumb()
     const leadName = leadDetail?.profile?.name;
     const initials = getUserAvatar(leadName);
@@ -277,85 +281,88 @@ export default function LeadDetail() {
         return stages.find(s => s.name.toLowerCase() === selectedStage.toLowerCase()) || null;
     }, [selectedStage, stages]);
     const handleStageChange = async (stageName: string) => {
-        console.log('handleStageChange called with:', stageName);
-        console.log('Debug values:', {
-            profile_id: leadDetail?.profile_id,
-            organization,
-            userId,
-            lead_id: leadDetail?._id
-        });
-
-        if (leadDetail?.profile_id == null || !organization || !userId) {
+        if (leadDetail?.profile_id == null || !organization || !userId || !leadDetail?._id) {
             toast.error('Missing required data for stage update');
             return;
         }
 
+        // Optimistic update — UI changes instantly
         const previousStage = selectedStage;
         setSelectedStage(stageName);
-        setIsStageUpdating(true);
 
         try {
-            await createLeadActivity({
-                variables: {
-                    organization,
-                    input: {
-                        profile_id: leadDetail.profile_id,
-                        lead_id: leadDetail._id,
-                        user_id: userId,
-                        stage: stageName,
-                        status: selectedStatus,
-                        notes: `Stage changed to ${stageName}`
+            // Fire both mutations in parallel (silent — no loading state)
+            await Promise.all([
+                updateLead({
+                    variables: {
+                        organization,
+                        id: leadDetail._id,
+                        input: { stage: stageName }
                     }
-                }
-            });
+                }),
+                createLeadActivity({
+                    variables: {
+                        organization,
+                        input: {
+                            profile_id: leadDetail.profile_id,
+                            lead_id: leadDetail._id,
+                            user_id: userId,
+                            stage: stageName,
+                            status: selectedStatus,
+                            notes: `Stage changed to ${stageName}`
+                        }
+                    }
+                })
+            ]);
             toast.success(`Stage updated to ${stageName}`);
         } catch (error) {
             console.error('Failed to update stage:', error);
+            // Rollback on failure
             setSelectedStage(previousStage);
             toast.error('Failed to update stage');
-        } finally {
-            setIsStageUpdating(false);
         }
     };
 
     const handleStatusChange = async (status: string) => {
-        if (leadDetail?.profile_id == null || !organization || !userId) {
+        if (leadDetail?.profile_id == null || !organization || !userId || !leadDetail?._id) {
             toast.error('Missing required data for status update');
             return;
         }
 
+        // Optimistic update — UI changes instantly
         const previousStatus = selectedStatus;
         setSelectedStatus(status);
-        setIsStatusUpdating(true);
 
         try {
-            console.log("profile_id:", leadDetail.profile_id,
-                "lead_id:", leadDetail._id,
-                "user_id:", "2",
-                "stage:", selectedStage || '',
-                "status:", status,
-                "notes:", `Status changed to ${status}`);
-
-            await createLeadActivity({
-                variables: {
-                    organization,
-                    input: {
-                        profile_id: leadDetail.profile_id,
-                        lead_id: leadDetail._id,
-                        user_id: userId,
-                        stage: selectedStage || '',
-                        status: status || "",
-                        notes: `Status changed to ${status}`
+            // Fire both mutations in parallel (silent — no loading state)
+            await Promise.all([
+                updateLead({
+                    variables: {
+                        organization,
+                        id: leadDetail._id,
+                        input: { status }
                     }
-                }
-            });
+                }),
+                createLeadActivity({
+                    variables: {
+                        organization,
+                        input: {
+                            profile_id: leadDetail.profile_id,
+                            lead_id: leadDetail._id,
+                            user_id: userId,
+                            stage: selectedStage || '',
+                            status: status || '',
+                            notes: `Status changed to ${status}`
+                        }
+                    }
+                })
+            ]);
             toast.success(`Status updated to ${status}`);
         } catch (error) {
             console.error('Failed to update status:', error);
+            // Rollback on failure
             setSelectedStatus(previousStatus);
             toast.error('Failed to update status');
-        } finally {
-            setIsStatusUpdating(false);
         }
     };
 
@@ -681,9 +688,8 @@ export default function LeadDetail() {
                                     <Select
                                         value={selectedStage}
                                         onValueChange={handleStageChange}
-                                        disabled={isStageUpdating}
                                     >
-                                        <SelectTrigger className="w-full" disabled={isStageUpdating}>
+                                        <SelectTrigger className="w-full">
                                             <SelectValue placeholder="select stage">
                                                 {currentStageObject && (
                                                     <div className="flex items-center gap-2">
@@ -723,9 +729,8 @@ export default function LeadDetail() {
                                     <Select
                                         value={selectedStatus}
                                         onValueChange={handleStatusChange}
-                                        disabled={isStatusUpdating}
                                     >
-                                        <SelectTrigger className="w-full" disabled={isStatusUpdating}>
+                                        <SelectTrigger className="w-full">
                                             <SelectValue placeholder="select status" />
                                         </SelectTrigger>
                                         <SelectContent>

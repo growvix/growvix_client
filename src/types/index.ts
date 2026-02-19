@@ -122,3 +122,18 @@ export interface GetLeadByIdQueryVariables {
   organization: string;
   id: string;
 }
+
+export interface UpdateLeadInput {
+  stage?: string;
+  status?: string;
+}
+
+export interface UpdateLeadMutationResponse {
+  updateLead: Lead;
+}
+
+export interface UpdateLeadMutationVariables {
+  organization: string;
+  id: string;
+  input: UpdateLeadInput;
+}
