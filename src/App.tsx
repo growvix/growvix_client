@@ -31,7 +31,6 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd"
 import {
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import {
   Calculator,

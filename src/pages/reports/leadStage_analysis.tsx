@@ -21,9 +21,7 @@ import {
     ChevronDown,
     RefreshCcw,
     Printer,
-    Download,
-    Filter
-} from "lucide-react";
+    Download} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBreadcrumb } from "@/context/breadcrumb-context";
 import type { DateRange } from 'react-day-picker';
