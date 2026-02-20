@@ -57,6 +57,7 @@ import GeneralSetting from "./pages/setting/general";
 import UserManagement from "./pages/setting/userManagement";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import LeadStageSetting from "./pages/setting/leadStageSetting";
+import LeadStageAnalysis from "./pages/reports/leadStage_analysis";
 
 function SidebarLayout() {
   const [open, setOpen] = React.useState(false)
@@ -199,6 +200,10 @@ export default function App() {
             <Route path="/settings" element={<GeneralSetting />} />
             <Route path="/setting/user_management" element={<UserManagement />} />
             <Route path="/setting/lead_stage_setting" element={<LeadStageSetting />} />
+            {/* <Route path="/reports/lead_stage_analysis" element={<LeadStageAnalysis />} /> */}
+
+            {/* <Route path="/general_reports" element={<GeneralReports />} /> */}
+            <Route path="/lead_stage_analysis" element={<LeadStageAnalysis />} />
 
           </Route>
         </Routes>

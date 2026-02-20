@@ -96,6 +96,22 @@ const data = {
       ],
     },
     {
+      title: "Reports",
+      url: "#",
+      icon: Package,
+      isActive: true,
+      items: [
+        {
+          title: "General Reports",
+          url: "/project_listing",
+        },
+        {
+          title: "Lead Stage Analysis",
+          url: "/lead_stage_analysis",
+        },
+      ],
+    },
+    {
       title: "Settings",
       url: "#",
       icon: Settings2,
