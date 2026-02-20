@@ -21,7 +21,8 @@ import {
     ChevronDown,
     RefreshCcw,
     Printer,
-    Download} from "lucide-react";
+    Download
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBreadcrumb } from "@/context/breadcrumb-context";
 import type { DateRange } from 'react-day-picker';
@@ -34,8 +35,8 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet"
 
-// Mock Data (Same as before)
-const data = [
+// Mock Data for Team (Existing)
+const teamData = [
     {
         name: 'Rohil Pune Sales',
         totalLeads: 38,
@@ -80,6 +81,52 @@ const data = [
     }
 ];
 
+// Mock Data for Project (Different for demo)
+const projectData = [
+    {
+        name: 'Project Alpha',
+        totalLeads: 120,
+        conversion: 15.5,
+        stages: {
+            booked: 10,
+            custom_2: 5,
+            follow: 20,
+            incoming: 50,
+            opportunity: 15,
+            prospect: 15,
+            fresh: 5
+        }
+    },
+    {
+        name: 'Project Beta',
+        totalLeads: 80,
+        conversion: 65.2,
+        stages: {
+            booked: 40,
+            custom_2: 5,
+            follow: 10,
+            incoming: 10,
+            opportunity: 5,
+            prospect: 10,
+            fresh: 0
+        }
+    },
+    {
+        name: 'Project Gamma',
+        totalLeads: 45,
+        conversion: 45.0,
+        stages: {
+            booked: 15,
+            custom_2: 0,
+            follow: 5,
+            incoming: 10,
+            opportunity: 5,
+            prospect: 5,
+            fresh: 5
+        }
+    }
+];
+
 const COLORS = {
     booked: '#82ca9d',
     custom_2: '#5bf7dc',
@@ -116,6 +163,14 @@ export default function LeadStageAnalysis() {
             { label: "Lead Stage Analysis" }
         ]);
     }, [setBreadcrumbs]);
+
+    // Select data based on active tab
+    const currentData = activeTab === "Project" ? projectData : teamData;
+
+    // ALways sort low to high on conversion
+    const sortedData = React.useMemo(() => {
+        return [...currentData].sort((a, b) => a.conversion - b.conversion);
+    }, [currentData]);
 
     const NavTab = ({ name }: { name: string }) => (
         <button
@@ -259,14 +314,23 @@ export default function LeadStageAnalysis() {
                     <div className="p-6">
                         <CustomLegend />
 
+                        <style>{`
+                            @keyframes bar-grow {
+                                from { width: 0; }
+                            }
+                            .animate-bar-grow {
+                                animation: bar-grow 1s ease-out forwards;
+                            }
+                        `}</style>
+
                         <div className="relative pt-6 max-w-4xl mx-auto">
                             <div className="absolute top-0 right-0 bg-transparent text-gray-700 dark:text-gray-300 text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600">
                                 Total Leads - 38
                             </div>
 
                             <div className="space-y-12 mt-10">
-                                {data.map((item, index) => (
-                                    <div key={index} className="flex flex-col md:flex-row gap-4">
+                                {sortedData.map((item) => (
+                                    <div key={item.name} className="flex flex-col md:flex-row gap-4">
                                         <div className="w-full md:w-64 flex-shrink-0 text-sm">
                                             <div className="font-medium text-gray-700 dark:text-gray-300">{item.name}</div>
                                             <div className="text-muted-foreground text-xs mt-1">
@@ -281,28 +345,28 @@ export default function LeadStageAnalysis() {
                                             <div className="w-full h-full flex flex-col justify-end pb-1 gap-2">
                                                 {/* Logic to replicate specific stacked/adjacent bar visual */}
                                                 {item.stages.incoming > 0 && (
-                                                    <div className="relative h-2.5 w-[65%]" style={{ backgroundColor: COLORS.incoming }}>
+                                                    <div className="relative h-2.5 w-[65%] animate-bar-grow" style={{ backgroundColor: COLORS.incoming }}>
                                                         <span className="absolute left-full ml-2 text-[10px] text-gray-600 whitespace-nowrap -top-1">
                                                             Incoming ({item.stages.incoming}/{Math.ceil(item.totalLeads * (item.conversion / 100))})({item.conversion}%)
                                                         </span>
                                                     </div>
                                                 )}
                                                 {item.stages.prospect > 0 && (
-                                                    <div className="relative h-2.5 w-[100%]" style={{ backgroundColor: COLORS.prospect }}>
+                                                    <div className="relative h-2.5 w-[100%] animate-bar-grow" style={{ backgroundColor: COLORS.prospect }}>
                                                         <span className="absolute left-full ml-2 text-[10px] text-gray-600 whitespace-nowrap -top-1">
                                                             Prospect (1/1)(100.00%)
                                                         </span>
                                                     </div>
                                                 )}
                                                 {item.stages.booked > 0 && (
-                                                    <div className="relative h-2.5 w-[33%]" style={{ backgroundColor: COLORS.booked }}>
+                                                    <div className="relative h-2.5 w-[33%] animate-bar-grow" style={{ backgroundColor: COLORS.booked }}>
                                                         <span className="absolute left-full ml-2 text-[10px] text-gray-600 whitespace-nowrap -top-1">
                                                             booked ({item.stages.booked}/15)(33.33%)
                                                         </span>
                                                     </div>
                                                 )}
                                                 {item.stages.fresh > 0 && (
-                                                    <div className="relative h-2.5 w-[6%]" style={{ backgroundColor: COLORS.fresh }}>
+                                                    <div className="relative h-2.5 w-[6%] animate-bar-grow" style={{ backgroundColor: COLORS.fresh }}>
                                                         <span className="absolute left-full ml-2 text-[10px] text-gray-600 whitespace-nowrap -top-1">
                                                             Fresh Leads (1/15)(6.67%)
                                                         </span>
@@ -310,7 +374,7 @@ export default function LeadStageAnalysis() {
                                                 )}
                                                 {/* For the third row specifically to match screenshot where lines are separate */}
                                                 {item.name.includes('Tejas') && item.stages.prospect > 0 && (
-                                                    <div className="relative h-2.5 w-[33%]" style={{ backgroundColor: COLORS.prospect }}>
+                                                    <div className="relative h-2.5 w-[33%] animate-bar-grow" style={{ backgroundColor: COLORS.prospect }}>
                                                         <span className="absolute left-full ml-2 text-[10px] text-gray-600 whitespace-nowrap -top-1">
                                                             Prospect (5/15)(33.33%)
                                                         </span>
