@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { AppSidebar } from "@/components/app-sidebar"
 import * as React from "react"
 import { Bell } from 'lucide-react';
@@ -57,6 +58,7 @@ import UserManagement from "./pages/setting/userManagement";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import LeadStageSetting from "./pages/setting/leadStageSetting";
 import LeadStageAnalysis from "./pages/reports/leadStage_analysis";
+import GeneralReports from "./pages/reports/general_reports";
 
 function SidebarLayout() {
   const [open, setOpen] = React.useState(false)
@@ -201,7 +203,7 @@ export default function App() {
             <Route path="/setting/lead_stage_setting" element={<LeadStageSetting />} />
             {/* <Route path="/reports/lead_stage_analysis" element={<LeadStageAnalysis />} /> */}
 
-            {/* <Route path="/general_reports" element={<GeneralReports />} /> */}
+            <Route path="/general_reports" element={<GeneralReports />} />
             <Route path="/lead_stage_analysis" element={<LeadStageAnalysis />} />
 
           </Route>

@@ -103,7 +103,7 @@ const data = {
       items: [
         {
           title: "General Reports",
-          url: "/project_listing",
+          url: "/general_reports",
         },
         {
           title: "Lead Stage Analysis",
