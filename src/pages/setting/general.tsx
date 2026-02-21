@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react"
+import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 
 import {
@@ -8,7 +8,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { UserRoundCog, FileText, CalendarClock, Import } from "lucide-react"
+import { UserRoundCog, FileText, CalendarClock, Import, UsersRound } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 
 export default function GeneralSetting() {
@@ -18,97 +18,100 @@ export default function GeneralSetting() {
     useEffect(() => {
         setBreadcrumbs([{ label: "General Settings" }])
     }, [setBreadcrumbs])
+
+    // Configuration for settings cards to keep code DRY and clean
+    const settingsCards = [
+        {
+            title: "Manage Users",
+            description: "Add users, update roles, and manage system permissions.",
+            icon: UserRoundCog,
+            colorClass: "text-blue-600 dark:text-blue-400",
+            bgClass: "bg-blue-100 dark:bg-blue-900/40",
+            hoverBorder: "hover:border-blue-300 dark:hover:border-blue-800",
+            hoverGradient: "from-blue-50/50 dark:from-blue-950/20",
+            path: "/setting/user_management",
+        },
+        {
+            title: "Manage Teams",
+            description: "Create new teams and manage team assignments.",
+            icon: UsersRound,
+            colorClass: "text-purple-600 dark:text-purple-400",
+            bgClass: "bg-purple-100 dark:bg-purple-900/40",
+            hoverBorder: "hover:border-purple-300 dark:hover:border-purple-800",
+            hoverGradient: "from-purple-50/50 dark:from-purple-950/20",
+            path: "/setting/teams",
+        },
+        {
+            title: "Billing",
+            description: "Manage your invoices, payment methods, and dues.",
+            icon: FileText,
+            colorClass: "text-rose-600 dark:text-rose-400",
+            bgClass: "bg-rose-100 dark:bg-rose-900/40",
+            hoverBorder: "hover:border-rose-300 dark:hover:border-rose-800",
+            hoverGradient: "from-rose-50/50 dark:from-rose-950/20",
+            path: "#", // Placeholder
+        },
+        {
+            title: "Attendance",
+            description: "Review and manage user attendance records.",
+            icon: CalendarClock,
+            colorClass: "text-amber-600 dark:text-amber-400",
+            bgClass: "bg-amber-100 dark:bg-amber-900/40",
+            hoverBorder: "hover:border-amber-300 dark:hover:border-amber-800",
+            hoverGradient: "from-amber-50/50 dark:from-amber-950/20",
+            path: "#", // Placeholder
+        },
+        {
+            title: "Import Data",
+            description: "Bulk import leads and other data into the system.",
+            icon: Import,
+            colorClass: "text-emerald-600 dark:text-emerald-400",
+            bgClass: "bg-emerald-100 dark:bg-emerald-900/40",
+            hoverBorder: "hover:border-emerald-300 dark:hover:border-emerald-800",
+            hoverGradient: "from-emerald-50/50 dark:from-emerald-950/20",
+            path: "#", // Placeholder
+        },
+    ]
+
     return (
-        <div className="flex flex-1 flex-col gap-4 px-3">
-            <div className="grid auto-rows-min gap-6 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 mx-5 mt-6">
-                <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-                    <Card className="rounded-xl cardSelect p-1" onClick={() => navigate("/setting/user_management")} >
-                        <CardHeader className="pt-2 px-2">
-                            <div className="flex items-start justify-between gap-4 w-full">
-                                <div className="flex items-center gap-3">
+        <div className="flex flex-1 flex-col gap-6 px-6 py-6 max-w-[90%] mx-auto w-full">
+            <div>
+                <h1 className="text-2xl font-bold tracking-tight">Settings Workspace</h1>
+                <p className="text-muted-foreground mt-1 text-sm">
+                    Manage your preferences, user access, and system configurations.
+                </p>
+            </div>
 
-                                    <div>
-                                        <CardTitle className="text-md text-foreground">Manage Users</CardTitle>
-                                        <CardDescription className="text-xs text-muted-foreground">
-                                            Add users, teams, roles, permissions
-                                        </CardDescription>
-                                    </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-2">
+                {settingsCards.map((card, index) => {
+                    const Icon = card.icon
+                    return (
+                        <Card
+                            key={index}
+                            className={`group relative overflow-hidden flex flex-col cursor-pointer transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${card.hoverBorder}`}
+                            onClick={() => card.path !== "#" && navigate(card.path)}
+                        >
+                            {/* Subtle background gradient on hover */}
+                            <div className={`absolute inset-0 bg-gradient-to-br ${card.hoverGradient} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+
+                            <CardHeader className="flex flex-row items-start gap-4 pb-2 z-1 w-full space-y-0">
+                                <div className={`p-2.5 rounded-lg transition-colors group-hover:bg-background/80 ${card.bgClass} ${card.colorClass}`}>
+                                    <Icon size={24} strokeWidth={2} />
                                 </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="flex items-center justify-end pe-3 pb-5">
-                            <UserRoundCog strokeWidth={1.9} className="text-blue-600 dark:text-blue-400 mr-2" size={30} />
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-                    <Card className=" rounded-xl cardSelect p-1">
-                        <CardHeader className="pt-2 px-2">
-                            <div className="flex items-start justify-between gap-4 w-full">
-                                <div className="flex items-center gap-3">
-
-                                    <div>
-                                        <CardTitle className="text-md text-foreground">Billing</CardTitle>
-                                        <CardDescription className="text-xs text-muted-foreground">
-                                            Manage your invoices & dues
-                                        </CardDescription>
-                                    </div>
+                                <div className="flex flex-col gap-1 mt-1">
+                                    <CardTitle className="text-base group-hover:text-primary transition-colors">
+                                        {card.title}
+                                    </CardTitle>
                                 </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="flex items-center justify-end pe-3 pb-5">
-                            <FileText strokeWidth={1.9} className="text-red-600 dark:text-red-400 mr-2" size={30} />
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-                    <Card className=" rounded-xl cardSelect p-1">
-                        <CardHeader className="pt-2 px-2">
-                            <div className="flex items-start justify-between gap-4 w-full">
-                                <div className="flex items-center gap-3">
-
-                                    <div>
-                                        <CardTitle className="text-md text-foreground">Attendance</CardTitle>
-                                        <CardDescription className="text-xs text-muted-foreground">
-                                            Manage your user attendance
-                                        </CardDescription>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="flex items-center justify-end pe-3 pb-5">
-                            <CalendarClock strokeWidth={1.9} className="text-amber-600 dark:text-amber-400 mr-2" size={30} />
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-                    <Card className=" rounded-xl cardSelect p-1">
-                        <CardHeader className="pt-2 px-2">
-                            <div className="flex items-start justify-between gap-4 w-full">
-                                <div className="flex items-center gap-3">
-
-                                    <div>
-                                        <CardTitle className="text-md text-foreground">Import</CardTitle>
-                                        <CardDescription className="text-xs text-muted-foreground">
-                                            Import bulk lead
-                                        </CardDescription>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="flex items-center justify-end pe-3 pb-5">
-                            <Import strokeWidth={1.9} className="text-green-600 dark:text-green-400 mr-2" size={30} />
-                        </CardContent>
-                    </Card>
-                </div>
-
-
-
-
-
+                            </CardHeader>
+                            <CardContent className="z-1 pb-5 pt-2">
+                                <CardDescription className="text-sm leading-relaxed">
+                                    {card.description}
+                                </CardDescription>
+                            </CardContent>
+                        </Card>
+                    )
+                })}
             </div>
         </div>
     )

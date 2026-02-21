@@ -57,10 +57,7 @@ const data = {
           title: "Master View",
           url: "/dashboard",
         },
-        {
-          title: "Customized View",
-          url: "#",
-        },
+
       ],
     },
     {

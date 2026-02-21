@@ -289,7 +289,6 @@ export default function AllLeads() {
             />
           </div>
 
-          {/* Campaign */}
           <div className="lg:col-span-2">
             <Label htmlFor="filter-company" className="text-s mb-1 ms-1">
               Campaign

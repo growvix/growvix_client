@@ -8,6 +8,7 @@ import { ArrowUpDown, MoreHorizontal } from "lucide-react"
 import { getCookie } from "@/utils/cookies"
 
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +33,7 @@ interface UserData {
   role: string
   isActive: boolean
   createdAt?: string
+  teams?: { teamId: string; teamName: string }[]
 }
 
 interface TableDataProps {
@@ -87,6 +89,24 @@ export const columns: ColumnDef<UserData>[] = [
         {row.getValue("isActive") ? "Active" : "Inactive"}
       </div>
     ),
+  },
+  {
+    id: "teams",
+    header: "Teams",
+    accessorFn: (row) => (row.teams || []).map(t => t.teamName).join(", "),
+    cell: ({ row }) => {
+      const teams = row.original.teams || []
+      if (teams.length === 0) return <span className="text-muted-foreground">—</span>
+      return (
+        <div className="flex gap-1 flex-wrap">
+          {teams.map((t) => (
+            <Badge key={String(t.teamId)} variant="secondary" className="text-xs">
+              {t.teamName}
+            </Badge>
+          ))}
+        </div>
+      )
+    },
   },
   {
     id: "actions",
