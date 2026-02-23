@@ -24,10 +24,20 @@ export const deleteAllAuthCookies = () => {
     deleteCookie('email');
     deleteCookie('token');
     deleteCookie('role');
+    deleteCookie('permissions');
 };
 
 export const isAuthenticated = (): boolean => {
     const token = getCookie('token');
     const profileId = getCookie('profile_id');
     return !!(token && profileId);
+};
+
+export const getPermissions = (): string[] => {
+    try {
+        const raw = getCookie('permissions');
+        return raw ? JSON.parse(decodeURIComponent(raw)) : [];
+    } catch {
+        return [];
+    }
 };

@@ -150,6 +150,8 @@ export default function ProjectListing() {
                 }
                 const response = await axios.get(`${API.PROJECTS}?organization=${org}`)
                 setData(response.data.data || [])
+                console.log(response.data.data);
+
             } catch (err: any) {
                 setError(err.response?.data?.message || 'Failed to fetch projects')
             } finally {

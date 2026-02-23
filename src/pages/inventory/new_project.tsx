@@ -829,8 +829,8 @@ export default function NewProject() {
 
 
                             {formData.property !== 'plots' && (
-                                <Card className="mb-4">
-                                    <CardHeader className="pb-3">
+                                <Card>
+                                    <CardHeader className="pb-1">
                                         <div className="flex items-center justify-between">
                                             <div>
                                                 <CardTitle className="flex items-center gap-2">
@@ -853,10 +853,10 @@ export default function NewProject() {
                                                 <p className="text-sm">Click "Add Block" to get started</p>
                                             </div>
                                         ) : (
-                                            <ScrollArea className="h-[70vh] pr-4">
+                                            <ScrollArea className="h-[74vh] pr-4">
                                                 <Accordion type="multiple" value={expandedBlocks} onValueChange={setExpandedBlocks}>
                                                     {formData.blocks.map((block) => (
-                                                        <AccordionItem key={block.blockId} value={block.blockId} className="border rounded-lg mb-3 px-4">
+                                                        <AccordionItem key={block.blockId} value={block.blockId} className="border-2 active:border-primary focus:border-primary rounded-lg mb-3 px-4">
                                                             <AccordionTrigger className="hover:no-underline">
                                                                 <div className="flex items-center gap-3">
                                                                     <Building2 className="h-5 w-5 text-primary" />

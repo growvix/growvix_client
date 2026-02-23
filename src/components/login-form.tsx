@@ -54,6 +54,7 @@ export function LoginForm({
       setCookie('email', data.email);
       setCookie('token', data.token);
       setCookie('role', data.role);
+      setCookie('permissions', JSON.stringify(data.permissions || []));
       toast("Login successful.")
       console.log("Login successful:", data.profile_id)
       navigate("/dashboard") // Redirect to dashboard

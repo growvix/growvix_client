@@ -67,8 +67,8 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import LeadStageSetting from "./pages/setting/leadStageSetting";
 import LeadStageAnalysis from "./pages/reports/leadStage_analysis";
 import GeneralReports from "./pages/reports/general_reports";
-import TeamManagement from "./pages/team/team_management";
-import TeamDetailPage from "./pages/team/team_detail";
+import TeamManagement from "./pages/setting/team/team_management";
+import TeamDetailPage from "./pages/setting/team/team_detail";
 
 // Searchable pages index
 type SearchablePage = { label: string; url: string; group: string; icon: React.ElementType }
@@ -90,7 +90,6 @@ const SEARCHABLE_PAGES: SearchablePage[] = [
 
 function SidebarLayout() {
   const [open, setOpen] = React.useState(false)
-  const [isOnline, setIsOnline] = React.useState(true)
   const [searchValue, setSearchValue] = React.useState("")
   const [leadSearchLoading, setLeadSearchLoading] = React.useState(false)
   const [leadSearchResult, setLeadSearchResult] = React.useState<{ _id: string; profile_id: number; name: string } | null>(null)
@@ -201,7 +200,7 @@ function SidebarLayout() {
             <div className="me-2 md:me-4 ml-auto flex gap-3">
               <Button
                 variant="outline"
-                className="w-[300px] bg-white  text-dark/50 hover:bg-primary-900 hover:text-gray-400 rounded-xl transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-1 focus:ring-gray-300 flex justify-between"
+                className="w-[300px] bg-input/30 dark:bg-input/50 text-dark/50 hover:bg-primary-900 hover:text-gray-400 rounded-xl transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-1 focus:ring-gray-300 flex justify-between"
                 onClick={() => setOpen(true)}
               >
                 Search.....
@@ -278,27 +277,7 @@ function SidebarLayout() {
                 </CommandList>
               </CommandDialog>
 
-              <Select value={isOnline ? "online" : "offline"} onValueChange={(value: any) => setIsOnline(value === "online")}>
-                <SelectTrigger className="relative z-50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="online">
-                      <span className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-green-500"></span>
-                        online
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="offline">
-                      <span className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-red-500"></span>
-                        offline
-                      </span>
-                    </SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
                 <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500"></span>
@@ -310,10 +289,6 @@ function SidebarLayout() {
           {/* Render nested app routes here */}
           <Outlet />
         </SidebarInset>
-        {/* Offline overlay - mutes and disables entire app except status selector */}
-        {!isOnline && (
-          <div className="fixed inset-0 bg-black/50 dark:bg-white/10 z-40 cursor-not-allowed" />
-        )}
       </SidebarProvider>
     </ScrollArea>
   )
@@ -340,7 +315,6 @@ export default function App() {
             <Route path="/project_listing" element={<ProjectListing />} />
             <Route path="/project_showcase" element={<ProjectShowcase />} />
             <Route path="/new_project" element={<NewProject />} />
-
             <Route path="/settings" element={<GeneralSetting />} />
             <Route path="/setting/user_management" element={<UserManagement />} />
             <Route path="/setting/lead_stage_setting" element={<LeadStageSetting />} />

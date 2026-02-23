@@ -28,7 +28,7 @@ export function NavProjects({
 
   return (
     <SidebarGroup className="group/collapsible">
-      <SidebarGroupLabel>Projects</SidebarGroupLabel>
+      <SidebarGroupLabel>General</SidebarGroupLabel>
       <SidebarMenu>
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>

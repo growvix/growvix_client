@@ -37,7 +37,7 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>General</SidebarGroupLabel>
+      <SidebarGroupLabel>Workspace</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
           const isChildActive = item.items?.some(subItem => subItem.url === pathname)

@@ -209,17 +209,15 @@ export default function TeamDetailPage() {
     }
 
     return (
-        <div className="flex flex-1 flex-col gap-6 px-3">
+        <div className="flex flex-1 flex-col gap-6 px-4">
             {/* Header */}
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => navigate("/setting/teams")}>
-                    <ArrowLeft className="h-5 w-5" />
+            <div className="flex items-center gap-4 mt-2">
+                <Button variant="ghost" onClick={() => navigate("/setting/teams")}>
+                    <ArrowLeft className="h-6 w-6" />
                 </Button>
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight">{team.name}</h2>
-                    {team.description && (
-                        <p className="text-muted-foreground mt-1">{team.description}</p>
-                    )}
+
                 </div>
             </div>
 

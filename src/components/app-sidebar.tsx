@@ -9,9 +9,9 @@ import {
   GalleryVerticalEnd,
   Map,
   PieChart,
-  Settings2,
-  ClipboardList,
-  SquareTerminal,
+  Settings,
+  Users,
+  LayoutDashboard,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -50,7 +50,7 @@ const data = {
     {
       title: "Dashboard",
       url: "#",
-      icon: SquareTerminal,
+      icon: LayoutDashboard,
       isActive: true,
       items: [
         {
@@ -63,7 +63,7 @@ const data = {
     {
       title: "Lead Directory",
       url: "#",
-      icon: ClipboardList,
+      icon: Users,
       isActive: true,
       items: [
         {
@@ -95,7 +95,7 @@ const data = {
     {
       title: "Reports",
       url: "#",
-      icon: Package,
+      icon: PieChart,
       isActive: true,
       items: [
         {
@@ -108,20 +108,13 @@ const data = {
         },
       ],
     },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      isActive: true,
-      items: [
-        {
-          title: "General",
-          url: "/settings",
-        },
-      ],
-    },
   ],
   projects: [
+    {
+      name: "Settings",
+      url: "/settings",
+      icon: Settings,
+    },
     {
       name: "Calendar",
       url: "/user_calendar",

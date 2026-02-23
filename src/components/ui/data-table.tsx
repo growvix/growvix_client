@@ -61,7 +61,7 @@ export function DataTable<TData, TValue>({
     columns,
     data,
     initialPageSize = DEFAULT_PAGE_SIZE,
-    filterColumn = "name",
+    filterColumn = "",
     filterPlaceholder = "Filter...",
     onRowClick,
 }: DataTableProps<TData, TValue>) {

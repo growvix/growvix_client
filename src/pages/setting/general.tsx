@@ -1,6 +1,5 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-
 import {
     Card,
     CardContent,
@@ -8,12 +7,14 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { UserRoundCog, FileText, CalendarClock, Import, UsersRound } from "lucide-react"
+import { UserRoundCog, FileText, CalendarClock, Import, UsersRound, Search, SearchX } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
+import { Input } from "@/components/ui/input"
 
 export default function GeneralSetting() {
     const navigate = useNavigate()
     const { setBreadcrumbs } = useBreadcrumb()
+    const [search, setSearch] = useState("")
 
     useEffect(() => {
         setBreadcrumbs([{ label: "General Settings" }])
@@ -73,17 +74,27 @@ export default function GeneralSetting() {
         },
     ]
 
+    const filteredCards = settingsCards.filter(
+        (card) =>
+            card.title.toLowerCase().includes(search.toLowerCase()) ||
+            card.description.toLowerCase().includes(search.toLowerCase())
+    )
+
     return (
-        <div className="flex flex-1 flex-col gap-6 px-6 py-6 max-w-[90%] mx-auto w-full">
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight">Settings Workspace</h1>
-                <p className="text-muted-foreground mt-1 text-sm">
-                    Manage your preferences, user access, and system configurations.
-                </p>
+        <div className="flex flex-1 flex-col gap-4 px-6 py-4 max-w-[90%] mx-auto w-full">
+
+            <div className="relative max-w-sm mx-auto w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground " />
+                <Input
+                    placeholder="Search settings..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 bg-input/30 dark:bg-input/50"
+                />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-2">
-                {settingsCards.map((card, index) => {
+                {filteredCards.map((card, index) => {
                     const Icon = card.icon
                     return (
                         <Card
@@ -112,7 +123,24 @@ export default function GeneralSetting() {
                         </Card>
                     )
                 })}
-            </div>
+                {filteredCards.length === 0 && (
+                    <div className="col-span-full flex flex-col items-center justify-center h-[40vh] text-center">
+
+                        <div className="bg-muted p-6 rounded-2xl shadow-sm mb-4">
+                            <SearchX className="h-10 w-10 text-muted-foreground" />
+                        </div>
+
+                        <h3 className="text-lg font-semibold mb-1">
+                            No Results Found
+                        </h3>
+
+                        <p className="text-sm text-muted-foreground max-w-sm">
+                            We couldn't find any matching records. Try adjusting your search
+                            criteria or clearing filters.
+                        </p>
+
+                    </div>
+                )}            </div>
         </div>
     )
 }
