@@ -7,8 +7,13 @@ import { API } from "@/config/api"
 import {
     type ColumnDef,
 } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, Pencil } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
+import { getCookie, getPermissions } from "@/utils/cookies"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { encodeProjectId } from "@/utils/idEncoder"
 import { Button } from "@/components/ui/button"
 import {
@@ -20,115 +25,23 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import type { projects } from "@/types"
-import { DEFAULT_PAGE_SIZE } from "@/constants"
 import { DataTable } from "@/components/ui/data-table"
-
-// Helper function to get cookie value
-const getCookie = (name: string): string => {
-    const value = `; ${document.cookie}`
-    const parts = value.split(`; ${name}=`)
-    if (parts.length === 2) return parts.pop()?.split(';').shift() || ''
-    return ''
-}
-
-export const columns: ColumnDef<projects>[] = [
-    {
-        accessorKey: "product_id",
-        header: ({ column }) => {
-            return (
-                <Button
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >ID
-                    <ArrowUpDown />
-                </Button>
-            )
-        },
-        cell: ({ row }) => <div className="capitalize">{row.getValue("product_id")}</div>,
-    },
-    {
-        accessorKey: "name",
-        header: "Name",
-        cell: ({ row }) => <div className="capitalize">{row.getValue("name")}</div>,
-    },
-    {
-        accessorKey: "location",
-        header: ({ column }) => {
-            return (
-                <Button
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Location
-                    <ArrowUpDown />
-                </Button>
-            )
-        },
-        cell: ({ row }) => <div className="capitalize">{row.getValue("location")}</div>,
-    },
-    {
-        accessorKey: "property",
-        header: "Property",
-        cell: ({ row }) => <div className="capitalize">{row.getValue("property")}</div>,
-    },
-    {
-        accessorKey: "blockCount",
-        header: "Blocks",
-        cell: ({ row }) => <div className="text-center">{row.getValue("blockCount") ?? 0}</div>,
-    },
-    {
-        accessorKey: "totalUnits",
-        header: ({ column }) => {
-            return (
-                <Button
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Units
-                    <ArrowUpDown />
-                </Button>
-            )
-        },
-        cell: ({ row }) => <div className="text-center font-medium">{row.getValue("totalUnits") ?? 0}</div>,
-    },
-    {
-        accessorKey: "createdAt",
-        header: "Created At",
-        cell: ({ row }) => {
-            const date = row.getValue("createdAt") as string
-            return <div>{date ? new Date(date).toLocaleDateString() : '-'}</div>
-        },
-    },
-    {
-        id: "actions",
-        enableHiding: false,
-        cell: ({ row }) => {
-            return (
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-
-                        <DropdownMenuItem>View Project</DropdownMenuItem>
-                        <DropdownMenuItem>Download Brochure</DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            )
-        },
-    },
-]
 
 export default function ProjectListing() {
     const { setBreadcrumbs } = useBreadcrumb()
     const [data, setData] = React.useState<projects[]>([])
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState('')
+
+    // Edit Project State
+    const [editOpen, setEditOpen] = React.useState(false)
+    const [editingProject, setEditingProject] = React.useState<projects | null>(null)
+    const [editFormData, setEditFormData] = React.useState({
+        name: "",
+        location: "",
+        property: "",
+    })
+    const [editLoading, setEditLoading] = React.useState(false)
 
     const navigate = useNavigate()
 
@@ -138,28 +51,174 @@ export default function ProjectListing() {
         ]);
     }, [setBreadcrumbs]);
 
+    const fetchProjects = React.useCallback(async () => {
+        try {
+            setLoading(true)
+            const org = getCookie('organization')
+            if (!org) {
+                setError('Organization not found in cookies')
+                setLoading(false)
+                return
+            }
+            const response = await axios.get(`${API.PROJECTS}?organization=${org}`)
+            setData(response.data.data || [])
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Failed to fetch projects')
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
     // Fetch projects from API on mount
     React.useEffect(() => {
-        const fetchProjects = async () => {
-            try {
-                const org = getCookie('organization')
-                if (!org) {
-                    setError('Organization not found in cookies')
-                    setLoading(false)
-                    return
-                }
-                const response = await axios.get(`${API.PROJECTS}?organization=${org}`)
-                setData(response.data.data || [])
-                console.log(response.data.data);
-
-            } catch (err: any) {
-                setError(err.response?.data?.message || 'Failed to fetch projects')
-            } finally {
-                setLoading(false)
-            }
-        }
         fetchProjects()
+    }, [fetchProjects])
+
+    const handleEditProject = React.useCallback((e: React.MouseEvent, project: projects) => {
+        e.stopPropagation() // Prevent row click
+        const permissions = getPermissions()
+        if (!permissions.includes("edit_inventory")) {
+            toast.warning("You do not have permission to edit projects.")
+            return
+        }
+        setEditingProject(project)
+        setEditFormData({
+            name: project.name,
+            location: project.location,
+            property: project.property || "",
+        })
+        setEditOpen(true)
     }, [])
+
+    const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target
+        setEditFormData((prev) => ({ ...prev, [id]: value }))
+    }
+
+    const handleEditSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!editingProject) return
+        setEditLoading(true)
+
+        try {
+            const org = getCookie('organization')
+            const token = getCookie("token")
+            await axios.put(
+                API.updateProject(editingProject.product_id),
+                Object.assign({}, editFormData, { organization: org }),
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            toast.success("Project updated successfully")
+            setEditOpen(false)
+            setEditingProject(null)
+            await fetchProjects()
+        } catch (err: any) {
+            console.error("Error updating project:", err)
+            toast.error(err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || "Failed to update project")
+        } finally {
+            setEditLoading(false)
+        }
+    }
+
+    const columns: ColumnDef<projects>[] = React.useMemo(() => [
+        {
+            accessorKey: "product_id",
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    >ID
+                        <ArrowUpDown />
+                    </Button>
+                )
+            },
+            cell: ({ row }) => <div className="capitalize">{row.getValue("product_id")}</div>,
+        },
+        {
+            accessorKey: "name",
+            header: "Name",
+            cell: ({ row }) => <div className="capitalize">{row.getValue("name")}</div>,
+        },
+        {
+            accessorKey: "location",
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    >
+                        Location
+                        <ArrowUpDown />
+                    </Button>
+                )
+            },
+            cell: ({ row }) => <div className="capitalize">{row.getValue("location")}</div>,
+        },
+        {
+            accessorKey: "property",
+            header: "Property",
+            cell: ({ row }) => <div className="capitalize">{row.getValue("property")}</div>,
+        },
+        {
+            accessorKey: "blockCount",
+            header: "Blocks",
+            cell: ({ row }) => <div className="text-center">{row.getValue("blockCount") ?? 0}</div>,
+        },
+        {
+            accessorKey: "totalUnits",
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    >
+                        Units
+                        <ArrowUpDown />
+                    </Button>
+                )
+            },
+            cell: ({ row }) => <div className="text-center font-medium">{row.getValue("totalUnits") ?? 0}</div>,
+        },
+        {
+            accessorKey: "createdAt",
+            header: "Created At",
+            cell: ({ row }) => {
+                const date = row.getValue("createdAt") as string
+                return <div>{date ? new Date(date).toLocaleDateString() : '-'}</div>
+            },
+        },
+        {
+            id: "actions",
+            enableHiding: false,
+            cell: ({ row }) => {
+                const project = row.original
+                return (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRowClick(project); }}>
+                                View Project
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => handleEditProject(e, project)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit Project
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>Download Brochure</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )
+            },
+        },
+    ], [handleEditProject])
 
     const handleRowClick = async (project: projects) => {
         const encodedId = encodeProjectId(project.product_id)
@@ -194,6 +253,36 @@ export default function ProjectListing() {
                     )}
                 </CardContent>
             </Card>
-        </div>
+
+            <Sheet open={editOpen} onOpenChange={setEditOpen}>
+                <SheetContent className="w-xl px-5">
+                    <SheetHeader>
+                        <SheetTitle>Edit Project</SheetTitle>
+                        <SheetDescription>
+                            Update basic details for this project.
+                        </SheetDescription>
+                    </SheetHeader>
+                    {editingProject && (
+                        <form onSubmit={handleEditSubmit} className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="name">Project Name</Label>
+                                <Input id="name" value={editFormData.name} onChange={handleEditInputChange} required />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="location">Location</Label>
+                                <Input id="location" value={editFormData.location} onChange={handleEditInputChange} required />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="property">Property Type (e.g. apartments, plots)</Label>
+                                <Input id="property" value={editFormData.property} onChange={handleEditInputChange} required />
+                            </div>
+                            <Button type="submit" className="mt-4" disabled={editLoading}>
+                                {editLoading ? "Saving..." : "Save Changes"}
+                            </Button>
+                        </form>
+                    )}
+                </SheetContent>
+            </Sheet>
+        </div >
     );
 }

@@ -23,6 +23,11 @@ export const API = {
     getProjectBlocks: (id: number | string) => `${API_URL}/api/projects/${id}/blocks`,
     updateProject: (id: number | string) => `${API_URL}/api/projects/${id}`,
 
+    // User specific endpoints
+    getUser: (id: string) => `${API_URL}/api/users/${id}`,
+    updateUser: (id: string) => `${API_URL}/api/users/${id}`,
+    deleteUser: (id: string) => `${API_URL}/api/users/${id}`,
+
     // Team specific endpoints
     getTeam: (id: string) => `${API_URL}/api/teams/${id}`,
     getTeamMembers: (id: string) => `${API_URL}/api/teams/${id}/members`,

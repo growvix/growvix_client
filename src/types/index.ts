@@ -104,9 +104,14 @@ export interface Lead {
   activities?: {
     id: string;
     user_id: string;
+    user_name: string;
+    updates: string;
     stage: string;
     status: string;
     notes: string;
+    reason: string;
+    follow_up_date: string;
+    site_visit_date: string;
     createdAt: string;
     updatedAt: string;
   }[];

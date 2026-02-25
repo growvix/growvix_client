@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom"
 import { useEffect, useState, useMemo } from "react"
+import { Badge } from "@/components/ui/badge"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import LoaderScreen from "@/components/ui/loader-screen"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -39,15 +40,21 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
     Tabs,
     TabsList,
     TabsTrigger,
+    TabsContent,
 } from "@/components/ui/tabs"
 import { decryptId } from "@/lib/crypto"
+import { DatePicker } from "@/components/ui/date-picker"
+import { TimePicker } from "@/components/ui/time-picker"
+import { format } from "date-fns"
 
 // GraphQL query to get lead details by ID
-const GET_LEAD_BY_ID = gql`
+const GET_LEAD_BY_ID = gql` 
     query GetLeadById($organization: String!, $id: String!) {
         getLeadById(organization: $organization, id: $id) {
             _id
@@ -88,9 +95,14 @@ const GET_LEAD_BY_ID = gql`
             activities {
                 id
                 user_id
+                user_name
                 stage
+                updates
+                reason
+                site_visit_date
                 status
                 notes
+                follow_up_date
                 createdAt
                 updatedAt
             }
@@ -104,17 +116,20 @@ const CREATE_LEAD_ACTIVITY = gql`
         createLeadActivity(organization: $organization, input: $input) {
             id
             profile_id
+            updates
+            reason
             lead_id
             user_id
+            site_visit_date
             stage
             status
             notes
+            follow_up_date
             createdAt
         }
     }
 `;
 
-// GraphQL mutation to update lead details (stage, status)
 const UPDATE_LEAD = gql`
     mutation UpdateLead($organization: String!, $id: String!, $input: UpdateLeadInput!) {
         updateLead(organization: $organization, id: $id, input: $input) {
@@ -157,6 +172,25 @@ export default function LeadDetail() {
     const organization = getCookie("organization") || "";
     const userId = getCookie("profile_id") || "";
 
+    // Follow-up form state
+    const [followUpReason, setFollowUpReason] = useState('')
+    const [followUpDate, setFollowUpDate] = useState('')
+    const [followUpLoading, setFollowUpLoading] = useState(false)
+
+    // Notes form state
+    const [noteContent, setNoteContent] = useState('')
+    const [noteLoading, setNoteLoading] = useState(false)
+
+    // Sheet open state
+    const [notesSheetOpen, setNotesSheetOpen] = useState(false)
+    const [followUpSheetOpen, setFollowUpSheetOpen] = useState(false)
+
+    // Site Visit state
+    const [siteVisitDate, setSiteVisitDate] = useState<Date | undefined>(undefined)
+    const [siteVisitTime, setSiteVisitTime] = useState('')
+    const [siteVisitLoading, setSiteVisitLoading] = useState(false)
+    const [siteVisitSheetOpen, setSiteVisitSheetOpen] = useState(false)
+
     // GraphQL mutation hooks
     const [createLeadActivity] = useMutation(CREATE_LEAD_ACTIVITY);
     const [updateLead] = useMutation<UpdateLeadMutationResponse, UpdateLeadMutationVariables>(UPDATE_LEAD);
@@ -177,19 +211,15 @@ export default function LeadDetail() {
         let cancelled = false
         async function run() {
             try {
-
                 if (cancelled) return
-
                 setLeadId(id)
                 // Set breadcrumbs after getting the lead ID
                 setBreadcrumbs([
                     { label: "All Leads", href: "/all_leads" },
                     { label: id ? `Lead #${id}` : "Lead" }
                 ])
-
                 // Fetch lead details via GraphQL
                 if (id) {
-
                     const organization = getCookie('organization') || ''
                     if (organization) {
                         const { data } = await apolloClient.query<GetLeadByIdQueryResponse, GetLeadByIdQueryVariables>({
@@ -214,23 +244,20 @@ export default function LeadDetail() {
         run()
         return () => { cancelled = true }
     }, [id, setBreadcrumbs])
-
     // Fetch lead details by ID with apollo
-    const { data: leadData, loading: _leadLoading, error: _leadError } = useQuery<GetLeadByIdQueryResponse, GetLeadByIdQueryVariables>(
+    const { data: leadData, loading: _leadLoading, error: _leadError, refetch: refetchLead } = useQuery<GetLeadByIdQueryResponse, GetLeadByIdQueryVariables>(
         GET_LEAD_BY_ID,
         {
             variables: { organization, id: id || "" },
             skip: !organization || !id
         }
     );
-
     // Log activities when lead data is fetched
     useEffect(() => {
         if (leadData?.getLeadById?.activities) {
             console.log('Lead Activities:', leadData.getLeadById.activities);
         }
     }, [leadData]);
-
     // Fetch stages
     useEffect(() => {
         const fetchStages = async () => {
@@ -247,7 +274,6 @@ export default function LeadDetail() {
         };
         fetchStages();
     }, [organization]);
-
     useEffect(() => {
         if (leadData?.getLeadById) {
             setLeadDetail(leadData.getLeadById);
@@ -259,8 +285,6 @@ export default function LeadDetail() {
             }
         }
     }, [leadData]);
-
-
     useEffect(() => {
         if (selectedStage !== undefined && stages.length > 0) {
             const currentStage = stages.find(s => s.name.toLowerCase() === selectedStage.toLowerCase());
@@ -274,7 +298,136 @@ export default function LeadDetail() {
             setAvailableNextStages(stages);
         }
     }, [selectedStage, stages]);
+    const handleFollowUps = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        if (!leadDetail?.profile_id || !organization || !userId || !leadDetail?._id) {
+            toast.error('Missing required data for follow-up')
+            return
+        }
+        if (!followUpReason.trim()) {
+            toast.error('Please enter a reason for the follow-up')
+            return
+        }
+        if (!followUpDate) {
+            toast.error('Please select a follow-up date')
+            return
+        }
+        setFollowUpLoading(true)
+        try {
+            await createLeadActivity({
+                variables: {
+                    organization,
+                    input: {
+                        profile_id: leadDetail.profile_id,
+                        updates: "follow_up",
+                        lead_id: leadDetail._id,
+                        reason: followUpReason,
+                        user_id: userId,
+                        stage: selectedStage || '',
+                        status: selectedStatus || '',
+                        notes: 'followups',
+                        follow_up_date: new Date(followUpDate).toISOString()
+                    }
+                }
+            })
+            toast.success('Follow-up scheduled successfully')
+            setFollowUpReason('')
+            setFollowUpDate('')
+            setFollowUpSheetOpen(false)
+            refetchLead()
+        } catch (error) {
+            console.error('Failed to create follow-up:', error)
+            toast.error('Failed to schedule follow-up')
+        } finally {
+            setFollowUpLoading(false)
+        }
+    };
+    const handleNotes = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        if (!leadDetail?.profile_id || !organization || !userId || !leadDetail?._id) {
+            toast.error('Missing required data for note')
+            return
+        }
+        if (!noteContent.trim()) {
+            toast.error('Please enter a note')
+            return
+        }
+        setNoteLoading(true)
+        try {
+            await createLeadActivity({
+                variables: {
+                    organization,
+                    input: {
+                        profile_id: leadDetail.profile_id,
+                        updates: "notes",
+                        lead_id: leadDetail._id,
+                        user_id: userId,
+                        stage: selectedStage || '',
+                        status: selectedStatus || '',
+                        notes: noteContent
+                    }
+                }
+            })
+            toast.success('Note added successfully')
+            setNoteContent('')
+            setNotesSheetOpen(false)
+            refetchLead()
+        } catch (error) {
+            console.error('Failed to add note:', error)
+            toast.error('Failed to add note')
+        } finally {
+            setNoteLoading(false)
+        }
+    };
 
+    const handleSiteVisit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        if (!leadDetail?.profile_id || !organization || !userId || !leadDetail?._id) {
+            toast.error('Missing required data for site visit')
+            return
+        }
+        if (!siteVisitDate || !siteVisitTime) {
+            toast.error('Please select both date and time for the site visit')
+            return
+        }
+        setSiteVisitLoading(true)
+        try {
+            // Combine date and time
+            const dateStr = format(siteVisitDate, "yyyy-MM-dd");
+            const combinedDateTimeString = `${dateStr}T${siteVisitTime}:00`;
+            const dateObj = new Date(combinedDateTimeString);
+
+            if (isNaN(dateObj.getTime())) {
+                toast.error("Invalid date or time");
+                return;
+            }
+
+            await createLeadActivity({
+                variables: {
+                    organization,
+                    input: {
+                        profile_id: leadDetail.profile_id,
+                        updates: "site_visit",
+                        lead_id: leadDetail._id,
+                        user_id: userId,
+                        stage: selectedStage || '',
+                        status: selectedStatus || '',
+                        site_visit_date: dateObj.toISOString()
+                    }
+                }
+            })
+            toast.success('Site visit scheduled successfully')
+            setSiteVisitDate(undefined)
+            setSiteVisitTime('')
+            setSiteVisitSheetOpen(false)
+            refetchLead()
+        } catch (error) {
+            console.error('Failed to schedule site visit:', error)
+            toast.error('Failed to schedule site visit')
+        } finally {
+            setSiteVisitLoading(false)
+        }
+    };
     // Memoize current stage object to avoid repeated find operations
     const currentStageObject = useMemo(() => {
         if (!selectedStage || stages.length === 0) return null;
@@ -285,11 +438,9 @@ export default function LeadDetail() {
             toast.error('Missing required data for stage update');
             return;
         }
-
         // Optimistic update — UI changes instantly
         const previousStage = selectedStage;
         setSelectedStage(stageName);
-
         try {
             // Fire both mutations in parallel (silent — no loading state)
             await Promise.all([
@@ -305,6 +456,7 @@ export default function LeadDetail() {
                         organization,
                         input: {
                             profile_id: leadDetail.profile_id,
+                            updates: "stage",
                             lead_id: leadDetail._id,
                             user_id: userId,
                             stage: stageName,
@@ -315,6 +467,7 @@ export default function LeadDetail() {
                 })
             ]);
             toast.success(`Stage updated to ${stageName}`);
+            refetchLead();
         } catch (error) {
             console.error('Failed to update stage:', error);
             // Rollback on failure
@@ -322,13 +475,11 @@ export default function LeadDetail() {
             toast.error('Failed to update stage');
         }
     };
-
     const handleStatusChange = async (status: string) => {
         if (leadDetail?.profile_id == null || !organization || !userId || !leadDetail?._id) {
             toast.error('Missing required data for status update');
             return;
         }
-
         // Optimistic update — UI changes instantly
         const previousStatus = selectedStatus;
         setSelectedStatus(status);
@@ -348,6 +499,7 @@ export default function LeadDetail() {
                         organization,
                         input: {
                             profile_id: leadDetail.profile_id,
+                            updates: "status",
                             lead_id: leadDetail._id,
                             user_id: userId,
                             stage: selectedStage || '',
@@ -358,25 +510,16 @@ export default function LeadDetail() {
                 })
             ]);
             toast.success(`Status updated to ${status}`);
+            refetchLead();
         } catch (error) {
             console.error('Failed to update status:', error);
-            // Rollback on failure
             setSelectedStatus(previousStatus);
             toast.error('Failed to update status');
         }
     };
-
-
-
-
-
-
-
-
     if (loading) {
         return <LoaderScreen />
     }
-
     return (
         <div className="px-3 pt-0 mt-1 mb-20">
 
@@ -412,7 +555,7 @@ export default function LeadDetail() {
                             <div className="grid grid-cols-5 sm:gap-2 ">
                                 {/* Notes */}
                                 <div className="flex justify-center">
-                                    <Sheet>
+                                    <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
                                         <Tooltip >
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
@@ -429,13 +572,51 @@ export default function LeadDetail() {
                                                 <p>Notes</p>
                                             </TooltipContent>
                                         </Tooltip>
-                                        <SheetContent >
+                                        <SheetContent className="w-lg">
                                             <SheetHeader>
                                                 <SheetTitle>Notes</SheetTitle>
                                                 <SheetDescription className="">
                                                     Add and review notes related to this lead.
                                                 </SheetDescription>
                                             </SheetHeader>
+                                            <div className="px-4 py-4">
+                                                <form onSubmit={handleNotes} className="space-y-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="noteContent">Note</Label>
+                                                        <Textarea
+                                                            id="noteContent"
+                                                            placeholder="Write your note here..."
+                                                            value={noteContent}
+                                                            onChange={(e) => setNoteContent(e.target.value)}
+                                                            rows={4}
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <Button type="submit" className="w-full" disabled={noteLoading}>
+                                                        {noteLoading ? 'Adding...' : 'Add Note'}
+                                                    </Button>
+                                                </form>
+                                                <Separator className="my-5" />
+                                                <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Previous Notes</h4>
+                                                <ScrollArea className="h-[400px]">
+                                                    {leadDetail?.activities?.filter(a => a.updates === 'notes').length ? (
+                                                        leadDetail.activities
+                                                            .filter(a => a.updates === 'notes')
+                                                            .map((activity) => (
+                                                                <div key={activity.id} className="mb-3 p-3 rounded-lg border bg-muted/30">
+                                                                    <div className="flex items-center justify-between mb-1">
+                                                                        <span className="text-xs text-muted-foreground">
+                                                                            {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className="text-sm mt-1">{activity.notes || 'No content'}</p>
+                                                                </div>
+                                                            ))
+                                                    ) : (
+                                                        <p className="text-sm text-muted-foreground text-center py-4">No notes yet</p>
+                                                    )}
+                                                </ScrollArea>
+                                            </div>
                                         </SheetContent>
                                     </Sheet>
                                 </div>
@@ -557,7 +738,7 @@ export default function LeadDetail() {
                                 </div>
 
                                 <div className="flex justify-center">
-                                    <Sheet>
+                                    <Sheet open={siteVisitSheetOpen} onOpenChange={setSiteVisitSheetOpen}>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
@@ -570,19 +751,62 @@ export default function LeadDetail() {
                                                 <p>Schedule Site Visit</p>
                                             </TooltipContent>
                                         </Tooltip>
-                                        <SheetContent>
+                                        <SheetContent className="w-lg">
                                             <SheetHeader>
                                                 <SheetTitle>Schedule Site Visit</SheetTitle>
                                                 <SheetDescription>
                                                     Plan and confirm the site visit.
                                                 </SheetDescription>
                                             </SheetHeader>
+                                            <div className="px-4 py-4">
+                                                <form onSubmit={handleSiteVisit} className="space-y-4">
+                                                    <div className="space-y-4">
+                                                        <div className="flex flex-col space-y-2">
+                                                            <Label htmlFor="siteVisitDate">Date</Label>
+                                                            <DatePicker date={siteVisitDate} setDate={setSiteVisitDate} />
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-4 mt-2">
+                                                        <div className="flex flex-col space-y-2">
+                                                            <Label htmlFor="siteVisitTime">Time</Label>
+                                                            <TimePicker time={siteVisitTime} setTime={setSiteVisitTime} />
+                                                        </div>
+                                                    </div>
+                                                    <Button type="submit" className="w-full mt-4" disabled={siteVisitLoading}>
+                                                        {siteVisitLoading ? 'Scheduling...' : 'Schedule Visit'}
+                                                    </Button>
+                                                </form>
+                                                <Separator className="my-5" />
+                                                <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Previous Site Visits</h4>
+                                                <ScrollArea className="h-[400px]">
+                                                    {leadDetail?.activities?.filter(a => a.updates === 'site_visit').length ? (
+                                                        leadDetail.activities
+                                                            .filter(a => a.updates === 'site_visit')
+                                                            .map((activity) => (
+                                                                <div key={activity.id} className="mb-3 p-3 rounded-lg border bg-muted/30">
+                                                                    <div className="flex items-center justify-between mb-1">
+                                                                        <span className="text-xs text-muted-foreground">
+                                                                            {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : 'N/A'}
+                                                                        </span>
+                                                                        {activity.site_visit_date && (
+                                                                            <Badge variant="outline" className="text-xs">
+                                                                                Visit: {new Date(activity.site_visit_date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            ))
+                                                    ) : (
+                                                        <p className="text-sm text-muted-foreground text-center py-4">No visits scheduled yet</p>
+                                                    )}
+                                                </ScrollArea>
+                                            </div>
                                         </SheetContent>
                                     </Sheet>
                                 </div>
 
                                 <div className="flex justify-center">
-                                    <Sheet>
+                                    <Sheet open={followUpSheetOpen} onOpenChange={setFollowUpSheetOpen}>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
@@ -602,6 +826,60 @@ export default function LeadDetail() {
                                                     View, add, and manage follow-up entries.
                                                 </SheetDescription>
                                             </SheetHeader>
+                                            <div className="px-4 py-4">
+                                                <form onSubmit={handleFollowUps} className="space-y-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="followUpReason">Reason</Label>
+                                                        <Textarea
+                                                            id="followUpReason"
+                                                            placeholder="Enter the reason for follow-up..."
+                                                            value={followUpReason}
+                                                            onChange={(e) => setFollowUpReason(e.target.value)}
+                                                            rows={3}
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="followUpDate">Next Follow-up Date</Label>
+                                                        <Input
+                                                            id="followUpDate"
+                                                            type="date"
+                                                            value={followUpDate}
+                                                            onChange={(e) => setFollowUpDate(e.target.value)}
+                                                            min={new Date().toISOString().split('T')[0]}
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <Button type="submit" className="w-full" disabled={followUpLoading}>
+                                                        {followUpLoading ? 'Scheduling...' : 'Schedule Follow-up'}
+                                                    </Button>
+                                                </form>
+                                                <Separator className="my-5" />
+                                                <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Previous Follow-ups</h4>
+                                                <ScrollArea className="h-[400px]">
+                                                    {leadDetail?.activities?.filter(a => a.updates === 'follow_up').length ? (
+                                                        leadDetail.activities
+                                                            .filter(a => a.updates === 'follow_up')
+                                                            .map((activity) => (
+                                                                <div key={activity.id} className="mb-3 p-3 rounded-lg border bg-muted/30">
+                                                                    <div className="flex items-center justify-between mb-1">
+                                                                        <span className="text-xs text-muted-foreground">
+                                                                            {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : 'N/A'}
+                                                                        </span>
+                                                                        {activity.follow_up_date && (
+                                                                            <Badge variant="outline" className="text-xs">
+                                                                                Follow-up: {new Date(activity.follow_up_date).toLocaleDateString()}
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-sm mt-1">{activity.notes || 'No reason provided'}</p>
+                                                                </div>
+                                                            ))
+                                                    ) : (
+                                                        <p className="text-sm text-muted-foreground text-center py-4">No follow-ups yet</p>
+                                                    )}
+                                                </ScrollArea>
+                                            </div>
                                         </SheetContent>
                                     </Sheet>
                                 </div>
@@ -1163,59 +1441,126 @@ export default function LeadDetail() {
                     </Card>
                 </div>
                 <div className="xl:col-span-2 lg:col-span-3 flex flex-col gap-2 shadow-0 tracking-tighter ">
-                    <Card className="border-2 shadow-none dark:bg-input/50">
+                    <Card className="border-2 shadow-none dark:bg-input/10 bg-background">
                         <CardHeader className="mt-0">
                             <Tabs defaultValue="all" className="">
-                                <TabsList className="w-full mb-4 py-1">
-                                    <TabsTrigger value="all">all</TabsTrigger>
+                                <TabsList className="w-full mb-4 py-2 h-11 dark:bg-input/50">
+                                    <TabsTrigger value="all">All</TabsTrigger>
                                     <TabsTrigger value="Whatsapp">Whatsapp</TabsTrigger>
                                     <TabsTrigger value="Phonecall">Phonecall</TabsTrigger>
                                     <TabsTrigger value="Site visit">Site visit</TabsTrigger>
                                     <TabsTrigger value="Mail">Mail</TabsTrigger>
                                     <TabsTrigger value="password">Password</TabsTrigger>
                                 </TabsList>
-                            </Tabs>
-                            <ol className="relative border-l-2 border-default ml-5 pl-5">
-                                <li className="mb-10 ms-6">
-                                    <span className="absolute bg-blue-100 dark:bg-blue-900 flex items-center justify-center w-12 h-12 rounded-full -start-6">
-                                        <Mail className="size-6 text-blue-600 dark:text-blue-300" />
-                                    </span>
-                                    <div className="items-center justify-between p-4 bg-neutral-primary-soft border border-default rounded-base shadow-xs sm:flex">
-                                        <time className="bg-brand-softer border border-brand-subtle text-fg-brand-strong text-xs font-medium px-1.5 py-0.5 rounded sm:order-last mb-1 sm:mb-0">12-11-2025 | 12:45 am</time>
-                                        <div className="text-body flex items-center"><span className="font-medium text-lg">Mail</span>  <span className="bg-neutral-secondary-medium border border-default-medium text-heading text-sm font-medium px-1.5 py-0.5 rounded ml-2 ">Jane Hopper</span></div>
-                                    </div>
-                                </li>
-                                <li className="mb-10 ms-6">
-                                    <span className="absolute bg-purple-100 dark:bg-purple-900 flex items-center justify-center w-12 h-12 rounded-full -start-6">
-                                        <Calendar className="size-6 text-purple-600 dark:text-purple-300" />
-                                    </span>
-                                    <div className="p-4 bg-neutral-primary-soft border border-default rounded-base shadow-xs">
-                                        <div className="items-center justify-between mb-3 sm:flex ">
-                                            <time className="bg-brand-softer border border-brand-subtle text-fg-brand-strong text-xs font-medium px-1.5 py-0.5 rounded sm:order-last mb-1 sm:mb-0">2 hours ago</time>
-                                            <div className="text-body">Thomas Lean commented on <a href="#" className="font-medium text-heading hover:underline">Flowbite Pro</a></div>
-                                        </div>
-                                        <div className="p-3 text-xs italic font-normal text-body border border-default-medium rounded-base bg-neutral-secondary-medium">Hi ya'll! I wanted to share a webinar zeroheight is having regarding how to best measure your design system! This is the second session of our new webinar series on #DesignSystems discussions where we'll be speaking about Measurement.</div>
-                                        <div className="flex items-center space-x-3 mt-4">
-                                            <button type="button" className="text-body bg-neutral-secondary-medium box-border border border-default-medium hover:bg-neutral-tertiary-medium hover:text-heading focus:ring-4 focus:ring-neutral-tertiary shadow-xs font-medium leading-5 rounded-base text-sm px-3 py-2 focus:outline-none">View comment</button>
-                                            <button type="button" className="inline-flex items-center  text-white bg-brand hover:bg-brand-strong box-border border border-transparent focus:ring-4 focus:ring-brand-medium shadow-xs font-medium leading-5 rounded-base text-sm px-3 py-2 focus:outline-none">
-                                                <svg className="w-4 h-4 me-1.5 -ms-0.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width={24} height={24} fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.5 8.046H11V6.119c0-.921-.9-1.446-1.524-.894l-5.108 4.49a1.2 1.2 0 0 0 0 1.739l5.108 4.49c.624.556 1.524.027 1.524-.893v-1.928h2a3.023 3.023 0 0 1 3 3.046V19a5.593 5.593 0 0 0-1.5-10.954Z" /></svg>
-                                                Reply
-                                            </button>
-                                        </div>
-                                    </div>
-                                </li>
-                                <li className="ms-6">
-                                    <span className="absolute bg-green-100 dark:bg-green-900 flex items-center justify-center w-12 h-12 rounded-full -start-6">
-                                        <FontAwesomeIcon icon={faWhatsapp} style={{ fontSize: "1.5rem" }} className="size-6 text-green-600 dark:text-green-400" />
-                                    </span>
-                                    <div className="items-center justify-between p-4 bg-neutral-primary-soft border border-default rounded-base shadow-xs sm:flex">
-                                        <time className="bg-brand-softer border border-brand-subtle text-fg-brand-strong text-xs font-medium px-1.5 py-0.5 rounded sm:order-last mb-1 sm:mb-0">3 hours ago</time>
-                                        <div className="text-body"><a href="#" className="font-medium text-heading hover:underline">Bonnie Green</a> moved <a href="#" className="font-medium text-heading hover:underline">Jese Leos</a> to <span className="bg-neutral-secondary-medium border border-default-medium text-heading text-xs font-medium px-1.5 py-0.5 rounded">Funny Group</span></div>
-                                    </div>
-                                </li>
-                            </ol>
-                        </CardHeader>
 
+                                <ScrollArea className="h-[75vh] pr-4">
+                                    <ol className="relative border-l-2 border-gray-200 dark:border-zinc-800 ml-5 pl-5">
+                                        {leadDetail?.activities && leadDetail.activities.length > 0 ? (
+                                            leadDetail.activities.map((activity) => {
+                                                const isFollowUp = activity.updates === "follow_up";
+                                                const isSiteVisit = activity.updates === "site_visit";
+                                                const isStageUpdate = activity.updates === "stage";
+                                                const isStatusUpdate = activity.updates === "status";
+                                                const activityDate = activity.createdAt
+                                                    ? new Date(activity.createdAt)
+                                                    : null;
+                                                const formattedDate = activityDate
+                                                    ? `${activityDate.toLocaleDateString()} | ${activityDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                                    : 'N/A';
+
+                                                const isNotes = activity.updates === "notes";
+
+                                                // Pick icon & color based on update type
+                                                const iconEl = isStageUpdate
+                                                    ? <Shuffle className="size-5 text-dark dark:text-white" />
+                                                    : isStatusUpdate
+                                                        ? <History className="size-5 text-dark dark:text-white" />
+                                                        : isFollowUp ? <Calendar className="size-5 text-dark dark:text-white" />
+                                                            : isSiteVisit ? <CalendarClock className="size-5 text-dark dark:text-white" />
+                                                                : isNotes ? <NotebookPen className="size-5 text-dark dark:text-white" />
+                                                                    : <Mail className="size-5 text-dark dark:text-white" />;
+
+                                                return (
+                                                    <TabsContent value="all" key={activity.id}>
+                                                        <li className="mb-6 ms-6">
+                                                            <span className="absolute flex items-center justify-center w-10 h-10 rounded-full -start-5 ring-4 ring-background bg-zinc-100 dark:bg-zinc-800">
+                                                                {iconEl}
+                                                            </span>
+                                                            <div className="relative overflow-hidden rounded-xl border bg-gray-100/20 dark:bg-neutral-950 shadow-sm transition-all duration-200 border-l-[3px] border-l-zinc-400 dark:border-l-zinc-600">
+                                                                {/* Header row */}
+                                                                <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                                                                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                                                                        {isStageUpdate && 'Stage Update'}
+                                                                        {isStatusUpdate && 'Status Update'}
+                                                                        {isFollowUp && 'Follow Up'}
+                                                                        {isSiteVisit && 'Site Visit'}
+                                                                        {isNotes && 'Note'}
+                                                                        {(!isStageUpdate && !isStatusUpdate && !isFollowUp && !isSiteVisit && !isNotes) && 'Update'}
+                                                                    </span>
+                                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                        <span className="hidden sm:inline">{activity.user_name || 'Unknown'}</span>
+                                                                        <span className="hidden sm:inline">·</span>
+                                                                        <time className="font-medium">{formattedDate}</time>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Content area */}
+                                                                <div className="px-4 pb-3">
+                                                                    {isStageUpdate && (
+                                                                        <p className="text-md">
+                                                                            Stage changed to
+                                                                            <span className="font-semibold text-zinc-900 dark:text-zinc-100 ml-1">{activity.stage}</span>
+                                                                        </p>
+                                                                    )}
+                                                                    {isStatusUpdate && (
+                                                                        <p className="text-md">
+                                                                            Status changed to
+                                                                            <span className="text-zinc-900 dark:text-zinc-100 ml-1">{activity.status}</span>
+                                                                        </p>
+                                                                    )}
+                                                                    {isFollowUp && (
+                                                                        <div className="space-y-2">
+                                                                            <p className="text-md">
+                                                                                Scheduled for
+                                                                                <span className="text-zinc-900 dark:text-zinc-100 ml-1">{new Date(activity.follow_up_date).toLocaleDateString()}</span>
+                                                                            </p>
+                                                                            <Separator />
+                                                                            <p className="text-md text-muted-foreground leading-relaxed">{activity.reason || 'N/A'}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {isNotes && (
+                                                                        <div className="space-y-2">
+                                                                            <Separator />
+                                                                            <p className="text-md text-muted-foreground leading-relaxed">{activity.notes || 'No content'}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {isSiteVisit && (
+                                                                        <div className="space-y-2">
+                                                                            <p className="text-md">
+                                                                                Scheduled for
+                                                                                <span className="text-zinc-900 dark:text-zinc-100 ml-1">{activity.site_visit_date ? new Date(activity.site_visit_date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}</span>
+                                                                            </p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="sm:hidden px-4 pb-2">
+                                                                    <p className="text-xs text-muted-foreground">{activity.user_name || 'Unknown'}</p>
+                                                                </div>
+                                                            </div>
+                                                        </li>
+                                                    </TabsContent>
+                                                );
+                                            })
+                                        ) : (
+                                            <li className="ms-6 text-muted-foreground text-sm py-8 flex justify-center items-center h-[73vh]">
+                                                <h4 className="px-3 py-1 dark:bg-red-950/50 bg-red-50 rounded-full border border-red-500 text-red-600">No activities recorded yet</h4>
+                                            </li>
+                                        )}
+
+                                    </ol>
+                                </ScrollArea>
+                            </Tabs>
+                        </CardHeader>
                     </Card>
                 </div>
 
