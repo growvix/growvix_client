@@ -7,7 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { UserRoundCog, FileText, CalendarClock, Import, UsersRound, Search, SearchX } from "lucide-react"
+import { UserRoundCog, FileText, CalendarClock, Import, UsersRound, Search, SearchX, Handshake } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
 
@@ -71,6 +71,16 @@ export default function GeneralSetting() {
             hoverBorder: "hover:border-emerald-300 dark:hover:border-emerald-800",
             hoverGradient: "from-emerald-50/50 dark:from-emerald-950/20",
             path: "#", // Placeholder
+        },
+        {
+            title: "Channel Partner",
+            description: "Manage channel partners, track their progress, and collaborate effectively.",
+            icon: Handshake,
+            colorClass: "text-orange-600 dark:text-orange-400",
+            bgClass: "bg-orange-100 dark:bg-orange-900/40",
+            hoverBorder: "hover:border-orange-300 dark:hover:border-orange-800",
+            hoverGradient: "from-orange-50/50 dark:from-orange-950/20",
+            path: "/setting/channel_partner",
         },
     ]
 

@@ -45,6 +45,7 @@ import {
   Calendar,
   User,
   Hash,
+  Handshake,
 } from "lucide-react"
 import axios from "axios"
 import { getCookie } from "@/utils/cookies"
@@ -63,6 +64,7 @@ import ProjectShowcase from "./pages/inventory/project_showcase";
 import NewProject from "./pages/inventory/new_project";
 import GeneralSetting from "./pages/setting/general";
 import UserManagement from "./pages/setting/userManagement";
+import CPManagement from "./pages/setting/cp_user/cp_management";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import LeadStageSetting from "./pages/setting/leadStageSetting";
 import LeadStageAnalysis from "./pages/reports/leadStage_analysis";
@@ -81,6 +83,7 @@ const SEARCHABLE_PAGES: SearchablePage[] = [
   { label: "General Reports", url: "/general_reports", group: "Reports", icon: BarChart3 },
   { label: "Lead Stage Analysis", url: "/lead_stage_analysis", group: "Reports", icon: TrendingUp },
   { label: "General Settings", url: "/settings", group: "Settings", icon: Settings },
+  { label: "Channel Partner", url: "/setting/channel_partner", group: "Settings", icon: Handshake },
   { label: "User Management", url: "/setting/user_management", group: "Settings", icon: UserCog },
   { label: "Lead Stage Setting", url: "/setting/lead_stage_setting", group: "Settings", icon: GitBranch },
   { label: "Teams", url: "/setting/teams", group: "Settings", icon: Users },
@@ -325,6 +328,7 @@ export default function App() {
 
             <Route path="/setting/teams" element={<TeamManagement />} />
             <Route path="/setting/teams/:id" element={<TeamDetailPage />} />
+            <Route path="/setting/channel_partner" element={<CPManagement />} />
 
           </Route>
         </Routes>
