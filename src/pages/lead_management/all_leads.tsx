@@ -6,9 +6,11 @@ import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { DataTable } from "@/components/ui/data-table"
 import LoaderScreen from "@/components/ui/loader-screen"
 import { getCookie } from "@/utils/cookies"
+import axios from "axios"
+import { API } from "@/config/api"
 import { leadClient } from "@/grpc/leadClient"
 import type { Lead as GrpcLead } from "@/grpc/types"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import { ArrowUpDown, MoreHorizontal } from "lucide-react"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
@@ -46,6 +48,8 @@ type Filters = {
   company: string
   status: string
   source: string
+  assignedTo: string
+  receivedOn: string
 }
 
 
@@ -171,9 +175,12 @@ export const getColumns = (navigate: ReturnType<typeof useNavigate>): ColumnDef<
 
 export default function AllLeads() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { setBreadcrumbs } = useBreadcrumb()
   const organization = getCookie("organization") || ""
   const columns = getColumns(navigate)
+
+  const presetFilters = location.state?.presetFilters;
 
 
   const [loading, setLoading] = useState(true)
@@ -186,14 +193,64 @@ export default function AllLeads() {
     ])
   }, [setBreadcrumbs])
 
-  const [filters, setFilters] = useState<Filters>({
+  const [filters, setFilters] = useState<Filters>(presetFilters || {
     name: "",
     company: "",
-    status: "",
+    status: "all",
     source: "",
+    assignedTo: "all",
+    receivedOn: "",
   })
 
-  const [appliedFilters, setAppliedFilters] = useState<Filters | null>(null)
+  // To support applying the default filters on mount, initialize appliedFilters natively
+  const [appliedFilters, setAppliedFilters] = useState<Filters | null>(presetFilters || {
+    name: "",
+    company: "",
+    status: "all",
+    source: "",
+    assignedTo: "all",
+    receivedOn: "",
+  })
+
+  const [users, setUsers] = useState<{ _id: string, name: string, role?: string }[]>([])
+
+  // Fetch users for 'Assigned To' filter
+  useEffect(() => {
+    async function fetchUsers() {
+      if (!organization) return
+      try {
+        const token = getCookie("token")
+        const response = await axios.get(`${API.USERS}?organization=${organization}&limit=1000`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = response.data.data
+        if (data && data.users) {
+          // Dynamic update based on role logic: e.g., only active users
+          const activeUsers = data.users.filter((u: any) => u.isActive !== false)
+
+          const mappedUsers = activeUsers.map((u: any) => ({
+            _id: u._id || u.globalUserId,
+            name: `${u.profile?.firstName || ''} ${u.profile?.lastName || ''}`.trim(),
+            role: u.role || 'User'
+          }))
+
+          setUsers(mappedUsers)
+
+          // Fallback mechanism: if the dashboard passed 'userName' instead of a UUID due to missing cookies or specific frontend requests:
+          if (presetFilters?.assignedTo && !presetFilters.assignedTo.match(/^[0-9a-fA-F-]{36}$/)) {
+            const matchedUser = mappedUsers.find((u: { name: string, _id: string }) => u.name.toLowerCase() === presetFilters.assignedTo.toLowerCase())
+            if (matchedUser) {
+              setFilters(prev => ({ ...prev, assignedTo: matchedUser._id }))
+              setAppliedFilters(prev => prev ? { ...prev, assignedTo: matchedUser._id } : null)
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch users", err)
+      }
+    }
+    fetchUsers()
+  }, [organization])
 
   // Fetch leads using gRPC client
   useEffect(() => {
@@ -212,7 +269,16 @@ export default function AllLeads() {
         if (appliedFilters?.name) filterPayload.name = appliedFilters.name
         if (appliedFilters?.source) filterPayload.source = appliedFilters.source
         if (appliedFilters?.company) filterPayload.campaign = appliedFilters.company
-        if (appliedFilters?.status) filterPayload.status = appliedFilters.status
+        if (appliedFilters?.status && appliedFilters.status !== "all") filterPayload.status = appliedFilters.status
+        if (appliedFilters?.assignedTo && appliedFilters.assignedTo !== "all") {
+          if (/^[0-9a-fA-F-]{36}$/.test(appliedFilters.assignedTo)) {
+            filterPayload.assignedTo = appliedFilters.assignedTo
+          } else {
+            // Wait until User Mapping logic resolves the Name to a UUID
+            return;
+          }
+        }
+        if (appliedFilters?.receivedOn) filterPayload.receivedOn = appliedFilters.receivedOn
 
         const grpcLeads = await leadClient.getAllLeads({
           organization,
@@ -253,7 +319,7 @@ export default function AllLeads() {
   }
 
   function handleReset() {
-    const empty = { name: "", company: "", status: "", source: "" }
+    const empty = { name: "", company: "", status: "all", source: "", assignedTo: "all", receivedOn: "" }
     setFilters(empty)
     setAppliedFilters(empty)
   }
@@ -266,7 +332,8 @@ export default function AllLeads() {
   if (error) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-3 pt-2">
-        <div className="text-red-500">Error loading leads: {error}</div>
+        <div className="text-red-500">Error loa
+          ding leads: {error}</div>
       </div>
     )
   }
@@ -274,9 +341,9 @@ export default function AllLeads() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-3 pt-2">
       <div className="rounded-xl bg-muted/50 dark:bg-muted/50 py-4 px-3">
-        <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-9 items-end">
+        <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-5 items-end">
           {/* Name */}
-          <div className="lg:col-span-2">
+          <div className="col-span-1">
             <Label htmlFor="filter-name" className="text-s mb-1 ms-1">
               Name
             </Label>
@@ -290,7 +357,7 @@ export default function AllLeads() {
           </div>
 
           {/* Source */}
-          <div className="lg:col-span-2">
+          <div className="col-span-1">
             <Label htmlFor="filter-source" className="text-s mb-1 ms-1">
               Source
             </Label>
@@ -303,7 +370,7 @@ export default function AllLeads() {
             />
           </div>
 
-          <div className="lg:col-span-2">
+          <div className="col-span-1">
             <Label htmlFor="filter-company" className="text-s mb-1 ms-1">
               Campaign
             </Label>
@@ -316,35 +383,51 @@ export default function AllLeads() {
             />
           </div>
 
-          {/* Status */}
-          <div className="lg:col-span-2">
-            <Label htmlFor="filter-status" className="text-s mb-1 ms-1">
-              Status
+          {/* Assigned To */}
+          <div className="col-span-1">
+            <Label htmlFor="filter-assigned" className="text-s mb-1 ms-1" title="Select a user to filter leads assigned to them">
+              Assigned To
             </Label>
-
-            <Select value={filters.status} onValueChange={(value) => handleChange("status", value)}>
+            <Select value={filters.assignedTo} onValueChange={(value) => handleChange("assignedTo", value)} aria-label="Assigned To">
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select status" />
+                <SelectValue placeholder="All Users" />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectLabel>Status</SelectLabel>
-                  <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="contacted">Contacted</SelectItem>
-                  <SelectItem value="qualified">Qualified</SelectItem>
-                  <SelectItem value="converted">Converted</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
+                  <SelectItem value="all">All Users</SelectItem>
+                  {users.map(u => (
+                    <SelectItem key={u._id} value={u._id}>{u.name || "Unknown"} ({u.role})</SelectItem>
+                  ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
           </div>
-          <div className="lg:col-span-1 flex justify-around mt-2">
-            <Button variant="destructive" size="sm" type="button" onClick={handleReset}>
+
+          {/* Received On */}
+          <div className="col-span-1">
+            <Label htmlFor="filter-received" className="text-s mb-1 ms-1" title="Filter leads received on this date">
+              Received On
+            </Label>
+            <Input
+              id="filter-received"
+              type="date"
+              className="bg-background dark:bg-background"
+              value={filters.receivedOn}
+              onChange={(e) => handleChange("receivedOn", e.target.value)}
+              aria-label="Received On Date"
+            />
+          </div>
+
+          <div className="col-span-1 md:col-span-5 flex justify-end gap-2 w-full mt-2">
+            <Button variant="destructive" className="w-24" size="sm" type="button" onClick={handleReset} aria-label="Reset Filters">
               Reset
             </Button>
-            <Button size="sm" className="active:bg-primary" type="submit">
+            <Button size="sm" className="w-24 active:bg-primary" type="submit" aria-label="Apply Filters">
               Apply
             </Button>
+          </div>
+          <div className="col-span-1 md:col-span-5 flex justify-end items-center text-xs text-muted-foreground mt-3 px-1 border-t pt-2 dark:border-slate-700">
+            <a href="mailto:support@crm.com" className="hover:underline text-primary" aria-label="Report issue with filters">Feedback / Report Issue</a>
           </div>
         </form>
       </div>

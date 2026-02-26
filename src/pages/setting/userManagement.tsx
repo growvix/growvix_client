@@ -509,6 +509,7 @@ export default function UserManagement() {
                     firstName: formData.firstName,
                     lastName: formData.lastName,
                     email: formData.email,
+                    phone: formData.phoneNumber || "0000000000",
                 },
                 password: formData.password,
                 role: formData.role || "user",
@@ -563,7 +564,7 @@ export default function UserManagement() {
                         <SheetTrigger asChild>
                             <Button className="mt-3" size="lg">Add User</Button>
                         </SheetTrigger>
-                        <SheetContent className="w-xl px-5">
+                        <SheetContent className="w-xl px-5 overflow-y-auto">
                             <SheetHeader>
                                 <SheetTitle>Add New User</SheetTitle>
                                 <SheetDescription>
@@ -740,7 +741,7 @@ export default function UserManagement() {
                 setEditOpen(isOpen)
                 if (!isOpen) setEditingUser(null)
             }}>
-                <SheetContent className="w-xl px-5">
+                <SheetContent className="w-xl px-5 overflow-y-auto">
                     <SheetHeader>
                         <SheetTitle>Edit User</SheetTitle>
                         <SheetDescription>

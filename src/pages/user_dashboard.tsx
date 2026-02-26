@@ -7,6 +7,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
+import { useNavigate } from "react-router-dom"
+import { getCookie } from "@/utils/cookies"
 
 import { Label } from "@/components/ui/label"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -49,6 +51,7 @@ import { CHART_COLORS } from "@/constants"
 
 export default function UserDashboard() {
   const { setBreadcrumbs } = useBreadcrumb()
+  const navigate = useNavigate()
 
   useEffect(() => {
     setBreadcrumbs([{ label: "Dashboard" }])
@@ -356,7 +359,25 @@ export default function UserDashboard() {
               </Card>
             </div>
 
-            <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
+            <div
+              className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs cursor-pointer hover:scale-[1.02] transition-transform"
+              onClick={() => {
+                let userId = getCookie('user_id');
+                if (!userId || userId === "undefined") userId = "all";
+
+                // Only send today's date if it's supposed to be filtered, otherwise the user can change it
+                const today = new Date().toISOString().split('T')[0];
+                navigate('/all_leads', {
+                  state: {
+                    presetFilters: {
+                      name: "", company: "", status: "all", source: "",
+                      assignedTo: userId,
+                      receivedOn: today
+                    }
+                  }
+                });
+              }}
+            >
               <Card className=" rounded-xl cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-start justify-between gap-4 w-full">

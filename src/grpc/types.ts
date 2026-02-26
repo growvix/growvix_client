@@ -18,6 +18,8 @@ export interface GetAllLeadsRequest {
         source?: string;
         campaign?: string;
         status?: string;
+        assignedTo?: string;
+        receivedOn?: string;
     };
 }
 
