@@ -86,6 +86,7 @@ interface UserData {
         phone?: string
     }
     role: string
+    department?: string
     isActive: boolean
     createdAt?: string
     teams?: { teamId: string; teamName: string }[]
@@ -117,6 +118,7 @@ export default function UserManagement() {
         phoneNumber: "",
         password: "",
         role: "",
+        department: "",
         permissions: [] as string[],
     })
 
@@ -134,6 +136,7 @@ export default function UserManagement() {
         email: "",
         phone: "",
         role: "",
+        department: "",
         permissions: [] as string[],
     })
     const [editLoading, setEditLoading] = useState(false)
@@ -200,6 +203,7 @@ export default function UserManagement() {
             email: user.profile.email,
             phone: user.profile.phone || "",
             role: user.role,
+            department: user.department || "",
             permissions: user.permissions || [],
         })
         setEditOpen(true)
@@ -243,6 +247,7 @@ export default function UserManagement() {
                     phone: editFormData.phone,
                 },
                 role: editFormData.role,
+                department: editFormData.department,
                 permissions: editFormData.permissions,
             }
 
@@ -337,6 +342,13 @@ export default function UserManagement() {
             header: "Role",
             cell: ({ row }) => (
                 <div className="capitalize">{row.getValue("role")}</div>
+            ),
+        },
+        {
+            accessorKey: "department",
+            header: "Department",
+            cell: ({ row }) => (
+                <div className="capitalize">{row.getValue("department") || <span className="text-muted-foreground">—</span>}</div>
             ),
         },
         {
@@ -500,6 +512,7 @@ export default function UserManagement() {
                 },
                 password: formData.password,
                 role: formData.role || "user",
+                department: formData.department || undefined,
                 permissions: formData.permissions,
             }
 
@@ -507,7 +520,7 @@ export default function UserManagement() {
             toast.success("User created successfully")
 
             setOpen(false)
-            setFormData({ firstName: "", lastName: "", email: "", phoneNumber: "", password: "", role: "", permissions: [] })
+            setFormData({ firstName: "", lastName: "", email: "", phoneNumber: "", password: "", role: "", department: "", permissions: [] })
             await refreshUsers()
         } catch (error) {
             console.error("Error creating user:", error)
@@ -590,6 +603,19 @@ export default function UserManagement() {
                                             <SelectItem value="admin">Admin</SelectItem>
                                             <SelectItem value="manager">Manager</SelectItem>
                                             <SelectItem value="user">User</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="department">Department</Label>
+                                    <Select onValueChange={(value) => setFormData((prev) => ({ ...prev, department: value }))} value={formData.department}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a department" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="pre-sales">Pre-Sales</SelectItem>
+                                            <SelectItem value="sales">Sales</SelectItem>
+                                            <SelectItem value="post-sales">Post-Sales</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -777,6 +803,19 @@ export default function UserManagement() {
                                     <SelectItem value="admin">Admin</SelectItem>
                                     <SelectItem value="manager">Manager</SelectItem>
                                     <SelectItem value="user">User</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Department</Label>
+                            <Select onValueChange={(value) => setEditFormData((prev) => ({ ...prev, department: value }))} value={editFormData.department}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a department" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="pre-sales">Pre-Sales</SelectItem>
+                                    <SelectItem value="sales">Sales</SelectItem>
+                                    <SelectItem value="post-sales">Post-Sales</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

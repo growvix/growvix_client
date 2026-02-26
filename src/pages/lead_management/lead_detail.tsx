@@ -34,6 +34,8 @@ import {
     Mail,
     MessagesSquare,
     History,
+    ShieldAlert,
+    UserCheck,
 } from "lucide-react";
 import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
@@ -92,6 +94,8 @@ const GET_LEAD_BY_ID = gql`
             }
             createdAt
             updatedAt
+            exe_user
+            exe_user_name
             activities {
                 id
                 user_id
@@ -171,6 +175,7 @@ export default function LeadDetail() {
     const [availableNextStages, setAvailableNextStages] = useState<Stage[]>([])
     const organization = getCookie("organization") || "";
     const userId = getCookie("profile_id") || "";
+    const currentUserId = getCookie("user_id") || "";
 
     // Follow-up form state
     const [followUpReason, setFollowUpReason] = useState('')
@@ -298,6 +303,13 @@ export default function LeadDetail() {
             setAvailableNextStages(stages);
         }
     }, [selectedStage, stages]);
+
+    // Permission: can the current user edit this lead?
+    const canEdit = useMemo(() => {
+        if (!leadDetail?.exe_user || !currentUserId) return true; // no assignment = open
+        return leadDetail.exe_user === currentUserId;
+    }, [leadDetail?.exe_user, currentUserId]);
+
     const handleFollowUps = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         if (!leadDetail?.profile_id || !organization || !userId || !leadDetail?._id) {
@@ -547,8 +559,19 @@ export default function LeadDetail() {
                                         {leadName}
                                     </CardTitle>
                                 </div>
-                                <SquarePen className="ml-auto size-5 sm:size-6 text-black-300 cursor-pointer hover:scale-110 transition-transform text-black" />
+                                {leadDetail?.exe_user_name && (
+                                    <div className="ml-auto flex items-center gap-1.5 bg-white/80 dark:bg-black/30 px-2.5 py-1 rounded-full">
+                                        <UserCheck className="size-3.5 text-emerald-600" />
+                                        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{leadDetail.exe_user_name}</span>
+                                    </div>
+                                )}
                             </div>
+                            {!canEdit && (
+                                <div className="flex items-center gap-2 mt-2 px-2 py-1.5 bg-amber-100/80 dark:bg-amber-900/30 rounded-md border border-amber-300/50">
+                                    <ShieldAlert className="size-3.5 text-amber-600" />
+                                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400">View Only — This lead is assigned to {leadDetail?.exe_user_name || 'another user'}</span>
+                                </div>
+                            )}
                         </CardHeader>
 
                         <CardContent className="">
@@ -562,7 +585,8 @@ export default function LeadDetail() {
                                                     <Button
                                                         variant="outline"
                                                         size="icon"
-                                                        className="my-2 bg-amber-50 text-white hover:bg-primary-900 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-primary"
+                                                        disabled={!canEdit}
+                                                        className="my-2 bg-amber-50 text-white hover:bg-primary-900 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         <NotebookPen className="size-5 size-5 text-amber-500 dark:text-amber-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors" />
                                                     </Button>
@@ -626,7 +650,7 @@ export default function LeadDetail() {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="my-2 bg-blue-50 text-white hover:bg-blue-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                                    <Button variant="outline" size="icon" disabled={!canEdit} className="my-2 bg-blue-50 text-white hover:bg-blue-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed">
                                                         <Mail className="size-4 sm:size-5 text-blue-500 dark:text-blue-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" />
                                                     </Button>
                                                 </SheetTrigger>
@@ -650,7 +674,7 @@ export default function LeadDetail() {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="my-2 bg-green-50 text-white hover:bg-green-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-green-400">
+                                                    <Button variant="outline" size="icon" disabled={!canEdit} className="my-2 bg-green-50 text-white hover:bg-green-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-50 disabled:cursor-not-allowed">
                                                         {/* <MessageCircleMore className="size-5 text-black dark:text-white" /> */}
                                                         <FontAwesomeIcon icon={faWhatsapp} className="text-green-500 dark:text-green-300 hover:text-green-600 dark:hover:text-green-400 transition-colors" style={{ fontSize: "1.2rem" }} />
                                                     </Button>
@@ -678,7 +702,8 @@ export default function LeadDetail() {
                                                     <Button
                                                         variant="outline"
                                                         size="icon"
-                                                        className="my-2 bg-emerald-50 text-white hover:bg-emerald-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                                                        disabled={!canEdit}
+                                                        className="my-2 bg-emerald-50 text-white hover:bg-emerald-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         <PhoneCall className="size-4 sm:size-5 text-emerald-500 dark:text-emerald-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors" />
                                                     </Button>
@@ -717,7 +742,7 @@ export default function LeadDetail() {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="my-2 bg-purple-50 text-white hover:bg-purple-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-purple-400">
+                                                    <Button variant="outline" size="icon" disabled={!canEdit} className="my-2 bg-purple-50 text-white hover:bg-purple-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-purple-400 disabled:opacity-50 disabled:cursor-not-allowed">
                                                         <MessagesSquare className="size-4 sm:size-5 text-purple-500 dark:text-purple-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors" />
                                                     </Button>
                                                 </SheetTrigger>
@@ -742,7 +767,7 @@ export default function LeadDetail() {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="my-2 bg-orange-50 text-white hover:bg-orange-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-orange-400">
+                                                    <Button variant="outline" size="icon" disabled={!canEdit} className="my-2 bg-orange-50 text-white hover:bg-orange-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:opacity-50 disabled:cursor-not-allowed">
                                                         <CalendarClock className="size-4 sm:size-5 text-orange-500 dark:text-orange-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors" />
                                                     </Button>
                                                 </SheetTrigger>
@@ -966,6 +991,7 @@ export default function LeadDetail() {
                                     <Select
                                         value={selectedStage}
                                         onValueChange={handleStageChange}
+                                        disabled={!canEdit}
                                     >
                                         <SelectTrigger className="w-full">
                                             <SelectValue placeholder="select stage">
@@ -1007,6 +1033,7 @@ export default function LeadDetail() {
                                     <Select
                                         value={selectedStatus}
                                         onValueChange={handleStatusChange}
+                                        disabled={!canEdit}
                                     >
                                         <SelectTrigger className="w-full">
                                             <SelectValue placeholder="select status" />

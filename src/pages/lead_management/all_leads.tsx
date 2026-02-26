@@ -38,6 +38,7 @@ export type Lead = {
   source: string
   sub_source: string
   received: string
+  exe_user_name: string
 }
 
 type Filters = {
@@ -122,6 +123,18 @@ export const getColumns = (navigate: ReturnType<typeof useNavigate>): ColumnDef<
       )
     },
     cell: ({ row }) => <div>{formatDate(row.getValue("received"))}</div>,
+  },
+  {
+    accessorKey: "exe_user_name",
+    header: "Assigned To",
+    cell: ({ row }) => {
+      const name = row.getValue("exe_user_name") as string
+      return name ? (
+        <div className="capitalize font-medium text-primary">{name}</div>
+      ) : (
+        <div className="text-muted-foreground">—</div>
+      )
+    },
   },
   {
     id: "actions",
@@ -215,6 +228,7 @@ export default function AllLeads() {
           source: lead.source,
           sub_source: lead.sub_source,
           received: lead.received,
+          exe_user_name: lead.exe_user_name || '',
         }))
 
         setLeads(transformedLeads)

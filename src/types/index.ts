@@ -101,6 +101,8 @@ export interface Lead {
   }[];
   stage?: string;
   status?: string;
+  exe_user?: string;
+  exe_user_name?: string;
   activities?: {
     id: string;
     user_id: string;
@@ -131,6 +133,7 @@ export interface GetLeadByIdQueryVariables {
 export interface UpdateLeadInput {
   stage?: string;
   status?: string;
+  exe_user?: string;
 }
 
 export interface UpdateLeadMutationResponse {

@@ -48,6 +48,7 @@ export function LoginForm({
       data = response.data.data
 
       // Set cookies using utility
+      setCookie('user_id', data.user_id);
       setCookie('profile_id', data.profile_id);
       setCookie('organization', data.organization);
       setCookie('userName', `${data.firstName} ${data.lastName}`);

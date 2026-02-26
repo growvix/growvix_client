@@ -7,6 +7,8 @@ export interface Lead {
     source: string;
     sub_source: string;
     received: string;
+    exe_user: string;
+    exe_user_name: string;
 }
 
 export interface GetAllLeadsRequest {
