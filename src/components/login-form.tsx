@@ -46,6 +46,8 @@ export function LoginForm({
       })
 
       data = response.data.data
+      console.log(response.data.data);
+
 
       // Set cookies using utility
       setCookie('user_id', data.user_id);
