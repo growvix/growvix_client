@@ -3,7 +3,7 @@ import axios from "axios"
 import { type ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown, MoreHorizontal, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { getCookie } from "@/utils/cookies"
+import { getCookie, getPermissions } from "@/utils/cookies"
 import { useNavigate } from "react-router-dom"
 import {
     Sheet,
@@ -218,35 +218,39 @@ export default function TeamManagement() {
         return <div className="w-full text-center py-10 text-red-500">{error}</div>
     }
 
+    const userPermissions = getPermissions()
+    const canCreateTeam = userPermissions.includes("create_team")
     // ── Render ──
     return (
         <div className="flex flex-1 flex-col gap-4 px-3">
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold tracking-tight">Teams</h2>
-                <Sheet open={open} onOpenChange={setOpen}>
-                    <SheetTrigger asChild>
-                        <Button>Create Team</Button>
-                    </SheetTrigger>
-                    <SheetContent className="w-xl px-5">
-                        <SheetHeader>
-                            <SheetTitle>Create New Team</SheetTitle>
-                            <SheetDescription>
-                                Enter the details below to create a new team.
-                            </SheetDescription>
-                        </SheetHeader>
-                        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="name">Team Name</Label>
-                                <Input id="name" placeholder="e.g. Sales Team" value={formData.name} onChange={handleInputChange} required />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="description">Description</Label>
-                                <Input id="description" placeholder="Optional team description" value={formData.description} onChange={handleInputChange} />
-                            </div>
-                            <Button type="submit" className="mt-4">Create Team</Button>
-                        </form>
-                    </SheetContent>
-                </Sheet>
+                {canCreateTeam && (
+                    <Sheet open={open} onOpenChange={setOpen}>
+                        <SheetTrigger asChild>
+                            <Button>Create Team</Button>
+                        </SheetTrigger>
+                        <SheetContent className="w-xl px-5">
+                            <SheetHeader>
+                                <SheetTitle>Create New Team</SheetTitle>
+                                <SheetDescription>
+                                    Enter the details below to create a new team.
+                                </SheetDescription>
+                            </SheetHeader>
+                            <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="name">Team Name</Label>
+                                    <Input id="name" placeholder="e.g. Sales Team" value={formData.name} onChange={handleInputChange} required />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="description">Description</Label>
+                                    <Input id="description" placeholder="Optional team description" value={formData.description} onChange={handleInputChange} />
+                                </div>
+                                <Button type="submit" className="mt-4">Create Team</Button>
+                            </form>
+                        </SheetContent>
+                    </Sheet>
+                )}
             </div>
 
             <DataTable
