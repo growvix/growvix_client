@@ -10,7 +10,14 @@ import axios from "axios"
 import { API } from "@/config/api"
 import { leadClient } from "@/grpc/leadClient"
 import type { Lead as GrpcLead } from "@/grpc/types"
+<<<<<<< HEAD
 import { useNavigate, useLocation } from "react-router-dom"
+=======
+import type { Stage } from "@/types"
+import axios from "axios"
+import { API_URL } from "@/config/api"
+import { useNavigate } from "react-router-dom"
+>>>>>>> 150dd39 (grpc)
 import { ArrowUpDown, MoreHorizontal } from "lucide-react"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
@@ -36,6 +43,8 @@ export type Lead = {
   lead_id: string
   profile_id: number
   name: string
+  stage: string
+  status: string
   campaign: string
   source: string
   sub_source: string
@@ -47,6 +56,7 @@ type Filters = {
   name: string
   company: string
   status: string
+  stage: string
   source: string
   assignedTo: string
   receivedOn: string
@@ -97,6 +107,16 @@ export const getColumns = (navigate: ReturnType<typeof useNavigate>): ColumnDef<
       )
     },
     cell: ({ row }) => <div className="capitalize">{row.getValue("name") || "-"}</div>,
+  },
+  {
+    accessorKey: "stage",
+    header: "Stage",
+    cell: ({ row }) => <div className="capitalize">{row.getValue("stage") || "-"}</div>,
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => <div className="capitalize">{row.getValue("status") || "-"}</div>,
   },
   {
     accessorKey: "campaign",
@@ -186,6 +206,7 @@ export default function AllLeads() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
+  const [stages, setStages] = useState<Stage[]>([])
 
   useEffect(() => {
     setBreadcrumbs([
@@ -193,13 +214,37 @@ export default function AllLeads() {
     ])
   }, [setBreadcrumbs])
 
+<<<<<<< HEAD
   const [filters, setFilters] = useState<Filters>(presetFilters || {
+=======
+  // Fetch stages for the filter dropdown
+  useEffect(() => {
+    async function fetchStages() {
+      if (!organization) return
+      try {
+        const response = await axios.get(`${API_URL}/api/leads/stages/${organization}`)
+        if (response.data.success && response.data.data.stages) {
+          setStages(response.data.data.stages)
+        }
+      } catch (err) {
+        console.error("Failed to fetch stages:", err)
+      }
+    }
+    fetchStages()
+  }, [organization])
+
+  const [filters, setFilters] = useState<Filters>({
+>>>>>>> 150dd39 (grpc)
     name: "",
     company: "",
     status: "all",
     source: "",
+<<<<<<< HEAD
     assignedTo: "all",
     receivedOn: "",
+=======
+    stage: "",
+>>>>>>> 150dd39 (grpc)
   })
 
   // To support applying the default filters on mount, initialize appliedFilters natively
@@ -269,6 +314,7 @@ export default function AllLeads() {
         if (appliedFilters?.name) filterPayload.name = appliedFilters.name
         if (appliedFilters?.source) filterPayload.source = appliedFilters.source
         if (appliedFilters?.company) filterPayload.campaign = appliedFilters.company
+<<<<<<< HEAD
         if (appliedFilters?.status && appliedFilters.status !== "all") filterPayload.status = appliedFilters.status
         if (appliedFilters?.assignedTo && appliedFilters.assignedTo !== "all") {
           if (/^[0-9a-fA-F-]{36}$/.test(appliedFilters.assignedTo)) {
@@ -279,6 +325,10 @@ export default function AllLeads() {
           }
         }
         if (appliedFilters?.receivedOn) filterPayload.receivedOn = appliedFilters.receivedOn
+=======
+        if (appliedFilters?.status) filterPayload.status = appliedFilters.status
+        if (appliedFilters?.stage) filterPayload.stage = appliedFilters.stage
+>>>>>>> 150dd39 (grpc)
 
         const grpcLeads = await leadClient.getAllLeads({
           organization,
@@ -288,6 +338,8 @@ export default function AllLeads() {
         // Transform gRPC response to match existing Lead type
         const transformedLeads: Lead[] = grpcLeads.map((lead: GrpcLead) => ({
           lead_id: lead.lead_id,
+          stage: lead.stage,
+          status: lead.status,
           profile_id: lead.profile_id,
           name: lead.name,
           campaign: lead.campaign,
@@ -296,6 +348,7 @@ export default function AllLeads() {
           received: lead.received,
           exe_user_name: lead.exe_user_name || '',
         }))
+        console.log(transformedLeads);
 
         setLeads(transformedLeads)
       } catch (err) {
@@ -319,7 +372,11 @@ export default function AllLeads() {
   }
 
   function handleReset() {
+<<<<<<< HEAD
     const empty = { name: "", company: "", status: "all", source: "", assignedTo: "all", receivedOn: "" }
+=======
+    const empty: Filters = { name: "", company: "", status: "", source: "", stage: "" }
+>>>>>>> 150dd39 (grpc)
     setFilters(empty)
     setAppliedFilters(empty)
   }
@@ -341,7 +398,11 @@ export default function AllLeads() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-3 pt-2">
       <div className="rounded-xl bg-muted/50 dark:bg-muted/50 py-4 px-3">
+<<<<<<< HEAD
         <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-5 items-end">
+=======
+        <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-11 items-end">
+>>>>>>> 150dd39 (grpc)
           {/* Name */}
           <div className="col-span-1">
             <Label htmlFor="filter-name" className="text-s mb-1 ms-1">
@@ -394,15 +455,23 @@ export default function AllLeads() {
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
+<<<<<<< HEAD
                   <SelectItem value="all">All Users</SelectItem>
                   {users.map(u => (
                     <SelectItem key={u._id} value={u._id}>{u.name || "Unknown"} ({u.role})</SelectItem>
                   ))}
+=======
+                  <SelectLabel>Status</SelectLabel>
+                  <SelectItem value="Hot">Hot</SelectItem>
+                  <SelectItem value="Warm">Warm</SelectItem>
+                  <SelectItem value="Cold">Cold</SelectItem>
+>>>>>>> 150dd39 (grpc)
                 </SelectGroup>
               </SelectContent>
             </Select>
           </div>
 
+<<<<<<< HEAD
           {/* Received On */}
           <div className="col-span-1">
             <Label htmlFor="filter-received" className="text-s mb-1 ms-1" title="Filter leads received on this date">
@@ -420,6 +489,39 @@ export default function AllLeads() {
 
           <div className="col-span-1 md:col-span-5 flex justify-end gap-2 w-full mt-2">
             <Button variant="destructive" className="w-24" size="sm" type="button" onClick={handleReset} aria-label="Reset Filters">
+=======
+          {/* Stage */}
+          <div className="lg:col-span-2">
+            <Label htmlFor="filter-stage" className="text-s mb-1 ms-1">
+              Stage
+            </Label>
+
+            <Select value={filters.stage} onValueChange={(value) => handleChange("stage", value)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select stage" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Stage</SelectLabel>
+                  {stages.map((stage) => (
+                    <SelectItem key={stage.id} value={stage.name}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2.5 h-2.5 rounded-full"
+                          style={{ backgroundColor: stage.color }}
+                        />
+                        <span>{stage.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="lg:col-span-1 flex justify-around mt-2">
+            <Button variant="destructive" size="sm" type="button" onClick={handleReset}>
+>>>>>>> 150dd39 (grpc)
               Reset
             </Button>
             <Button size="sm" className="w-24 active:bg-primary" type="submit" aria-label="Apply Filters">

@@ -36,6 +36,7 @@ import {
     History,
     ShieldAlert,
     UserCheck,
+    ClipboardCheck,
 } from "lucide-react";
 import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
@@ -96,6 +97,7 @@ const GET_LEAD_BY_ID = gql`
             updatedAt
             exe_user
             exe_user_name
+            site_visits_completed
             activities {
                 id
                 user_id
@@ -104,6 +106,10 @@ const GET_LEAD_BY_ID = gql`
                 updates
                 reason
                 site_visit_date
+                site_visit_completed
+                site_visit_completed_at
+                site_visit_completed_by
+                site_visit_completed_by_name
                 status
                 notes
                 follow_up_date
@@ -140,6 +146,19 @@ const UPDATE_LEAD = gql`
             _id
             stage
             status
+        }
+    }
+`;
+
+const MARK_SITE_VISIT_COMPLETED = gql`
+    mutation MarkSiteVisitCompleted($organization: String!, $activityId: String!, $userId: String!) {
+        markSiteVisitCompleted(organization: $organization, activityId: $activityId, userId: $userId) {
+            id
+            site_visit_completed
+            site_visit_date
+            site_visit_completed_at
+            site_visit_completed_by
+            site_visit_completed_by_name
         }
     }
 `;
@@ -196,9 +215,14 @@ export default function LeadDetail() {
     const [siteVisitLoading, setSiteVisitLoading] = useState(false)
     const [siteVisitSheetOpen, setSiteVisitSheetOpen] = useState(false)
 
+    // Site Visit Conducted state
+    const [conductedSheetOpen, setConductedSheetOpen] = useState(false)
+    const [markingVisitId, setMarkingVisitId] = useState<string | null>(null)
+
     // GraphQL mutation hooks
     const [createLeadActivity] = useMutation(CREATE_LEAD_ACTIVITY);
     const [updateLead] = useMutation<UpdateLeadMutationResponse, UpdateLeadMutationVariables>(UPDATE_LEAD);
+    const [markSiteVisitCompletedMutation] = useMutation(MARK_SITE_VISIT_COMPLETED);
     const { setBreadcrumbs } = useBreadcrumb()
     const leadName = leadDetail?.profile?.name;
     const initials = getUserAvatar(leadName);
@@ -438,6 +462,23 @@ export default function LeadDetail() {
             toast.error('Failed to schedule site visit')
         } finally {
             setSiteVisitLoading(false)
+        }
+    };
+
+    const handleMarkCompleted = async (activityId: string) => {
+        if (!organization) return;
+        setMarkingVisitId(activityId);
+        try {
+            await markSiteVisitCompletedMutation({
+                variables: { organization, activityId, userId }
+            });
+            toast.success('Site visit marked as completed');
+            refetchLead();
+        } catch (error) {
+            console.error('Failed to mark site visit as completed:', error);
+            toast.error('Failed to mark as completed');
+        } finally {
+            setMarkingVisitId(null);
         }
     };
     // Memoize current stage object to avoid repeated find operations
@@ -831,6 +872,106 @@ export default function LeadDetail() {
                                 </div>
 
                                 <div className="flex justify-center">
+                                    <Sheet open={conductedSheetOpen} onOpenChange={setConductedSheetOpen}>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <SheetTrigger asChild>
+                                                    <Button variant="outline" size="icon" className="my-2 bg-emerald-50 text-white hover:bg-emerald-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-400 relative">
+                                                        <ClipboardCheck className="size-4 sm:size-5 text-emerald-500 dark:text-emerald-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors" />
+                                                        {(leadDetail?.site_visits_completed ?? 0) > 0 && (
+                                                            <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full size-4 flex items-center justify-center">
+                                                                {leadDetail?.site_visits_completed}
+                                                            </span>
+                                                        )}
+                                                    </Button>
+                                                </SheetTrigger>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Site Visits Conducted</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                        <SheetContent className="w-lg">
+                                            <SheetHeader>
+                                                <SheetTitle>Site Visits Conducted</SheetTitle>
+                                                <SheetDescription>
+                                                    View and mark site visits as completed.
+                                                </SheetDescription>
+                                            </SheetHeader>
+                                            <div className="px-4 py-4">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h4 className="text-sm font-semibold text-muted-foreground">All Site Visits</h4>
+                                                    <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50">
+                                                        {leadDetail?.site_visits_completed ?? 0} Completed
+                                                    </Badge>
+                                                </div>
+                                                <ScrollArea className="h-[500px]">
+                                                    {leadDetail?.activities?.filter(a => a.updates === 'site_visit').length ? (
+                                                        leadDetail.activities
+                                                            .filter(a => a.updates === 'site_visit')
+                                                            .map((activity) => (
+                                                                <div key={activity.id} className="mb-3 p-3 rounded-lg border bg-muted/30">
+                                                                    <div className="flex items-center justify-between mb-2">
+                                                                        <span className="text-xs text-muted-foreground">
+                                                                            Scheduled: {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : 'N/A'}
+                                                                        </span>
+                                                                        {activity.site_visit_completed ? (
+                                                                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 text-xs">
+                                                                                ✓ Completed
+                                                                            </Badge>
+                                                                        ) : (
+                                                                            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-xs">
+                                                                                Pending
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                    {activity.site_visit_date && (
+                                                                        <p className="text-sm font-medium mb-2">
+                                                                            {new Date(activity.site_visit_date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                                                                        </p>
+                                                                    )}
+                                                                    {activity.user_name && (
+                                                                        <p className="text-xs text-muted-foreground mb-2">By: {activity.user_name}</p>
+                                                                    )}
+                                                                    {!activity.site_visit_completed && canEdit && (
+                                                                        <AlertDialog>
+                                                                            <AlertDialogTrigger asChild>
+                                                                                <Button
+                                                                                    size="sm"
+                                                                                    variant="outline"
+                                                                                    className="w-full text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                                                                                    disabled={markingVisitId === activity.id}
+                                                                                >
+                                                                                    {markingVisitId === activity.id ? 'Marking...' : 'Mark as Completed'}
+                                                                                </Button>
+                                                                            </AlertDialogTrigger>
+                                                                            <AlertDialogContent>
+                                                                                <AlertDialogHeader>
+                                                                                    <AlertDialogTitle>Confirm Site Visit Completed</AlertDialogTitle>
+                                                                                    <AlertDialogDescription>
+                                                                                        Are you sure this site visit has been conducted? This action cannot be undone.
+                                                                                    </AlertDialogDescription>
+                                                                                </AlertDialogHeader>
+                                                                                <AlertDialogFooter>
+                                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                                    <AlertDialogAction onClick={() => handleMarkCompleted(activity.id)}>
+                                                                                        Confirm
+                                                                                    </AlertDialogAction>
+                                                                                </AlertDialogFooter>
+                                                                            </AlertDialogContent>
+                                                                        </AlertDialog>
+                                                                    )}
+                                                                </div>
+                                                            ))
+                                                    ) : (
+                                                        <p className="text-sm text-muted-foreground text-center py-4">No site visits scheduled yet</p>
+                                                    )}
+                                                </ScrollArea>
+                                            </div>
+                                        </SheetContent>
+                                    </Sheet>
+                                </div>
+
+                                <div className="flex justify-center">
                                     <Sheet open={followUpSheetOpen} onOpenChange={setFollowUpSheetOpen}>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
@@ -958,32 +1099,6 @@ export default function LeadDetail() {
                                         </SheetContent>
                                     </Sheet>
                                 </div>
-
-                                <div className="flex justify-center">
-                                    <Sheet>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <SheetTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="my-2 bg-teal-50 text-white hover:bg-teal-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-teal-400">
-                                                        <MapPinCheck className="size-4 sm:size-5 text-teal-500 dark:text-teal-300 hover:text-teal-600 dark:hover:text-teal-400 transition-colors" />
-                                                    </Button>
-                                                </SheetTrigger>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>Site visit conducted</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                        <SheetContent>
-                                            <SheetHeader>
-                                                <SheetTitle>Confirm Site Visit</SheetTitle>
-                                                <SheetDescription>
-                                                    Mark a site visit as completed and add notes.
-                                                </SheetDescription>
-                                            </SheetHeader>
-                                        </SheetContent>
-                                    </Sheet>
-                                </div>
-
                             </div>
                             <div className="flex flex-col sm:flex-row justify-around gap-2 mt-4 sm:mt-7">
                                 <div className="flex-1">
@@ -1357,7 +1472,7 @@ export default function LeadDetail() {
 
                                 {/* Site Visits */}
                                 <StageStatCard
-                                    value={8}
+                                    value={leadDetail?.site_visits_completed ?? 0}
                                     label="Site Visits Completed"
                                     currentStageColor={currentStageObject?.color}
                                 />
@@ -1520,7 +1635,7 @@ export default function LeadDetail() {
                                                                         {isStageUpdate && 'Stage Update'}
                                                                         {isStatusUpdate && 'Status Update'}
                                                                         {isFollowUp && 'Follow Up'}
-                                                                        {isSiteVisit && 'Site Visit'}
+                                                                        {isSiteVisit && (activity.site_visit_completed ? 'Site Visit ✓' : 'Site Visit')}
                                                                         {isNotes && 'Note'}
                                                                         {(!isStageUpdate && !isStatusUpdate && !isFollowUp && !isSiteVisit && !isNotes) && 'Update'}
                                                                     </span>
@@ -1567,6 +1682,29 @@ export default function LeadDetail() {
                                                                                 Scheduled for
                                                                                 <span className="text-zinc-900 dark:text-zinc-100 ml-1">{activity.site_visit_date ? new Date(activity.site_visit_date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}</span>
                                                                             </p>
+                                                                            {activity.site_visit_completed ? (
+                                                                                <div className="space-y-1.5">
+                                                                                    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 text-xs">
+                                                                                        ✓ Visit Completed
+                                                                                    </Badge>
+                                                                                    <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-1">
+                                                                                        {activity.site_visit_completed_at && (
+                                                                                            <span>
+                                                                                                Completed on: <span className="font-medium text-zinc-700 dark:text-zinc-300">{new Date(activity.site_visit_completed_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                                                                            </span>
+                                                                                        )}
+                                                                                        {activity.site_visit_completed_by_name && (
+                                                                                            <span>
+                                                                                                Marked by: <span className="font-medium text-zinc-700 dark:text-zinc-300">{activity.site_visit_completed_by_name}</span>
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-xs">
+                                                                                    Pending
+                                                                                </Badge>
+                                                                            )}
                                                                         </div>
                                                                     )}
                                                                 </div>
