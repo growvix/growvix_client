@@ -2,6 +2,8 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DatePicker } from "@/components/ui/date-picker"
+import { format } from "date-fns"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { DataTable } from "@/components/ui/data-table"
 import LoaderScreen from "@/components/ui/loader-screen"
@@ -373,11 +375,10 @@ export default function AllLeads() {
       </div>
     )
   }
-
   return (
     <div className="flex flex-1 flex-col gap-4 p-3 pt-2">
       <div className="rounded-xl bg-muted/50 dark:bg-muted/50 py-4 px-3">
-        <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-5 items-end">
+        <form onSubmit={handleSubmit} className="grid gap-3 grid-cols-4">
           {/* Name */}
           <div className="col-span-1">
             <Label htmlFor="filter-name" className="text-s mb-1 ms-1">
@@ -425,7 +426,7 @@ export default function AllLeads() {
               Assigned To
             </Label>
             <Select value={filters.assignedTo} onValueChange={(value) => handleChange("assignedTo", value)} aria-label="Assigned To">
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-[100%]">
                 <SelectValue placeholder="All Users" />
               </SelectTrigger>
               <SelectContent>
@@ -444,13 +445,10 @@ export default function AllLeads() {
             <Label htmlFor="filter-received" className="text-s mb-1 ms-1" title="Filter leads received on this date">
               Received On
             </Label>
-            <Input
-              id="filter-received"
-              type="date"
-              className="bg-background dark:bg-background"
-              value={filters.receivedOn}
-              onChange={(e) => handleChange("receivedOn", e.target.value)}
-              aria-label="Received On Date"
+            <DatePicker
+              date={filters.receivedOn ? new Date(filters.receivedOn) : undefined}
+              setDate={(date) => handleChange("receivedOn", date ? format(date, "yyyy-MM-dd") : "")}
+              className="w-full bg-background dark:bg-background text-black dark:text-white"
             />
           </div>
 
@@ -503,17 +501,15 @@ export default function AllLeads() {
             </Select>
           </div>
 
-          <div className="col-span-1 md:col-span-5 flex justify-end gap-2 w-full mt-2">
-            <Button variant="destructive" className="w-24" size="sm" type="button" onClick={handleReset} aria-label="Reset Filters">
+          <div className="col-span-1 flex justify-center items-center gap-2 w-full mt-2 ">
+            <Button variant="destructive" className="mt-2 w-[45%]" size="sm" type="button" onClick={handleReset} aria-label="Reset Filters">
               Reset
             </Button>
-            <Button size="sm" className="w-24 active:bg-primary" type="submit" aria-label="Apply Filters">
+            <Button size="sm" className="mt-2 w-[45%] active:bg-primary" type="submit" aria-label="Apply Filters">
               Apply
             </Button>
           </div>
-          <div className="col-span-1 md:col-span-5 flex justify-end items-center text-xs text-muted-foreground mt-3 px-1 border-t pt-2 dark:border-slate-700">
-            <a href="mailto:support@crm.com" className="hover:underline text-primary" aria-label="Report issue with filters">Feedback / Report Issue</a>
-          </div>
+
         </form>
       </div>
       <div>
