@@ -3,6 +3,8 @@ export interface Lead {
     lead_id: BinaryType;
     profile_id: number;
     name: string;
+    stage: string;
+    status: string;
     campaign: string;
     source: string;
     sub_source: string;
@@ -18,6 +20,9 @@ export interface GetAllLeadsRequest {
         source?: string;
         campaign?: string;
         status?: string;
+        stage?: string;
+        assignedTo?: string;
+        receivedOn?: string;
     };
 }
 

@@ -2,13 +2,18 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DatePicker } from "@/components/ui/date-picker"
+import { format } from "date-fns"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { DataTable } from "@/components/ui/data-table"
 import LoaderScreen from "@/components/ui/loader-screen"
 import { getCookie } from "@/utils/cookies"
+import axios from "axios"
+import { API, API_URL } from "@/config/api"
 import { leadClient } from "@/grpc/leadClient"
 import type { Lead as GrpcLead } from "@/grpc/types"
-import { useNavigate } from "react-router-dom"
+import type { Stage } from "@/types"
+import { useNavigate, useLocation } from "react-router-dom"
 import { ArrowUpDown, MoreHorizontal } from "lucide-react"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
@@ -34,6 +39,8 @@ export type Lead = {
   lead_id: string
   profile_id: number
   name: string
+  stage: string
+  status: string
   campaign: string
   source: string
   sub_source: string
@@ -45,7 +52,10 @@ type Filters = {
   name: string
   company: string
   status: string
+  stage: string
   source: string
+  assignedTo: string
+  receivedOn: string
 }
 
 
@@ -93,6 +103,16 @@ export const getColumns = (navigate: ReturnType<typeof useNavigate>): ColumnDef<
       )
     },
     cell: ({ row }) => <div className="capitalize">{row.getValue("name") || "-"}</div>,
+  },
+  {
+    accessorKey: "stage",
+    header: "Stage",
+    cell: ({ row }) => <div className="capitalize">{row.getValue("stage") || "-"}</div>,
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => <div className="capitalize">{row.getValue("status") || "-"}</div>,
   },
   {
     accessorKey: "campaign",
@@ -171,14 +191,18 @@ export const getColumns = (navigate: ReturnType<typeof useNavigate>): ColumnDef<
 
 export default function AllLeads() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { setBreadcrumbs } = useBreadcrumb()
   const organization = getCookie("organization") || ""
   const columns = getColumns(navigate)
+
+  const presetFilters = location.state?.presetFilters;
 
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
+  const [stages, setStages] = useState<Stage[]>([])
 
   useEffect(() => {
     setBreadcrumbs([
@@ -186,14 +210,82 @@ export default function AllLeads() {
     ])
   }, [setBreadcrumbs])
 
-  const [filters, setFilters] = useState<Filters>({
+  // Fetch stages for the filter dropdown
+  useEffect(() => {
+    async function fetchStages() {
+      if (!organization) return
+      try {
+        const response = await axios.get(`${API_URL}/api/leads/stages/${organization}`)
+        if (response.data.success && response.data.data.stages) {
+          setStages(response.data.data.stages)
+        }
+      } catch (err) {
+        console.error("Failed to fetch stages:", err)
+      }
+    }
+    fetchStages()
+  }, [organization])
+
+  const [filters, setFilters] = useState<Filters>(presetFilters || {
     name: "",
     company: "",
-    status: "",
+    status: "all",
     source: "",
+    stage: "",
+    assignedTo: "all",
+    receivedOn: "",
   })
 
-  const [appliedFilters, setAppliedFilters] = useState<Filters | null>(null)
+  // To support applying the default filters on mount, initialize appliedFilters natively
+  const [appliedFilters, setAppliedFilters] = useState<Filters | null>(presetFilters || {
+    name: "",
+    company: "",
+    status: "all",
+    source: "",
+    stage: "",
+    assignedTo: "all",
+    receivedOn: "",
+  })
+
+  const [users, setUsers] = useState<{ _id: string, name: string, role?: string }[]>([])
+
+  // Fetch users for 'Assigned To' filter
+  useEffect(() => {
+    async function fetchUsers() {
+      if (!organization) return
+      try {
+        const token = getCookie("token")
+        const response = await axios.get(`${API.USERS}?organization=${organization}&limit=1000`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = response.data.data
+        if (data && data.users) {
+          // Dynamic update based on role logic: e.g., only active users
+          const activeUsers = data.users.filter((u: any) => u.isActive !== false)
+
+          const mappedUsers = activeUsers.map((u: any) => ({
+            _id: u._id || u.globalUserId,
+            name: `${u.profile?.firstName || ''} ${u.profile?.lastName || ''}`.trim(),
+            role: u.role || 'User'
+          }))
+
+          setUsers(mappedUsers)
+
+          // Fallback mechanism: if the dashboard passed 'userName' instead of a UUID due to missing cookies or specific frontend requests:
+          if (presetFilters?.assignedTo && !presetFilters.assignedTo.match(/^[0-9a-fA-F-]{36}$/)) {
+            const matchedUser = mappedUsers.find((u: { name: string, _id: string }) => u.name.toLowerCase() === presetFilters.assignedTo.toLowerCase())
+            if (matchedUser) {
+              setFilters(prev => ({ ...prev, assignedTo: matchedUser._id }))
+              setAppliedFilters(prev => prev ? { ...prev, assignedTo: matchedUser._id } : null)
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch users", err)
+      }
+    }
+    fetchUsers()
+  }, [organization])
 
   // Fetch leads using gRPC client
   useEffect(() => {
@@ -212,7 +304,17 @@ export default function AllLeads() {
         if (appliedFilters?.name) filterPayload.name = appliedFilters.name
         if (appliedFilters?.source) filterPayload.source = appliedFilters.source
         if (appliedFilters?.company) filterPayload.campaign = appliedFilters.company
-        if (appliedFilters?.status) filterPayload.status = appliedFilters.status
+        if (appliedFilters?.status && appliedFilters.status !== "all") filterPayload.status = appliedFilters.status
+        if (appliedFilters?.stage) filterPayload.stage = appliedFilters.stage
+        if (appliedFilters?.assignedTo && appliedFilters.assignedTo !== "all") {
+          if (/^[0-9a-fA-F-]{36}$/.test(appliedFilters.assignedTo)) {
+            filterPayload.assignedTo = appliedFilters.assignedTo
+          } else {
+            // Wait until User Mapping logic resolves the Name to a UUID
+            return;
+          }
+        }
+        if (appliedFilters?.receivedOn) filterPayload.receivedOn = appliedFilters.receivedOn
 
         const grpcLeads = await leadClient.getAllLeads({
           organization,
@@ -222,6 +324,8 @@ export default function AllLeads() {
         // Transform gRPC response to match existing Lead type
         const transformedLeads: Lead[] = grpcLeads.map((lead: GrpcLead) => ({
           lead_id: lead.lead_id,
+          stage: lead.stage,
+          status: lead.status,
           profile_id: lead.profile_id,
           name: lead.name,
           campaign: lead.campaign,
@@ -230,6 +334,7 @@ export default function AllLeads() {
           received: lead.received,
           exe_user_name: lead.exe_user_name || '',
         }))
+        console.log(transformedLeads);
 
         setLeads(transformedLeads)
       } catch (err) {
@@ -253,7 +358,7 @@ export default function AllLeads() {
   }
 
   function handleReset() {
-    const empty = { name: "", company: "", status: "", source: "" }
+    const empty: Filters = { name: "", company: "", status: "all", source: "", stage: "", assignedTo: "all", receivedOn: "" }
     setFilters(empty)
     setAppliedFilters(empty)
   }
@@ -270,13 +375,12 @@ export default function AllLeads() {
       </div>
     )
   }
-
   return (
     <div className="flex flex-1 flex-col gap-4 p-3 pt-2">
       <div className="rounded-xl bg-muted/50 dark:bg-muted/50 py-4 px-3">
-        <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-9 items-end">
+        <form onSubmit={handleSubmit} className="grid gap-3 grid-cols-4">
           {/* Name */}
-          <div className="lg:col-span-2">
+          <div className="col-span-1">
             <Label htmlFor="filter-name" className="text-s mb-1 ms-1">
               Name
             </Label>
@@ -290,7 +394,7 @@ export default function AllLeads() {
           </div>
 
           {/* Source */}
-          <div className="lg:col-span-2">
+          <div className="col-span-1">
             <Label htmlFor="filter-source" className="text-s mb-1 ms-1">
               Source
             </Label>
@@ -303,7 +407,7 @@ export default function AllLeads() {
             />
           </div>
 
-          <div className="lg:col-span-2">
+          <div className="col-span-1">
             <Label htmlFor="filter-company" className="text-s mb-1 ms-1">
               Campaign
             </Label>
@@ -316,12 +420,43 @@ export default function AllLeads() {
             />
           </div>
 
+          {/* Assigned To */}
+          <div className="col-span-1">
+            <Label htmlFor="filter-assigned" className="text-s mb-1 ms-1" title="Select a user to filter leads assigned to them">
+              Assigned To
+            </Label>
+            <Select value={filters.assignedTo} onValueChange={(value) => handleChange("assignedTo", value)} aria-label="Assigned To">
+              <SelectTrigger className="w-[100%]">
+                <SelectValue placeholder="All Users" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">All Users</SelectItem>
+                  {users.map(u => (
+                    <SelectItem key={u._id} value={u._id}>{u.name || "Unknown"} ({u.role})</SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Received On */}
+          <div className="col-span-1">
+            <Label htmlFor="filter-received" className="text-s mb-1 ms-1" title="Filter leads received on this date">
+              Received On
+            </Label>
+            <DatePicker
+              date={filters.receivedOn ? new Date(filters.receivedOn) : undefined}
+              setDate={(date) => handleChange("receivedOn", date ? format(date, "yyyy-MM-dd") : "")}
+              className="w-full bg-background dark:bg-background text-black dark:text-white"
+            />
+          </div>
+
           {/* Status */}
-          <div className="lg:col-span-2">
+          <div className="col-span-1">
             <Label htmlFor="filter-status" className="text-s mb-1 ms-1">
               Status
             </Label>
-
             <Select value={filters.status} onValueChange={(value) => handleChange("status", value)}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select status" />
@@ -329,23 +464,52 @@ export default function AllLeads() {
               <SelectContent>
                 <SelectGroup>
                   <SelectLabel>Status</SelectLabel>
-                  <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="contacted">Contacted</SelectItem>
-                  <SelectItem value="qualified">Qualified</SelectItem>
-                  <SelectItem value="converted">Converted</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="Hot">Hot</SelectItem>
+                  <SelectItem value="Warm">Warm</SelectItem>
+                  <SelectItem value="Cold">Cold</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
           </div>
-          <div className="lg:col-span-1 flex justify-around mt-2">
-            <Button variant="destructive" size="sm" type="button" onClick={handleReset}>
+
+          {/* Stage */}
+          <div className="col-span-1">
+            <Label htmlFor="filter-stage" className="text-s mb-1 ms-1">
+              Stage
+            </Label>
+            <Select value={filters.stage} onValueChange={(value) => handleChange("stage", value)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select stage" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Stage</SelectLabel>
+                  {stages.map((stage) => (
+                    <SelectItem key={stage.id} value={stage.name}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2.5 h-2.5 rounded-full"
+                          style={{ backgroundColor: stage.color }}
+                        />
+                        <span>{stage.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="col-span-1 flex justify-center items-center gap-2 w-full mt-2 ">
+            <Button variant="destructive" className="mt-2 w-[45%]" size="sm" type="button" onClick={handleReset} aria-label="Reset Filters">
               Reset
             </Button>
-            <Button size="sm" className="active:bg-primary" type="submit">
+            <Button size="sm" className="mt-2 w-[45%] active:bg-primary" type="submit" aria-label="Apply Filters">
               Apply
             </Button>
           </div>
+
         </form>
       </div>
       <div>

@@ -114,9 +114,14 @@ export interface Lead {
     reason: string;
     follow_up_date: string;
     site_visit_date: string;
+    site_visit_completed: boolean;
+    site_visit_completed_at: string;
+    site_visit_completed_by: string;
+    site_visit_completed_by_name: string;
     createdAt: string;
     updatedAt: string;
   }[];
+  site_visits_completed?: number;
   createdAt: string;
   updatedAt: string;
 }
