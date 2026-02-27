@@ -71,6 +71,7 @@ import LeadStageAnalysis from "./pages/reports/leadStage_analysis";
 import GeneralReports from "./pages/reports/general_reports";
 import TeamManagement from "./pages/setting/team/team_management";
 import TeamDetailPage from "./pages/setting/team/team_detail";
+import ImportLeads from "./pages/setting/import_data/import_leads";
 
 // Searchable pages index
 type SearchablePage = { label: string; url: string; group: string; icon: React.ElementType }
@@ -329,6 +330,7 @@ export default function App() {
             <Route path="/setting/teams" element={<TeamManagement />} />
             <Route path="/setting/teams/:id" element={<TeamDetailPage />} />
             <Route path="/setting/channel_partner" element={<CPManagement />} />
+            <Route path="/setting/import_leads" element={<ImportLeads />} />
 
           </Route>
         </Routes>
