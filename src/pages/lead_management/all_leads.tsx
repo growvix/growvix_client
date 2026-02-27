@@ -479,10 +479,10 @@ export default function AllLeads() {
               <SelectContent>
                 <SelectGroup>
                   <SelectLabel>Status</SelectLabel>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="Hot">Hot</SelectItem>
-                  <SelectItem value="Warm">Warm</SelectItem>
-                  <SelectItem value="Cold">Cold</SelectItem>
+                  <SelectItem className="font-bold" value="all">All</SelectItem>
+                  <SelectItem className="font-bold" value="Hot">Hot</SelectItem>
+                  <SelectItem className="font-bold" value="Warm">Warm</SelectItem>
+                  <SelectItem className="font-bold" value="Cold">Cold</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>

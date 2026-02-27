@@ -1008,7 +1008,7 @@ export default function LeadDetail() {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="my-2 bg-emerald-50 text-white hover:bg-emerald-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-400 relative">
+                                                    <Button variant="outline" size="icon" disabled={!canEdit} className="my-2 bg-emerald-50 text-white hover:bg-emerald-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-400 relative">
                                                         <ClipboardCheck className="size-4 sm:size-5 text-emerald-500 dark:text-emerald-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors" />
                                                         {(leadDetail?.site_visits_completed ?? 0) > 0 && (
                                                             <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full size-4 flex items-center justify-center">
@@ -1397,7 +1397,7 @@ export default function LeadDetail() {
                                 }
                             }}>
                                 <SheetTrigger asChild>
-                                    <Button variant="outline" size="sm" className="gap-1">
+                                    <Button variant="outline" size="sm" disabled={!canEdit} className="gap-1">
                                         <Plus className="size-4" />
                                         Add
                                     </Button>
@@ -1690,7 +1690,7 @@ export default function LeadDetail() {
                                                 <CarouselItem key={req._id} className="md:basis-1/2 lg:basis-1/4 border-r-3">
                                                     <div className="m-2 p-4 h-full relative group">
                                                         <h3 className="text-lg text-start font-semibold mb-2">{req.key} :</h3>
-                                                        <h6 className="text-sm bg-red-300 text-start">{req.value}</h6>
+                                                        <h6 className="text-sm text-start">{req.value}</h6>
                                                         <AlertDialog>
                                                             <AlertDialogTrigger asChild>
                                                                 <Button
