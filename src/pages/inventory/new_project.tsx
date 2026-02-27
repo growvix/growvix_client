@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Trash2, Plus, Building2, Layers, DoorOpen, X, Copy, Edit2 } from 'lucide-react'
+import { Trash2, Plus, Building2, Layers, DoorOpen, X, Copy, Edit2, Ban } from 'lucide-react'
 import {
     Select,
     SelectContent,
@@ -30,14 +30,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
-
-// Helper function to get cookie value
-const getCookie = (name: string): string => {
-    const value = `; ${document.cookie}`
-    const parts = value.split(`; ${name}=`)
-    if (parts.length === 2) return parts.pop()?.split(';').shift() || ''
-    return ''
-}
+import { getCookie, getPermissions } from '@/utils/cookies'
 
 // Types
 interface Unit {
@@ -175,6 +168,9 @@ export default function NewProject() {
     const [expandedBlocks, setExpandedBlocks] = useState<string[]>([])
     const [blockConfigs, setBlockConfigs] = useState<Record<string, BlockConfig>>({})
     const { setBreadcrumbs } = useBreadcrumb()
+
+    const userPermissions = getPermissions()
+    const canCreateProject = userPermissions.includes("create_project")
 
     // Floor editor modal state
     const [floorEditorOpen, setFloorEditorOpen] = useState(false)
@@ -616,6 +612,22 @@ export default function NewProject() {
 
     if (pageLoading) {
         return <LoaderScreen />
+    }
+
+    if (!canCreateProject) {
+        return (
+            <div className="flex flex-1 flex-col items-center justify-center py-20 px-4 mt-20">
+                <div className="flex flex-col items-center justify-center max-w-3xl w-full p-20 border border-dashed rounded-2xl bg-card min-h-[400px]">
+                    <div className="flex items-center justify-center w-20 h-20 rounded-full bg-muted/30 border mb-8">
+                        <Ban className="h-10 w-10 text-muted-foreground/70" />
+                    </div>
+                    <h2 className="text-2xl font-bold tracking-tight mb-4">Access Denied</h2>
+                    <p className="text-base text-muted-foreground text-center leading-relaxed max-w-md gap-4">
+                        This page is restricted. You don't have permission to create projects.
+                    </p>
+                </div>
+            </div>
+        )
     }
 
     return (

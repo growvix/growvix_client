@@ -7,7 +7,7 @@ import { API } from "@/config/api"
 import {
     type ColumnDef,
 } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal, Pencil } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, Pencil, Ban } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { getCookie, getPermissions } from "@/utils/cookies"
@@ -52,6 +52,12 @@ export default function ProjectListing() {
     }, [setBreadcrumbs]);
 
     const fetchProjects = React.useCallback(async () => {
+        const permissions = getPermissions()
+        if (!permissions.includes("view_inventory")) {
+            setLoading(false)
+            return
+        }
+
         try {
             setLoading(true)
             const org = getCookie('organization')
@@ -69,10 +75,14 @@ export default function ProjectListing() {
         }
     }, [])
 
+    const permissions = getPermissions()
+    const canViewInventory = permissions.includes("view_inventory")
+
     // Fetch projects from API on mount
     React.useEffect(() => {
-        fetchProjects()
-    }, [fetchProjects])
+        if (canViewInventory) fetchProjects()
+        else setLoading(false)
+    }, [fetchProjects, canViewInventory])
 
     const handleEditProject = React.useCallback((e: React.MouseEvent, project: projects) => {
         e.stopPropagation() // Prevent row click
@@ -223,6 +233,22 @@ export default function ProjectListing() {
     const handleRowClick = async (project: projects) => {
         const encodedId = encodeProjectId(project.product_id)
         navigate(`/project_showcase?id=${encodedId}`)
+    }
+
+    if (!canViewInventory) {
+        return (
+            <div className="flex flex-1 flex-col items-center justify-center py-20 px-4 mt-20">
+                <div className="flex flex-col items-center justify-center max-w-3xl w-full p-20 border border-dashed rounded-2xl bg-card min-h-[400px]">
+                    <div className="flex items-center justify-center w-20 h-20 rounded-full bg-muted/30 border mb-8">
+                        <Ban className="h-10 w-10 text-muted-foreground/70" />
+                    </div>
+                    <h2 className="text-2xl font-bold tracking-tight mb-4">Access Denied</h2>
+                    <p className="text-base text-muted-foreground text-center leading-relaxed max-w-md gap-4">
+                        This page is restricted. You don't have permission to view the project inventory.
+                    </p>
+                </div>
+            </div>
+        )
     }
 
     return (
