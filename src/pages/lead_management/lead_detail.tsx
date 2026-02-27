@@ -37,14 +37,17 @@ import {
     ShieldAlert,
     UserCheck,
     ClipboardCheck,
+    Plus,
+    Trash2,
 } from "lucide-react";
-import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage } from "@/types"
+import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
     Tabs,
     TabsList,
@@ -78,11 +81,21 @@ const GET_LEAD_BY_ID = gql`
             pretype {
                 type
             }
-            bathroom
-            parking
+            propertyRequirement {
+                sqft
+                bhk
+                floor
+                balcony
+                bathroom_count
+                parking_needed
+                parking_count
+                price_min
+                price_max
+                furniture
+                facing
+                plot_type
+            }
             project
-            floor
-            facing
             merge_id
             acquired {
                 campaign
@@ -98,6 +111,11 @@ const GET_LEAD_BY_ID = gql`
             exe_user
             exe_user_name
             site_visits_completed
+            requirements {
+                _id
+                key
+                value
+            }
             activities {
                 id
                 user_id
@@ -163,6 +181,54 @@ const MARK_SITE_VISIT_COMPLETED = gql`
     }
 `;
 
+const ADD_REQUIREMENT = gql`
+    mutation AddRequirement($organization: String!, $leadId: String!, $key: String!, $value: String!) {
+        addRequirement(organization: $organization, leadId: $leadId, key: $key, value: $value) {
+            _id
+            requirements {
+                _id
+                key
+                value
+            }
+        }
+    }
+`;
+
+const REMOVE_REQUIREMENT = gql`
+    mutation RemoveRequirement($organization: String!, $leadId: String!, $requirementId: String!) {
+        removeRequirement(organization: $organization, leadId: $leadId, requirementId: $requirementId) {
+            _id
+            requirements {
+                _id
+                key
+                value
+            }
+        }
+    }
+`;
+
+const UPDATE_PROPERTY_REQUIREMENT = gql`
+    mutation UpdatePropertyRequirement($organization: String!, $leadId: String!, $input: UpdatePropertyRequirementInput!) {
+        updatePropertyRequirement(organization: $organization, leadId: $leadId, input: $input) {
+            _id
+            propertyRequirement {
+                sqft
+                bhk
+                floor
+                balcony
+                bathroom_count
+                parking_needed
+                parking_count
+                price_min
+                price_max
+                furniture
+                facing
+                plot_type
+            }
+        }
+    }
+`;
+
 interface StageStatCardProps {
     value: string | number;
     label: string;
@@ -219,10 +285,30 @@ export default function LeadDetail() {
     const [conductedSheetOpen, setConductedSheetOpen] = useState(false)
     const [markingVisitId, setMarkingVisitId] = useState<string | null>(null)
 
+    // Requirement state
+    const [reqSheetOpen, setReqSheetOpen] = useState(false)
+    const [reqKey, setReqKey] = useState('')
+    const [reqValue, setReqValue] = useState('')
+    const [reqLoading, setReqLoading] = useState(false)
+    const [reqTab, setReqTab] = useState<'prebuilt' | 'manual'>('prebuilt')
+
+    // Property requirement form state
+    const defaultPropReq: PropertyRequirement = {
+        sqft: undefined, bhk: [], floor: [], balcony: false,
+        bathroom_count: undefined, parking_needed: false, parking_count: undefined,
+        price_min: undefined, price_max: undefined, furniture: [], facing: [], plot_type: '',
+    }
+    const [propReqForm, setPropReqForm] = useState<PropertyRequirement>(defaultPropReq)
+    const [propReqLoading, setPropReqLoading] = useState(false)
+    const [floorInput, setFloorInput] = useState('')
+
     // GraphQL mutation hooks
     const [createLeadActivity] = useMutation(CREATE_LEAD_ACTIVITY);
     const [updateLead] = useMutation<UpdateLeadMutationResponse, UpdateLeadMutationVariables>(UPDATE_LEAD);
     const [markSiteVisitCompletedMutation] = useMutation(MARK_SITE_VISIT_COMPLETED);
+    const [addRequirementMutation] = useMutation(ADD_REQUIREMENT);
+    const [removeRequirementMutation] = useMutation(REMOVE_REQUIREMENT);
+    const [updatePropertyRequirementMutation] = useMutation(UPDATE_PROPERTY_REQUIREMENT);
     const { setBreadcrumbs } = useBreadcrumb()
     const leadName = leadDetail?.profile?.name;
     const initials = getUserAvatar(leadName);
@@ -570,6 +656,23 @@ export default function LeadDetail() {
             toast.error('Failed to update status');
         }
     };
+    const allTimelineActivities = useMemo(() => {
+        if (!leadDetail) return [];
+        const combined: any[] = [...(leadDetail.activities || [])];
+        if (leadDetail.requirements && leadDetail.requirements.length > 0) {
+            leadDetail.requirements.forEach(req => {
+                combined.push({
+                    id: `req-${req._id}`,
+                    updates: 'requirement',
+                    notes: `Added requirement: ${req.key} - ${req.value}`,
+                    user_name: '', // Inherently set by user who created the lead or unknown 
+                    createdAt: leadDetail.createdAt, // Fallback to lead creation date since requirement doesn't have an individual date right now
+                });
+            });
+        }
+        return combined.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    }, [leadDetail]);
+
     if (loading) {
         return <LoaderScreen />
     }
@@ -1177,8 +1280,8 @@ export default function LeadDetail() {
                                     <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">
                                         {leadDetail?.createdAt ? new Date(leadDetail.createdAt).toLocaleDateString() : 'N/A'}
                                     </span>
-                                    <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-100 dark:bg-blue-900/50">
-                                        <CalendarCheck className="size-6 text-blue-600 dark:text-blue-300" />
+                                    <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                        <CalendarCheck className="size-5 sm:size-6 text-zinc-700 dark:text-zinc-300" />
                                     </div>
                                 </div>
                             </div>
@@ -1188,8 +1291,8 @@ export default function LeadDetail() {
                                 <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Tags</CardTitle>
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">Today 3:30 PM</span>
-                                    <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-amber-100 dark:bg-amber-900/50">
-                                        <History className="size-6 text-amber-600 dark:text-amber-300" />
+                                    <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                        <History className="size-5 sm:size-6 text-zinc-700 dark:text-zinc-300" />
                                     </div>
                                 </div>
                             </div>
@@ -1199,8 +1302,8 @@ export default function LeadDetail() {
                                 <CardTitle className="text-sm font-light text-muted-foreground">Total Engagements</CardTitle>
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">{leadDetail?.acquired?.length.toString()}</span>
-                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-cyan-100 dark:bg-cyan-900/50">
-                                        <History className="size-6 text-cyan-600 dark:text-cyan-300" />
+                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                        <History className="size-6 text-zinc-700 dark:text-zinc-300" />
                                     </div>
                                 </div>
                             </div>
@@ -1210,8 +1313,8 @@ export default function LeadDetail() {
                                 <CardTitle className="text-sm font-light text-muted-foreground">Lead Country</CardTitle>
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">3 Days ago</span>
-                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50">
-                                        <History className="size-6 text-emerald-600 dark:text-emerald-300" />
+                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                        <History className="size-6 text-zinc-700 dark:text-zinc-300" />
                                     </div>
                                 </div>
                             </div>
@@ -1221,8 +1324,8 @@ export default function LeadDetail() {
                                 <CardTitle className="text-sm font-light text-muted-foreground">Total Incoming</CardTitle>
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">3 Days ago</span>
-                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/50">
-                                        <History className="size-6 text-rose-600 dark:text-rose-300" />
+                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                        <History className="size-6 text-zinc-700 dark:text-zinc-300" />
                                     </div>
                                 </div>
                             </div>
@@ -1232,8 +1335,8 @@ export default function LeadDetail() {
                                 <CardTitle className="text-sm font-light text-muted-foreground">Project Enquired</CardTitle>
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">10</span>
-                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50">
-                                        <History className="size-6 text-indigo-600 dark:text-indigo-300" />
+                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                        <History className="size-6 text-zinc-700 dark:text-zinc-300" />
                                     </div>
                                 </div>
                             </div>
@@ -1241,59 +1344,380 @@ export default function LeadDetail() {
 
                     </div>
                     <Card className="border-2 shadow-none py-1 gap-0 dark:bg-input/50">
-                        <CardHeader className="pt-2 pb-0">
+                        <CardHeader className="pt-2 pb-0 flex flex-row items-center justify-between">
                             <CardTitle className="text-center text-muted-foreground">Requirements</CardTitle>
+                            <Sheet open={reqSheetOpen} onOpenChange={(open) => {
+                                setReqSheetOpen(open);
+                                if (open && leadDetail?.propertyRequirement) {
+                                    setPropReqForm({
+                                        sqft: leadDetail.propertyRequirement.sqft || undefined,
+                                        bhk: leadDetail.propertyRequirement.bhk || [],
+                                        floor: leadDetail.propertyRequirement.floor || [],
+                                        balcony: leadDetail.propertyRequirement.balcony || false,
+                                        bathroom_count: leadDetail.propertyRequirement.bathroom_count || undefined,
+                                        parking_needed: leadDetail.propertyRequirement.parking_needed || false,
+                                        parking_count: leadDetail.propertyRequirement.parking_count || undefined,
+                                        price_min: leadDetail.propertyRequirement.price_min || undefined,
+                                        price_max: leadDetail.propertyRequirement.price_max || undefined,
+                                        furniture: leadDetail.propertyRequirement.furniture || [],
+                                        facing: leadDetail.propertyRequirement.facing || [],
+                                        plot_type: leadDetail.propertyRequirement.plot_type || '',
+                                    });
+                                } else if (open) {
+                                    setPropReqForm(defaultPropReq);
+                                }
+                            }}>
+                                <SheetTrigger asChild>
+                                    <Button variant="outline" size="sm" className="gap-1">
+                                        <Plus className="size-4" />
+                                        Add
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent className="overflow-y-auto">
+                                    <SheetHeader>
+                                        <SheetTitle>Property Requirements</SheetTitle>
+                                        <SheetDescription>
+                                            Define structured or custom requirements for this lead.
+                                        </SheetDescription>
+                                    </SheetHeader>
+
+                                    {/* Tabs */}
+                                    <div className="flex gap-2 px-4 pt-2">
+                                        <Button size="sm" variant={reqTab === 'prebuilt' ? 'default' : 'outline'} onClick={() => setReqTab('prebuilt')}>Pre-built Fields</Button>
+                                        <Button size="sm" variant={reqTab === 'manual' ? 'default' : 'outline'} onClick={() => setReqTab('manual')}>Manual Input</Button>
+                                    </div>
+
+                                    {reqTab === 'prebuilt' ? (
+                                        <div className="space-y-5 p-4">
+                                            {/* Square Footage */}
+                                            <div>
+                                                <Label>Square Footage (sqft)</Label>
+                                                <Input type="number" placeholder="e.g. 1200" value={propReqForm.sqft ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, sqft: e.target.value ? Number(e.target.value) : undefined }))} />
+                                            </div>
+
+                                            {/* BHK Multi-select */}
+                                            <div>
+                                                <Label>Type (BHK)</Label>
+                                                <div className="flex flex-wrap gap-3 mt-1">
+                                                    {['1BHK', '2BHK', '3BHK', '4BHK', '5BHK+'].map(opt => (
+                                                        <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                                            <Checkbox checked={propReqForm.bhk?.includes(opt)} onCheckedChange={(checked) => {
+                                                                setPropReqForm(p => ({
+                                                                    ...p,
+                                                                    bhk: checked ? [...(p.bhk || []), opt] : (p.bhk || []).filter(v => v !== opt)
+                                                                }))
+                                                            }} />
+                                                            {opt}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Floor Multi-input */}
+                                            <div>
+                                                <Label>Floor</Label>
+                                                <div className="flex gap-2 mt-1">
+                                                    <Input placeholder="e.g. 2" value={floorInput} onChange={(e) => setFloorInput(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && floorInput.trim()) {
+                                                                e.preventDefault();
+                                                                if (!propReqForm.floor?.includes(floorInput.trim())) {
+                                                                    setPropReqForm(p => ({ ...p, floor: [...(p.floor || []), floorInput.trim()] }));
+                                                                }
+                                                                setFloorInput('');
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                        if (floorInput.trim() && !propReqForm.floor?.includes(floorInput.trim())) {
+                                                            setPropReqForm(p => ({ ...p, floor: [...(p.floor || []), floorInput.trim()] }));
+                                                            setFloorInput('');
+                                                        }
+                                                    }}>Add</Button>
+                                                </div>
+                                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                                    {propReqForm.floor?.map((f, i) => (
+                                                        <Badge key={i} variant="secondary" className="gap-1 cursor-pointer" onClick={() => setPropReqForm(p => ({ ...p, floor: (p.floor || []).filter((_, idx) => idx !== i) }))}>
+                                                            Floor {f} ×
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Balcony */}
+                                            <div>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <Checkbox checked={propReqForm.balcony} onCheckedChange={(checked) => setPropReqForm(p => ({ ...p, balcony: !!checked }))} />
+                                                    <span className="text-sm font-medium">Balcony Required</span>
+                                                </label>
+                                            </div>
+
+                                            {/* Bathroom Count */}
+                                            <div>
+                                                <Label>Bathrooms</Label>
+                                                <Input type="number" placeholder="e.g. 2" value={propReqForm.bathroom_count ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, bathroom_count: e.target.value ? Number(e.target.value) : undefined }))} />
+                                            </div>
+
+                                            {/* Parking */}
+                                            <div>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <Checkbox checked={propReqForm.parking_needed} onCheckedChange={(checked) => setPropReqForm(p => ({ ...p, parking_needed: !!checked, parking_count: checked ? p.parking_count : undefined }))} />
+                                                    <span className="text-sm font-medium">Parking Needed</span>
+                                                </label>
+                                                {propReqForm.parking_needed && (
+                                                    <div className="mt-2">
+                                                        <Label>How many?</Label>
+                                                        <Input type="number" placeholder="e.g. 1" value={propReqForm.parking_count ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, parking_count: e.target.value ? Number(e.target.value) : undefined }))} />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Price Range */}
+                                            <div>
+                                                <Label>Price Range (₹)</Label>
+                                                <div className="flex gap-2 mt-1">
+                                                    <Input type="number" placeholder="Min" value={propReqForm.price_min ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, price_min: e.target.value ? Number(e.target.value) : undefined }))} />
+                                                    <span className="self-center text-muted-foreground">—</span>
+                                                    <Input type="number" placeholder="Max" value={propReqForm.price_max ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, price_max: e.target.value ? Number(e.target.value) : undefined }))} />
+                                                </div>
+                                            </div>
+
+                                            {/* Furniture */}
+                                            <div>
+                                                <Label>Furniture</Label>
+                                                <div className="flex flex-wrap gap-3 mt-1">
+                                                    {['Semi-furnished', 'Fully furnished', 'Both', 'No furniture'].map(opt => (
+                                                        <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                                            <Checkbox checked={propReqForm.furniture?.includes(opt)} onCheckedChange={(checked) => {
+                                                                setPropReqForm(p => ({
+                                                                    ...p,
+                                                                    furniture: checked ? [...(p.furniture || []), opt] : (p.furniture || []).filter(v => v !== opt)
+                                                                }))
+                                                            }} />
+                                                            {opt}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Facing */}
+                                            <div>
+                                                <Label>Facing</Label>
+                                                <div className="flex flex-wrap gap-3 mt-1">
+                                                    {['North', 'South', 'East', 'West', 'North-East', 'North-West', 'South-East', 'South-West'].map(opt => (
+                                                        <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                                            <Checkbox checked={propReqForm.facing?.includes(opt)} onCheckedChange={(checked) => {
+                                                                setPropReqForm(p => ({
+                                                                    ...p,
+                                                                    facing: checked ? [...(p.facing || []), opt] : (p.facing || []).filter(v => v !== opt)
+                                                                }))
+                                                            }} />
+                                                            {opt}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Plot Type */}
+                                            <div>
+                                                <Label>Plot Type</Label>
+                                                <Input placeholder="e.g. Residential, Commercial" value={propReqForm.plot_type || ''} onChange={(e) => setPropReqForm(p => ({ ...p, plot_type: e.target.value }))} />
+                                            </div>
+
+                                            {/* Save Button */}
+                                            <Button
+                                                className="w-full"
+                                                disabled={propReqLoading}
+                                                onClick={async () => {
+                                                    if (!leadDetail?._id) return;
+                                                    setPropReqLoading(true);
+                                                    try {
+                                                        await updatePropertyRequirementMutation({
+                                                            variables: {
+                                                                organization,
+                                                                leadId: leadDetail._id,
+                                                                input: {
+                                                                    sqft: propReqForm.sqft || null,
+                                                                    bhk: propReqForm.bhk || [],
+                                                                    floor: propReqForm.floor || [],
+                                                                    balcony: propReqForm.balcony || false,
+                                                                    bathroom_count: propReqForm.bathroom_count || null,
+                                                                    parking_needed: propReqForm.parking_needed || false,
+                                                                    parking_count: propReqForm.parking_count || null,
+                                                                    price_min: propReqForm.price_min || null,
+                                                                    price_max: propReqForm.price_max || null,
+                                                                    furniture: propReqForm.furniture || [],
+                                                                    facing: propReqForm.facing || [],
+                                                                    plot_type: propReqForm.plot_type || '',
+                                                                },
+                                                            },
+                                                        });
+                                                        toast.success('Property requirements saved');
+                                                        setReqSheetOpen(false);
+                                                        refetchLead();
+                                                    } catch (err) {
+                                                        console.error(err);
+                                                        toast.error('Failed to save property requirements');
+                                                    } finally {
+                                                        setPropReqLoading(false);
+                                                    }
+                                                }}
+                                            >
+                                                {propReqLoading ? 'Saving...' : 'Save Requirements'}
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4 p-4">
+                                            <div>
+                                                <Label htmlFor="req-key">Key</Label>
+                                                <Input
+                                                    id="req-key"
+                                                    placeholder="e.g. Custom Field Name"
+                                                    value={reqKey}
+                                                    onChange={(e) => setReqKey(e.target.value)}
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label htmlFor="req-value">Value</Label>
+                                                <Input
+                                                    id="req-value"
+                                                    placeholder="e.g. Custom Value"
+                                                    value={reqValue}
+                                                    onChange={(e) => setReqValue(e.target.value)}
+                                                />
+                                            </div>
+                                            <Button
+                                                className="w-full"
+                                                disabled={!reqKey.trim() || !reqValue.trim() || reqLoading}
+                                                onClick={async () => {
+                                                    if (!reqKey.trim() || !reqValue.trim() || !leadDetail?._id) return;
+                                                    setReqLoading(true);
+                                                    try {
+                                                        await addRequirementMutation({
+                                                            variables: {
+                                                                organization,
+                                                                leadId: leadDetail._id,
+                                                                key: reqKey.trim(),
+                                                                value: reqValue.trim(),
+                                                            },
+                                                        });
+                                                        toast.success('Requirement added');
+                                                        setReqKey('');
+                                                        setReqValue('');
+                                                        refetchLead();
+                                                    } catch (err) {
+                                                        console.error(err);
+                                                        toast.error('Failed to add requirement');
+                                                    } finally {
+                                                        setReqLoading(false);
+                                                    }
+                                                }}
+                                            >
+                                                {reqLoading ? 'Adding...' : 'Add Requirement'}
+                                            </Button>
+                                        </div>
+                                    )}
+                                </SheetContent>
+                            </Sheet>
                         </CardHeader>
                         <CardContent className="flex justify-center mb-3">
-                            <Carousel
-                                opts={{
-                                    align: "start",
-                                    loop: true,
-                                }}
-                                plugins={[
-                                    Autoplay({
-                                        delay: 2000,
-                                        stopOnInteraction: false,
-                                    }),
-                                ]}
+                            {(() => {
+                                // Build combined carousel items from structured + manual requirements
+                                const propItems: { key: string; value: string }[] = [];
+                                const pr = leadDetail?.propertyRequirement;
+                                if (pr) {
+                                    if (pr.sqft) propItems.push({ key: 'Sqft', value: `${pr.sqft} sqft` });
+                                    if (pr.bhk && pr.bhk.length > 0) propItems.push({ key: 'BHK', value: pr.bhk.join(', ') });
+                                    if (pr.floor && pr.floor.length > 0) propItems.push({ key: 'Floor', value: pr.floor.map(f => `Floor ${f}`).join(', ') });
+                                    if (pr.balcony) propItems.push({ key: 'Balcony', value: 'Yes' });
+                                    if (pr.bathroom_count) propItems.push({ key: 'Bathrooms', value: `${pr.bathroom_count}` });
+                                    if (pr.parking_needed) propItems.push({ key: 'Parking', value: pr.parking_count ? `${pr.parking_count} spots` : 'Yes' });
+                                    if (pr.price_min || pr.price_max) propItems.push({ key: 'Price', value: `₹${pr.price_min || '—'} — ₹${pr.price_max || '—'}` });
+                                    if (pr.furniture && pr.furniture.length > 0) propItems.push({ key: 'Furniture', value: pr.furniture.join(', ') });
+                                    if (pr.facing && pr.facing.length > 0) propItems.push({ key: 'Facing', value: pr.facing.join(', ') });
+                                    if (pr.plot_type) propItems.push({ key: 'Plot Type', value: pr.plot_type });
+                                }
+                                const manualItems = (leadDetail?.requirements || []).map(r => ({ key: r.key, value: r.value, _id: r._id }));
+                                const hasItems = propItems.length > 0 || manualItems.length > 0;
 
-                                className="w-full max-w-[94%] h-xs" >
-                                <CarouselContent  >
-                                    <CarouselItem className="md:basis-1/2 lg:basis-1/4 border-r-3">
-                                        <div className="m-2 p-4 h-full">
-                                            <h3 className="text-lg font-semibold mb-2">Requirement</h3>
-                                            <p className="text-sm text-muted-foreground">Details about requirement</p>
-                                        </div>
-                                    </CarouselItem>
-                                    <CarouselItem className="md:basis-1/2 lg:basis-1/4 border-r-3">
-                                        <div className="m-2 p-4 h-full">
-                                            <h3 className="text-lg font-semibold mb-2">Requirement</h3>
-                                            <p className="text-sm text-muted-foreground">Details about requirement</p>
-                                        </div>
-                                    </CarouselItem>
-                                    <CarouselItem className="md:basis-1/2 lg:basis-1/4 border-r-3">
-                                        <div className="m-2 p-4 h-full">
-                                            <h3 className="text-lg font-semibold mb-2">Requirement</h3>
-                                            <p className="text-sm text-muted-foreground">Details about requirement</p>
-                                        </div>
-                                    </CarouselItem>
-                                    <CarouselItem className="md:basis-1/2 lg:basis-1/4 border-r-3">
-                                        <div className="m-2 p-4 h-full">
-                                            <h3 className="text-lg font-semibold mb-2">Requirement</h3>
-                                            <p className="text-sm text-muted-foreground">Details about requirement</p>
-                                        </div>
-                                    </CarouselItem>
-                                    <CarouselItem className="md:basis-1/2 lg:basis-1/4 border-r-3">
-                                        <div className="m-2 p-4 h-full">
-                                            <h3 className="text-lg font-semibold mb-2">Requirement</h3>
-                                            <p className="text-sm text-muted-foreground">Details about requirement</p>
-                                        </div>
-                                    </CarouselItem>
-
-                                </CarouselContent>
-                                <CarouselPrevious />
-                                <CarouselNext />
-                            </Carousel>
+                                return hasItems ? (
+                                    <Carousel
+                                        opts={{ align: "start", loop: true }}
+                                        plugins={[Autoplay({ delay: 2000, stopOnInteraction: false })]}
+                                        className="w-full max-w-[94%] h-xs"
+                                    >
+                                        <CarouselContent>
+                                            {/* Structured property items */}
+                                            {propItems.map((item, idx) => (
+                                                <CarouselItem key={`prop-${idx}`} className="md:basis-1/2 lg:basis-1/4 border-r-3">
+                                                    <div className="m-2 p-4 h-full">
+                                                        <h3 className="text-lg text-start font-semibold mb-2 capitalize">{item.key} :</h3>
+                                                        <p className="text-sm text-start text-muted-foreground">{item.value}</p>
+                                                    </div>
+                                                </CarouselItem>
+                                            ))}
+                                            {/* Manual key-value items */}
+                                            {manualItems.map((req) => (
+                                                <CarouselItem key={req._id} className="md:basis-1/2 lg:basis-1/4 border-r-3">
+                                                    <div className="m-2 p-4 h-full relative group">
+                                                        <h3 className="text-lg text-start font-semibold mb-2">{req.key} :</h3>
+                                                        <h6 className="text-sm bg-red-300 text-start">{req.value}</h6>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity size-7 text-destructive hover:text-destructive"
+                                                                >
+                                                                    <Trash2 className="size-4" />
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        This action cannot be undone. This will permanently delete the requirement.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction
+                                                                        className="bg-destructive text-white shadow-sm hover:bg-destructive/90"
+                                                                        onClick={async () => {
+                                                                            try {
+                                                                                await removeRequirementMutation({
+                                                                                    variables: {
+                                                                                        organization,
+                                                                                        leadId: leadDetail?._id,
+                                                                                        requirementId: req._id,
+                                                                                    },
+                                                                                });
+                                                                                toast.success('Requirement removed');
+                                                                                refetchLead();
+                                                                            } catch (err) {
+                                                                                console.error(err);
+                                                                                toast.error('Failed to remove requirement');
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        Delete
+                                                                    </AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </div>
+                                                </CarouselItem>
+                                            ))}
+                                        </CarouselContent>
+                                        <CarouselPrevious />
+                                        <CarouselNext />
+                                    </Carousel>
+                                ) : (
+                                    <div className="text-center text-muted-foreground py-6 text-sm">
+                                        No requirements added yet. Click "Add" to define one.
+                                    </div>
+                                );
+                            })()}
                         </CardContent>
                     </Card>
                 </div>
@@ -1319,13 +1743,13 @@ export default function LeadDetail() {
                                 </div>
                             </div>
                             <ScrollArea className="h-35 mt-5">
-                                <div className="text-sm flex gap-10"><FontAwesomeIcon icon={faWhatsapp} className="text-green-500 dark:text-green-400" style={{ fontSize: "1.2rem" }} /> <span className="ml-10">Whatsapp Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
+                                <div className="text-sm flex gap-10"><FontAwesomeIcon icon={faWhatsapp} className="text-zinc-700 dark:text-zinc-300 pointer-events-none" style={{ fontSize: "1.2rem" }} /> <span className="ml-10">Whatsapp Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
                                 <Separator className="mt-1 mb-3" />
-                                <div className="text-sm flex gap-10"><Mail className="size-4 sm:size-5 text-blue-500 dark:text-blue-400" /> <span className="ml-10">mail Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
+                                <div className="text-sm flex gap-10"><Mail className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">mail Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
                                 <Separator className="mt-1 mb-3" />
-                                <div className="text-sm flex gap-10"><PhoneCall className="size-4 sm:size-5 text-emerald-500 dark:text-emerald-400" /> <span className="ml-10">Phone call Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
+                                <div className="text-sm flex gap-10"><PhoneCall className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">Phone call Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
                                 <Separator className="mt-1 mb-3" />
-                                <div className="text-sm flex gap-10"><MessagesSquare className="size-4 sm:size-5 text-purple-500 dark:text-purple-400" /> <span className="ml-10">Sms Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
+                                <div className="text-sm flex gap-10"><MessagesSquare className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">Sms Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
                                 <Separator className="mt-1 mb-3" />
                             </ScrollArea>
                         </CardContent>
@@ -1597,8 +2021,8 @@ export default function LeadDetail() {
 
                                 <ScrollArea className="h-[75vh] pr-4">
                                     <ol className="relative border-l-2 border-gray-200 dark:border-zinc-800 ml-5 pl-5">
-                                        {leadDetail?.activities && leadDetail.activities.length > 0 ? (
-                                            leadDetail.activities.map((activity) => {
+                                        {allTimelineActivities && allTimelineActivities.length > 0 ? (
+                                            allTimelineActivities.map((activity) => {
                                                 const isFollowUp = activity.updates === "follow_up";
                                                 const isSiteVisit = activity.updates === "site_visit";
                                                 const isStageUpdate = activity.updates === "stage";
@@ -1611,16 +2035,18 @@ export default function LeadDetail() {
                                                     : 'N/A';
 
                                                 const isNotes = activity.updates === "notes";
+                                                const isRequirement = activity.updates === "requirement";
 
                                                 // Pick icon & color based on update type
                                                 const iconEl = isStageUpdate
-                                                    ? <Shuffle className="size-5 text-dark dark:text-white" />
+                                                    ? <Shuffle className="size-5 text-zinc-700 dark:text-zinc-300" />
                                                     : isStatusUpdate
-                                                        ? <History className="size-5 text-dark dark:text-white" />
-                                                        : isFollowUp ? <Calendar className="size-5 text-dark dark:text-white" />
-                                                            : isSiteVisit ? <CalendarClock className="size-5 text-dark dark:text-white" />
-                                                                : isNotes ? <NotebookPen className="size-5 text-dark dark:text-white" />
-                                                                    : <Mail className="size-5 text-dark dark:text-white" />;
+                                                        ? <History className="size-5 text-zinc-700 dark:text-zinc-300" />
+                                                        : isFollowUp ? <Calendar className="size-5 text-zinc-700 dark:text-zinc-300" />
+                                                            : isSiteVisit ? <CalendarClock className="size-5 text-zinc-700 dark:text-zinc-300" />
+                                                                : isNotes ? <NotebookPen className="size-5 text-zinc-700 dark:text-zinc-300" />
+                                                                    : isRequirement ? <ClipboardCheck className="size-5 text-zinc-700 dark:text-zinc-300" />
+                                                                        : <Mail className="size-5 text-zinc-700 dark:text-zinc-300" />;
 
                                                 return (
                                                     <TabsContent value="all" key={activity.id}>
@@ -1637,7 +2063,8 @@ export default function LeadDetail() {
                                                                         {isFollowUp && 'Follow Up'}
                                                                         {isSiteVisit && (activity.site_visit_completed ? 'Site Visit ✓' : 'Site Visit')}
                                                                         {isNotes && 'Note'}
-                                                                        {(!isStageUpdate && !isStatusUpdate && !isFollowUp && !isSiteVisit && !isNotes) && 'Update'}
+                                                                        {isRequirement && 'Requirement'}
+                                                                        {(!isStageUpdate && !isStatusUpdate && !isFollowUp && !isSiteVisit && !isNotes && !isRequirement) && 'Update'}
                                                                     </span>
                                                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                                                         <span className="hidden sm:inline">{activity.user_name || 'Unknown'}</span>
@@ -1674,6 +2101,11 @@ export default function LeadDetail() {
                                                                         <div className="space-y-2">
                                                                             <Separator />
                                                                             <p className="text-md text-muted-foreground leading-relaxed">{activity.notes || 'No content'}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {isRequirement && (
+                                                                        <div className="space-y-2">
+                                                                            <p className="text-md text-muted-foreground leading-relaxed font-semibold">{activity.notes}</p>
                                                                         </div>
                                                                     )}
                                                                     {isSiteVisit && (

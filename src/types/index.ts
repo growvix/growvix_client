@@ -67,6 +67,21 @@ export interface Stage {
   nextStages: number[];
 }
 
+export interface PropertyRequirement {
+  sqft?: number;
+  bhk?: string[];
+  floor?: string[];
+  balcony?: boolean;
+  bathroom_count?: number;
+  parking_needed?: boolean;
+  parking_count?: number;
+  price_min?: number;
+  price_max?: number;
+  furniture?: string[];
+  facing?: string[];
+  plot_type?: string;
+}
+
 export interface Lead {
   _id: string;
   profile_id: string;
@@ -84,11 +99,8 @@ export interface Lead {
   pretype?: {
     type: string;
   };
-  bathroom?: string;
-  parking?: string;
+  propertyRequirement?: PropertyRequirement;
   project?: string;
-  floor?: string;
-  facing?: string;
   merge_id?: string;
   acquired?: {
     campaign: string;
@@ -122,6 +134,11 @@ export interface Lead {
     updatedAt: string;
   }[];
   site_visits_completed?: number;
+  requirements?: {
+    _id: string;
+    key: string;
+    value: string;
+  }[];
   createdAt: string;
   updatedAt: string;
 }
