@@ -20,12 +20,9 @@ export interface GetAllLeadsRequest {
         source?: string;
         campaign?: string;
         status?: string;
-<<<<<<< HEAD
+        stage?: string;
         assignedTo?: string;
         receivedOn?: string;
-=======
-        stage?: string;
->>>>>>> 150dd39 (grpc)
     };
 }
 

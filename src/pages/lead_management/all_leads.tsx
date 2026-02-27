@@ -7,17 +7,11 @@ import { DataTable } from "@/components/ui/data-table"
 import LoaderScreen from "@/components/ui/loader-screen"
 import { getCookie } from "@/utils/cookies"
 import axios from "axios"
-import { API } from "@/config/api"
+import { API, API_URL } from "@/config/api"
 import { leadClient } from "@/grpc/leadClient"
 import type { Lead as GrpcLead } from "@/grpc/types"
-<<<<<<< HEAD
-import { useNavigate, useLocation } from "react-router-dom"
-=======
 import type { Stage } from "@/types"
-import axios from "axios"
-import { API_URL } from "@/config/api"
-import { useNavigate } from "react-router-dom"
->>>>>>> 150dd39 (grpc)
+import { useNavigate, useLocation } from "react-router-dom"
 import { ArrowUpDown, MoreHorizontal } from "lucide-react"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
@@ -214,9 +208,6 @@ export default function AllLeads() {
     ])
   }, [setBreadcrumbs])
 
-<<<<<<< HEAD
-  const [filters, setFilters] = useState<Filters>(presetFilters || {
-=======
   // Fetch stages for the filter dropdown
   useEffect(() => {
     async function fetchStages() {
@@ -233,18 +224,14 @@ export default function AllLeads() {
     fetchStages()
   }, [organization])
 
-  const [filters, setFilters] = useState<Filters>({
->>>>>>> 150dd39 (grpc)
+  const [filters, setFilters] = useState<Filters>(presetFilters || {
     name: "",
     company: "",
     status: "all",
     source: "",
-<<<<<<< HEAD
+    stage: "",
     assignedTo: "all",
     receivedOn: "",
-=======
-    stage: "",
->>>>>>> 150dd39 (grpc)
   })
 
   // To support applying the default filters on mount, initialize appliedFilters natively
@@ -253,6 +240,7 @@ export default function AllLeads() {
     company: "",
     status: "all",
     source: "",
+    stage: "",
     assignedTo: "all",
     receivedOn: "",
   })
@@ -314,8 +302,8 @@ export default function AllLeads() {
         if (appliedFilters?.name) filterPayload.name = appliedFilters.name
         if (appliedFilters?.source) filterPayload.source = appliedFilters.source
         if (appliedFilters?.company) filterPayload.campaign = appliedFilters.company
-<<<<<<< HEAD
         if (appliedFilters?.status && appliedFilters.status !== "all") filterPayload.status = appliedFilters.status
+        if (appliedFilters?.stage) filterPayload.stage = appliedFilters.stage
         if (appliedFilters?.assignedTo && appliedFilters.assignedTo !== "all") {
           if (/^[0-9a-fA-F-]{36}$/.test(appliedFilters.assignedTo)) {
             filterPayload.assignedTo = appliedFilters.assignedTo
@@ -325,10 +313,6 @@ export default function AllLeads() {
           }
         }
         if (appliedFilters?.receivedOn) filterPayload.receivedOn = appliedFilters.receivedOn
-=======
-        if (appliedFilters?.status) filterPayload.status = appliedFilters.status
-        if (appliedFilters?.stage) filterPayload.stage = appliedFilters.stage
->>>>>>> 150dd39 (grpc)
 
         const grpcLeads = await leadClient.getAllLeads({
           organization,
@@ -372,11 +356,7 @@ export default function AllLeads() {
   }
 
   function handleReset() {
-<<<<<<< HEAD
-    const empty = { name: "", company: "", status: "all", source: "", assignedTo: "all", receivedOn: "" }
-=======
-    const empty: Filters = { name: "", company: "", status: "", source: "", stage: "" }
->>>>>>> 150dd39 (grpc)
+    const empty: Filters = { name: "", company: "", status: "all", source: "", stage: "", assignedTo: "all", receivedOn: "" }
     setFilters(empty)
     setAppliedFilters(empty)
   }
@@ -389,8 +369,7 @@ export default function AllLeads() {
   if (error) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-3 pt-2">
-        <div className="text-red-500">Error loa
-          ding leads: {error}</div>
+        <div className="text-red-500">Error loading leads: {error}</div>
       </div>
     )
   }
@@ -398,11 +377,7 @@ export default function AllLeads() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-3 pt-2">
       <div className="rounded-xl bg-muted/50 dark:bg-muted/50 py-4 px-3">
-<<<<<<< HEAD
         <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-5 items-end">
-=======
-        <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-11 items-end">
->>>>>>> 150dd39 (grpc)
           {/* Name */}
           <div className="col-span-1">
             <Label htmlFor="filter-name" className="text-s mb-1 ms-1">
@@ -455,23 +430,15 @@ export default function AllLeads() {
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-<<<<<<< HEAD
                   <SelectItem value="all">All Users</SelectItem>
                   {users.map(u => (
                     <SelectItem key={u._id} value={u._id}>{u.name || "Unknown"} ({u.role})</SelectItem>
                   ))}
-=======
-                  <SelectLabel>Status</SelectLabel>
-                  <SelectItem value="Hot">Hot</SelectItem>
-                  <SelectItem value="Warm">Warm</SelectItem>
-                  <SelectItem value="Cold">Cold</SelectItem>
->>>>>>> 150dd39 (grpc)
                 </SelectGroup>
               </SelectContent>
             </Select>
           </div>
 
-<<<<<<< HEAD
           {/* Received On */}
           <div className="col-span-1">
             <Label htmlFor="filter-received" className="text-s mb-1 ms-1" title="Filter leads received on this date">
@@ -487,15 +454,32 @@ export default function AllLeads() {
             />
           </div>
 
-          <div className="col-span-1 md:col-span-5 flex justify-end gap-2 w-full mt-2">
-            <Button variant="destructive" className="w-24" size="sm" type="button" onClick={handleReset} aria-label="Reset Filters">
-=======
+          {/* Status */}
+          <div className="col-span-1">
+            <Label htmlFor="filter-status" className="text-s mb-1 ms-1">
+              Status
+            </Label>
+            <Select value={filters.status} onValueChange={(value) => handleChange("status", value)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Status</SelectLabel>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="Hot">Hot</SelectItem>
+                  <SelectItem value="Warm">Warm</SelectItem>
+                  <SelectItem value="Cold">Cold</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Stage */}
-          <div className="lg:col-span-2">
+          <div className="col-span-1">
             <Label htmlFor="filter-stage" className="text-s mb-1 ms-1">
               Stage
             </Label>
-
             <Select value={filters.stage} onValueChange={(value) => handleChange("stage", value)}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select stage" />
@@ -519,9 +503,8 @@ export default function AllLeads() {
             </Select>
           </div>
 
-          <div className="lg:col-span-1 flex justify-around mt-2">
-            <Button variant="destructive" size="sm" type="button" onClick={handleReset}>
->>>>>>> 150dd39 (grpc)
+          <div className="col-span-1 md:col-span-5 flex justify-end gap-2 w-full mt-2">
+            <Button variant="destructive" className="w-24" size="sm" type="button" onClick={handleReset} aria-label="Reset Filters">
               Reset
             </Button>
             <Button size="sm" className="w-24 active:bg-primary" type="submit" aria-label="Apply Filters">
