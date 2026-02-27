@@ -11,6 +11,8 @@ import {
 } from '@/components/ui/shadcn-io/calendar';
 import { useEffect } from "react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
+import { Info } from "lucide-react"
 const TODAY = new Date();
 TODAY.setHours(0, 0, 0, 0);
 
@@ -43,7 +45,21 @@ export default function Example() {
 
   useEffect(() => {
     setBreadcrumbs([
-      { label: "user_calendar" }
+      { label: "Calendar" },
+      {
+        label: (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4.5 w-4.5" />
+              </TooltipTrigger>
+              <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                <p className="font-medium">Schedule & Events</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )
+      },
     ])
   }, [setBreadcrumbs])
   const earliestYear = exampleFeatures[0].startAt.getFullYear();

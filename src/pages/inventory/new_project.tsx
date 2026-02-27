@@ -3,12 +3,13 @@ import axios from 'axios'
 import { API } from '@/config/api'
 import { toast } from 'sonner'
 import { useBreadcrumb } from "@/context/breadcrumb-context"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import LoaderScreen from '@/components/ui/loader-screen'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Trash2, Plus, Building2, Layers, DoorOpen, X, Copy, Edit2 } from 'lucide-react'
+import { Trash2, Plus, Building2, Layers, DoorOpen, X, Copy, Edit2, Info } from 'lucide-react'
 import {
     Select,
     SelectContent,
@@ -276,7 +277,21 @@ export default function NewProject() {
     useEffect(() => {
         setBreadcrumbs([
             { label: "Project Listing", href: "/project_listing" },
-            { label: "New Project" }
+            { label: "New Project" },
+            {
+                label: (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Info className="h-4.5 w-4.5" />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                                <p className="font-medium">Create Project</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )
+            },
         ])
     }, [setBreadcrumbs])
 

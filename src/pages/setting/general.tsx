@@ -10,6 +10,8 @@ import {
 import { UserRoundCog, FileText, CalendarClock, Import, UsersRound, Search, SearchX, Handshake } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
+import { Info } from "lucide-react"
 
 export default function GeneralSetting() {
     const navigate = useNavigate()
@@ -17,7 +19,23 @@ export default function GeneralSetting() {
     const [search, setSearch] = useState("")
 
     useEffect(() => {
-        setBreadcrumbs([{ label: "General Settings" }])
+        setBreadcrumbs([
+            { label: "General Settings" },
+            {
+                label: (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Info className="h-4.5 w-4.5" />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                                <p className="font-medium">General Settings</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )
+            },
+        ])
     }, [setBreadcrumbs])
 
     // Configuration for settings cards to keep code DRY and clean

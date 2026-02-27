@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState } from "react"
 
 export interface BreadcrumbItem {
-  label: string
+  label: React.ReactNode
   href?: string
 }
 

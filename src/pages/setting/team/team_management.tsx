@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import axios from "axios"
 import { type ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal, Users } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, Users, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getCookie, getPermissions } from "@/utils/cookies"
 import { useNavigate } from "react-router-dom"
@@ -24,6 +24,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { API } from "@/config/api"
 import { DataTable } from "@/components/ui/data-table"
 
@@ -126,6 +127,20 @@ export default function TeamManagement() {
         setBreadcrumbs([
             { label: "Settings", href: "/settings" },
             { label: "Teams" },
+            {
+                label: (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Info className="h-4.5 w-4.5" />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                                <p className="font-medium">Team Management</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )
+            },
         ])
     }, [setBreadcrumbs])
 

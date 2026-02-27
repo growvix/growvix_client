@@ -4,6 +4,8 @@ import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { DataTable } from "@/components/ui/data-table"
 import { toast } from "sonner"
 import { useEffect } from "react"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
+import { Info } from "lucide-react"
 
 // ─── Types ──────────────────────────────────────────────
 interface LeadData {
@@ -20,11 +22,11 @@ const getColumns = (
     onEdit: (ld: LeadData) => void,
     onDelete: (ld: LeadData) => void
 ): ColumnDef<LeadData>[] => [
-    {
-        accessorKey:"_id",
-        header:"ID",
-        cell: ({ row }) => <div className="font-medium capitalize">{row.getValue("_id")}</div>,
-    },
+        {
+            accessorKey: "_id",
+            header: "ID",
+            cell: ({ row }) => <div className="font-medium capitalize">{row.getValue("_id")}</div>,
+        },
         {
             accessorKey: "leadName",
             header: "Lead name",
@@ -32,9 +34,9 @@ const getColumns = (
         },
         {
             id: "uploadBy",
-            header:"Upload by",
+            header: "Upload by",
             cell: ({ row }) => <div className="font-medium capitalize">{row.getValue("uploadBy")}</div>,
-        },  
+        },
         {
             accessorKey: "allow",
             header: "Re-engaging",
@@ -50,6 +52,20 @@ export default function ImportLeads() {
         setBreadcrumbs([
             { label: "Settings", href: "/settings" },
             { label: "Import Leads" },
+            {
+                label: (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Info className="h-4.5 w-4.5" />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                                <p className="font-medium">Import leads</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )
+            },
         ])
     }, [setBreadcrumbs])
 
@@ -59,12 +75,12 @@ export default function ImportLeads() {
 
     // ── Handlers ──
     const handleEdit = (ld: LeadData) => {
-        toast.info(`Edit CP logic to be implemented for ${ld.leadName}`)
+        toast.info(`Edit Lead logic to be implemented for ${ld.leadName}`)
     }
 
     const handleDelete = async (ld: LeadData) => {
-        if (!confirm(`Are you sure you want to delete Channel Partner "${ld.leadName}"?`)) return
-        toast.info("Delete CP logic to be implemented")
+        if (!confirm(`Are you sure you want to delete Lead "${ld.leadName}"?`)) return
+        toast.info("Delete Lead logic to be implemented")
     }
 
     const columns = useMemo(() => getColumns(handleEdit, handleDelete), [])

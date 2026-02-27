@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react"
 import axios from "axios"
 import { API, API_URL } from "@/config/api"
 import { type ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal, X, ChevronsUpDown, Check, Pencil, Trash2 } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, X, ChevronsUpDown, Check, Pencil, Trash2, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getCookie, getPermissions } from "@/utils/cookies"
@@ -42,6 +42,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { DataTable } from "@/components/ui/data-table"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -102,6 +103,20 @@ export default function UserManagement() {
         setBreadcrumbs([
             { label: "Settings", href: "/settings" },
             { label: "User Management" },
+            {
+                label: (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Info className="h-4.5 w-4.5" />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                                <p className="font-medium">User Management</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )
+            },
         ])
     }, [setBreadcrumbs])
 

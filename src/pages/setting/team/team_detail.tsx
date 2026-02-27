@@ -4,6 +4,7 @@ import axios from "axios"
 import { getCookie } from "@/utils/cookies"
 import { API } from "@/config/api"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -25,7 +26,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, Plus, Trash2, AlertTriangle } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, AlertTriangle, Info } from "lucide-react"
 
 interface MemberDetail {
     _id: string
@@ -85,6 +86,20 @@ export default function TeamDetailPage() {
             { label: "Settings", href: "/settings" },
             { label: "Teams", href: "/setting/teams" },
             { label: team?.name || "Team Detail" },
+            {
+                label: (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Info className="h-4.5 w-4.5" />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                                <p className="font-medium">Team Members</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )
+            },
         ])
     }, [setBreadcrumbs, team?.name])
 

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/breadcrumb"
 
 interface BreadcrumbItemType {
-  label: string
+  label: React.ReactNode
   href?: string
 }
 
@@ -25,7 +25,7 @@ export function PageBreadcrumb({ items }: PageBreadcrumbProps) {
       <Breadcrumb>
         <BreadcrumbList>
           {items.map((item, idx) => (
-            <React.Fragment key={`${item.label}-${idx}`}>
+            <React.Fragment key={idx}>
               <BreadcrumbItem>
                 {item.href ? (
                   <BreadcrumbLink href={item.href}>{item.label}</BreadcrumbLink>
