@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react"
 import { type ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal, X, Pencil, Trash2 } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     Sheet,
@@ -32,36 +32,16 @@ interface CPData {
     email: string
     phone: string
     address: string
+    team: string
 }
 
-// Mock initial data if no API available yet or leave empty
 const MOCK_DATA: CPData[] = []
 
-// ─── Page Component ──────────────────────────────────────
-export default function CPManagement() {
-    const { setBreadcrumbs } = useBreadcrumb()
-
-    useEffect(() => {
-        setBreadcrumbs([
-            { label: "Settings", href: "/settings" },
-            { label: "Channel Partner Management" },
-        ])
-    }, [setBreadcrumbs])
-
-    // ── Table data state ──
-    const [cpUsers, setCpUsers] = useState<CPData[]>(MOCK_DATA)
-
-    // ── Add-CP form state ──
-    const [open, setOpen] = useState(false)
-    const [formData, setFormData] = useState({
-        cpName: "",
-        email: "",
-        phone: "",
-        address: "",
-    })
-
-    // ── Columns ──
-    const columns: ColumnDef<CPData>[] = useMemo(() => [
+// ─── Column factory ──────────────────────────────────────
+const getColumns = (
+    onEdit: (cp: CPData) => void,
+    onDelete: (cp: CPData) => void
+): ColumnDef<CPData>[] => [
         {
             accessorKey: "cpName",
             header: "Cp name",
@@ -119,13 +99,13 @@ export default function CPManagement() {
                                 Copy CP ID
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => toast.info("Edit CP logic to be implemented")}>
+                            <DropdownMenuItem onClick={() => onEdit(cp)}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit CP
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 className="text-red-600 focus:text-red-600"
-                                onClick={() => toast.info("Delete CP logic to be implemented")}
+                                onClick={() => onDelete(cp)}
                             >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete CP
@@ -135,30 +115,46 @@ export default function CPManagement() {
                 )
             },
         },
-    ], [])
+    ]
 
-    // ── Filter state ──
-    const [filterName, setFilterName] = useState("")
+// ─── Page Component ──────────────────────────────────────
+export default function CPManagement() {
+    const { setBreadcrumbs } = useBreadcrumb()
 
-    // Filtered CPs
-    const filteredCPs = useMemo(() => {
-        return cpUsers.filter((cp) => {
-            if (filterName) {
-                const nameMatch = cp.cpName.toLowerCase().includes(filterName.toLowerCase())
-                if (!nameMatch) return false
-            }
-            return true
-        })
-    }, [cpUsers, filterName])
+    useEffect(() => {
+        setBreadcrumbs([
+            { label: "Settings", href: "/settings" },
+            { label: "Channel Partner Management" },
+        ])
+    }, [setBreadcrumbs])
 
-    const clearFilters = () => {
-        setFilterName("")
+    // ── Form state ──
+    const [open, setOpen] = useState(false)
+    const [formData, setFormData] = useState({
+        cpName: "",
+        email: "",
+        phone: "",
+        address: "",
+        team: "",
+    })
+
+    // ── Table data state ──
+    const [cpUsers, setCpUsers] = useState<CPData[]>(MOCK_DATA)
+
+    // ── Handlers ──
+    const handleEdit = (cp: CPData) => {
+        toast.info(`Edit CP logic to be implemented for ${cp.cpName}`)
     }
 
-    const hasActiveFilters = filterName !== ""
+    const handleDelete = async (cp: CPData) => {
+        if (!confirm(`Are you sure you want to delete Channel Partner "${cp.cpName}"?`)) return
+        toast.info("Delete CP logic to be implemented")
+    }
 
-    // ── Add-CP form handlers ──
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const columns = useMemo(() => getColumns(handleEdit, handleDelete), [])
+
+    // ── Form handlers ──
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { id, value } = e.target
         const key = id === "cp-name" ? "cpName" : id
         setFormData((prev) => ({ ...prev, [key]: value }))
@@ -174,12 +170,13 @@ export default function CPManagement() {
                 email: formData.email,
                 phone: formData.phone,
                 address: formData.address,
+                team: formData.team,
             }
 
             setCpUsers((prev) => [...prev, newCP])
             toast.success("Channel Partner created successfully")
             setOpen(false)
-            setFormData({ cpName: "", email: "", phone: "", address: "" })
+            setFormData({ cpName: "", email: "", phone: "", address: "", team: "" })
         } catch (error) {
             console.error("Error creating CP:", error)
             toast.error("Failed to create Channel Partner")
@@ -189,12 +186,11 @@ export default function CPManagement() {
     // ── Render ──
     return (
         <div className="flex flex-1 flex-col gap-4 px-3">
-            {/* Header */}
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold tracking-tight">Channel Partners</h2>
                 <Sheet open={open} onOpenChange={setOpen}>
                     <SheetTrigger asChild>
-                        <Button className="mt-3" size="lg">Add CP</Button>
+                        <Button>Add CP</Button>
                     </SheetTrigger>
                     <SheetContent className="w-xl px-5">
                         <SheetHeader>
@@ -218,7 +214,11 @@ export default function CPManagement() {
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="address">Address</Label>
-                                <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" id="address" placeholder="123 Business Rd..." value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} required />
+                                <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" id="address" placeholder="123 Business Rd..." value={formData.address} onChange={handleInputChange} required />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="team">Team</Label>
+                                <Input id="team" placeholder="Assigned Team" value={formData.team} onChange={handleInputChange} />
                             </div>
                             <Button type="submit" className="mt-4">Create CP</Button>
                         </form>
@@ -226,27 +226,12 @@ export default function CPManagement() {
                 </Sheet>
             </div>
 
-            {/* Filters */}
-            <div className="flex items-center gap-2 flex-wrap">
-                <Input
-                    placeholder="Search by name..."
-                    value={filterName}
-                    onChange={(e) => setFilterName(e.target.value)}
-                    className="w-[200px] bg-input/30 dark:bg-input/50"
-                />
-
-                {hasActiveFilters && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
-                        <X className="h-4 w-4 mr-1" />
-                        Clear
-                    </Button>
-                )}
-            </div>
-
             <DataTable
                 columns={columns}
-                data={filteredCPs}
+                data={cpUsers}
                 initialPageSize={15}
+                filterColumn="cpName"
+                filterPlaceholder="Search by name..."
             />
         </div>
     )

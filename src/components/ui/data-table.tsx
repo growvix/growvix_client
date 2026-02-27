@@ -12,7 +12,7 @@ import {
     type PaginationState,
     type VisibilityState,
 } from "@tanstack/react-table"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -123,14 +123,28 @@ export function DataTable<TData, TValue>({
         <div className="w-full">
             <div className="flex justify-between gap-4 py-4 w-full">
                 {filterColumn && (
-                    <Input
-                        placeholder={filterPlaceholder}
-                        value={(table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""}
-                        onChange={(event) => {
-                            table.getColumn(filterColumn)?.setFilterValue(event.target.value)
-                        }}
-                        className="max-w-sm"
-                    />
+                    <div className="relative w-full max-w-sm">
+                        <Input
+                            placeholder={filterPlaceholder}
+                            value={(table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""}
+                            onChange={(event) => {
+                                table.getColumn(filterColumn)?.setFilterValue(event.target.value)
+                            }}
+                            className="w-full pr-8 bg-input/30 dark:bg-input/50"
+                        />
+
+                        {(table.getColumn(filterColumn)?.getFilterValue() as string) && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => table.getColumn(filterColumn)?.setFilterValue("")}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
                 )}
                 <div className="flex gap-4 ml-auto">
                     <div className="flex items-center gap-2">
