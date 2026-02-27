@@ -70,7 +70,7 @@ export default function GeneralSetting() {
             bgClass: "bg-emerald-100 dark:bg-emerald-900/40",
             hoverBorder: "hover:border-emerald-300 dark:hover:border-emerald-800",
             hoverGradient: "from-emerald-50/50 dark:from-emerald-950/20",
-            path: "#", // Placeholder
+            path: "/setting/import_leads",
         },
         {
             title: "Channel Partner",
