@@ -8,11 +8,7 @@ import { API } from "@/config/api"
 import {
     type ColumnDef,
 } from "@tanstack/react-table"
-<<<<<<< HEAD
 import { ArrowUpDown, Ban, Info, MoreHorizontal, Pencil } from "lucide-react"
-=======
-import { ArrowUpDown, MoreHorizontal, Pencil, Info } from "lucide-react"
->>>>>>> a3224b95d9da8e389b977ad935efa573d1d25c61
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { getCookie, getPermissions } from "@/utils/cookies"
