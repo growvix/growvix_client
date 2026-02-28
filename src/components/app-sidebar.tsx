@@ -34,17 +34,7 @@ const data = {
       name: "DESK CRM",
       logo: GalleryVerticalEnd,
       plan: organization.toUpperCase(),
-    },
-    {
-      name: "DESK CRM",
-      logo: AudioWaveform,
-      plan: "Startup",
-    },
-    {
-      name: "Evil Corp.",
-      logo: Command,
-      plan: "Free",
-    },
+    }
   ],
   navMain: [
     {
@@ -120,16 +110,7 @@ const data = {
       url: "/user_calendar",
       icon: Calendar,
     },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
-    },
+
   ],
 }
 

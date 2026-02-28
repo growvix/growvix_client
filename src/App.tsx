@@ -328,7 +328,6 @@ export default function App() {
             <Route path="/lead_stage_analysis" element={<LeadStageAnalysis />} />
 
             <Route path="/setting/teams" element={<TeamManagement />} />
-            <Route path="/setting/teams/:id" element={<TeamDetailPage />} />
             <Route path="/setting/channel_partner" element={<CPManagement />} />
             <Route path="/setting/import_leads" element={<ImportLeads />} />
 
