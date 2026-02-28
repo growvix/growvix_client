@@ -24,6 +24,8 @@ import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { DataTable } from "@/components/ui/data-table"
 import { toast } from "sonner"
 import { useEffect } from "react"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
+import { Info } from "lucide-react"
 
 // ─── Types ──────────────────────────────────────────────
 interface CPData {
@@ -125,6 +127,20 @@ export default function CPManagement() {
         setBreadcrumbs([
             { label: "Settings", href: "/settings" },
             { label: "Channel Partner Management" },
+            {
+                label: (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Info className="h-4.5 w-4.5" />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                                <p className="font-medium">Channel Partner Management</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )
+            },
         ])
     }, [setBreadcrumbs])
 

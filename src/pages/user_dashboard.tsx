@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { useNavigate } from "react-router-dom"
 import { getCookie } from "@/utils/cookies"
 
@@ -24,6 +25,7 @@ import {
   UserRoundX,
   MapPinX,
   PhoneOff,
+  Info,
 } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -54,7 +56,23 @@ export default function UserDashboard() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    setBreadcrumbs([{ label: "Dashboard" }])
+    setBreadcrumbs([
+      { label: "Dashboard" },
+      {
+        label: (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4.5 w-4.5" />
+              </TooltipTrigger>
+              <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                <p className="font-medium">Overview & Analytics</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )
+      },
+    ])
   }, [setBreadcrumbs])
 
   const [date, setDate] = useState<DateRange | undefined>({

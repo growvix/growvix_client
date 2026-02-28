@@ -1,5 +1,6 @@
 import { useEffect } from "react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import * as React from "react"
 import axios from "axios"
@@ -7,7 +8,7 @@ import { API } from "@/config/api"
 import {
     type ColumnDef,
 } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal, Pencil, Ban } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, Pencil, Info } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { getCookie, getPermissions } from "@/utils/cookies"
@@ -48,6 +49,20 @@ export default function ProjectListing() {
     useEffect(() => {
         setBreadcrumbs([
             { label: "Project Listing" },
+            {
+                label: (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Info className="h-4.5 w-4.5" />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                                <p className="font-medium">Project Inventory</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )
+            },
         ]);
     }, [setBreadcrumbs]);
 

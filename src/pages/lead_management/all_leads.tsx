@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label"
 import { DatePicker } from "@/components/ui/date-picker"
 import { format } from "date-fns"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { DataTable } from "@/components/ui/data-table"
 import LoaderScreen from "@/components/ui/loader-screen"
 import { getCookie } from "@/utils/cookies"
@@ -14,7 +15,7 @@ import { leadClient } from "@/grpc/leadClient"
 import type { Lead as GrpcLead } from "@/grpc/types"
 import type { Stage } from "@/types"
 import { useNavigate, useLocation } from "react-router-dom"
-import { ArrowUpDown, MoreHorizontal } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, Info } from "lucide-react"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
   DropdownMenu,
@@ -206,7 +207,21 @@ export default function AllLeads() {
 
   useEffect(() => {
     setBreadcrumbs([
-      { label: "All Leads" }
+      { label: "All Leads" },
+      {
+        label: (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4.5 w-4.5" />
+              </TooltipTrigger>
+              <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                <p className="font-medium">Lead Management</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )
+      },
     ])
   }, [setBreadcrumbs])
 

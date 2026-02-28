@@ -5,10 +5,11 @@ import { API } from "@/config/api"
 import { getCookie } from "@/utils/cookies"
 import { decodeProjectId } from "@/utils/idEncoder"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import LoaderScreen from "@/components/ui/loader-screen"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Building2, DoorOpen, ImageIcon, X, Maximize2, ChevronLeft, ChevronRight, Layers } from "lucide-react"
+import { Building2, DoorOpen, ImageIcon, X, Maximize2, ChevronLeft, ChevronRight, Layers, Info } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -113,7 +114,21 @@ export default function ProjectShowcase() {
     useEffect(() => {
         setBreadcrumbs([
             { label: "Project Listing", href: "/project_listing" },
-            { label: project?.name || "Project Showcase" }
+            { label: project?.name || "Project Showcase" },
+            {
+                label: (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Info className="h-4.5 w-4.5" />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                                <p className="font-medium">Project Details</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )
+            },
         ])
     }, [setBreadcrumbs, project?.name])
 

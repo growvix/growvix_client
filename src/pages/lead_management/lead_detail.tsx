@@ -14,7 +14,7 @@ import { API_URL } from '@/config/api'
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, } from "@/components/ui/card"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, } from "@/components/ui/sheet"
-import { Tooltip, TooltipContent, TooltipTrigger, } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import Autoplay from "embla-carousel-autoplay"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
@@ -39,6 +39,7 @@ import {
     ClipboardCheck,
     Plus,
     Trash2,
+    Info,
 } from "lucide-react";
 import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
@@ -331,7 +332,21 @@ export default function LeadDetail() {
                 // Set breadcrumbs after getting the lead ID
                 setBreadcrumbs([
                     { label: "All Leads", href: "/all_leads" },
-                    { label: id ? `Lead #${id}` : "Lead" }
+                    { label: id ? `Lead #${id}` : "Lead" },
+                    {
+                        label: (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Info className="h-4.5 w-4.5" />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                                        <p className="font-medium">Lead Details</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )
+                    },
                 ])
                 // Fetch lead details via GraphQL
                 if (id) {
@@ -352,7 +367,21 @@ export default function LeadDetail() {
                 setLeadId(id)
                 setBreadcrumbs([
                     { label: "All Leads", href: "/all_leads" },
-                    { label: id ? `Lead #${id}` : "Lead" }
+                    { label: id ? `Lead #${id}` : "Lead" },
+                    {
+                        label: (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Info className="h-4.5 w-4.5" />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                                        <p className="font-medium">Lead Details</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )
+                    },
                 ])
             }
         }
