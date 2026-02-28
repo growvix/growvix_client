@@ -185,18 +185,14 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
-              <div className="flex justify-end gap-3">
-                <Button variant={"ghost"} onClick={handleCancel}>Reset</Button>
-                <Button variant="default" className="" onClick={handleSave}>Save Changes</Button>
-              </div>
             </TabsContent>
           </Tabs>
 
         </CardContent>
-        {/*<CardFooter className="flex justify-end gap-3">
+        <CardFooter className="flex justify-end gap-3">
           <Button variant={"ghost"} onClick={handleCancel}>Reset</Button>
           <Button variant="default" className="" onClick={handleSave}>Save Changes</Button>
-        </CardFooter>*/}
+        </CardFooter>
       </Card>
     </div>
   );
