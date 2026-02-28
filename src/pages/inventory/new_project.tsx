@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Trash2, Plus, Building2, Layers, DoorOpen, X, Copy, Edit2, Info } from 'lucide-react'
+import { Trash2, Plus, Building2, Layers, DoorOpen, X, Copy, Edit2, Info, Ban } from 'lucide-react'
 import {
     Select,
     SelectContent,
@@ -968,7 +968,7 @@ export default function NewProject() {
                                                                                 <Label className="text-xs">Number of Floors</Label>
                                                                                 <Input
                                                                                     type="number"
-                                                                                    className='bg-background/100 dark:bg-background/100'
+                                                                                    className='bg-background dark:bg-background'
                                                                                     min="1"
                                                                                     max="100"
                                                                                     value={getBlockConfig(block.blockId).floors}
@@ -981,7 +981,7 @@ export default function NewProject() {
                                                                                     value={getBlockConfig(block.blockId).pattern}
                                                                                     onValueChange={v => updateBlockConfig(block.blockId, { pattern: v })}
                                                                                 >
-                                                                                    <SelectTrigger className='bg-background/100 dark:bg-background/100 w-full'>
+                                                                                    <SelectTrigger className='bg-background dark:bg-background w-full'>
                                                                                         <SelectValue />
                                                                                     </SelectTrigger>
                                                                                     <SelectContent>
