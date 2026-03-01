@@ -22,6 +22,7 @@ export const API = {
     getProject: (id: number | string) => `${API_URL}/api/projects/${id}`,
     getProjectBlocks: (id: number | string) => `${API_URL}/api/projects/${id}/blocks`,
     updateProject: (id: number | string) => `${API_URL}/api/projects/${id}`,
+    bookUnit: (projectId: number | string) => `${API_URL}/api/projects/${projectId}/book`,
 
     // User specific endpoints
     getUser: (id: string) => `${API_URL}/api/users/${id}`,

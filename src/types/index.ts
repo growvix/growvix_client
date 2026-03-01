@@ -130,10 +130,16 @@ export interface Lead {
     site_visit_completed_at: string;
     site_visit_completed_by: string;
     site_visit_completed_by_name: string;
+    site_visit_project_id?: number;
+    site_visit_project_name?: string;
     createdAt: string;
     updatedAt: string;
   }[];
   site_visits_completed?: number;
+  interested_projects?: {
+    project_id: number;
+    project_name: string;
+  }[];
   requirements?: {
     _id: string;
     key: string;
@@ -166,4 +172,19 @@ export interface UpdateLeadMutationVariables {
   organization: string;
   id: string;
   input: UpdateLeadInput;
+}
+
+export interface ProjectSummary {
+  product_id: number;
+  name: string;
+  location: string;
+  property: string;
+}
+
+export interface GetAllProjectsQueryResponse {
+  getAllProjects: ProjectSummary[];
+}
+
+export interface GetAllProjectsQueryVariables {
+  organization: string;
 }

@@ -15,7 +15,7 @@ import { leadClient } from "@/grpc/leadClient"
 import type { Lead as GrpcLead } from "@/grpc/types"
 import type { Stage } from "@/types"
 import { useNavigate, useLocation } from "react-router-dom"
-import { ArrowUpDown, MoreHorizontal, Info } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, Info, ChevronsUpDown, Check, ChevronLeft, ChevronRight } from "lucide-react"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
   DropdownMenu,
@@ -27,14 +27,19 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import { cn } from "@/lib/utils"
 
 export type Lead = {
   lead_id: string
@@ -205,6 +210,11 @@ export default function AllLeads() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [stages, setStages] = useState<Stage[]>([])
 
+  // Pagination state
+  const PAGE_SIZE = 30
+  const [page, setPage] = useState(1)
+  const [totalLeads, setTotalLeads] = useState(0)
+
   useEffect(() => {
     setBreadcrumbs([
       { label: "All Leads" },
@@ -263,6 +273,11 @@ export default function AllLeads() {
   })
 
   const [users, setUsers] = useState<{ _id: string, name: string, role?: string }[]>([])
+
+  // Combobox open states
+  const [assignedOpen, setAssignedOpen] = useState(false)
+  const [statusOpen, setStatusOpen] = useState(false)
+  const [stageOpen, setStageOpen] = useState(false)
 
   // Fetch users for 'Assigned To' filter
   useEffect(() => {
@@ -331,8 +346,12 @@ export default function AllLeads() {
         }
         if (appliedFilters?.receivedOn) filterPayload.receivedOn = appliedFilters.receivedOn
 
-        const grpcLeads = await leadClient.getAllLeads({
+        const offset = (page - 1) * PAGE_SIZE
+
+        const { leads: grpcLeads, total } = await leadClient.getAllLeads({
           organization,
+          offset,
+          limit: PAGE_SIZE,
           filters: Object.keys(filterPayload).length > 0 ? filterPayload : undefined,
         })
 
@@ -349,9 +368,9 @@ export default function AllLeads() {
           received: lead.received,
           exe_user_name: lead.exe_user_name || '',
         }))
-        console.log(transformedLeads);
 
         setLeads(transformedLeads)
+        setTotalLeads(total)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch leads')
       } finally {
@@ -360,7 +379,7 @@ export default function AllLeads() {
     }
 
     fetchLeads()
-  }, [organization, appliedFilters])
+  }, [organization, appliedFilters, page])
 
   function handleChange<K extends keyof Filters>(key: K, value: string) {
     setFilters((s) => ({ ...s, [key]: value }))
@@ -368,15 +387,18 @@ export default function AllLeads() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    console.log("Applying filters:", filters)
+    setPage(1)
     setAppliedFilters(filters)
   }
 
   function handleReset() {
     const empty: Filters = { name: "", company: "", status: "all", source: "", stage: "", assignedTo: "all", receivedOn: "" }
     setFilters(empty)
+    setPage(1)
     setAppliedFilters(empty)
   }
+
+  const totalPages = Math.max(1, Math.ceil(totalLeads / PAGE_SIZE))
 
 
   if (loading) {
@@ -440,19 +462,36 @@ export default function AllLeads() {
             <Label htmlFor="filter-assigned" className="text-s mb-1 ms-1" title="Select a user to filter leads assigned to them">
               Assigned To
             </Label>
-            <Select value={filters.assignedTo} onValueChange={(value) => handleChange("assignedTo", value)} aria-label="Assigned To">
-              <SelectTrigger className="w-[100%]">
-                <SelectValue placeholder="All Users" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="all">All Users</SelectItem>
-                  {users.map(u => (
-                    <SelectItem key={u._id} value={u._id}>{u.name || "Unknown"} ({u.role})</SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <Popover open={assignedOpen} onOpenChange={setAssignedOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" aria-expanded={assignedOpen} className="w-full justify-between font-normal">
+                  <span className="truncate">
+                    {filters.assignedTo === "all" ? "All Users" : users.find(u => u._id === filters.assignedTo)?.name || "All Users"}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[250px] p-0">
+                <Command>
+                  <CommandInput placeholder="Search user..." />
+                  <CommandList>
+                    <CommandEmpty>No user found.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem onSelect={() => { handleChange("assignedTo", "all"); setAssignedOpen(false) }}>
+                        <Check className={cn("mr-2 h-4 w-4", filters.assignedTo === "all" ? "opacity-100" : "opacity-0")} />
+                        All Users
+                      </CommandItem>
+                      {users.map(u => (
+                        <CommandItem key={u._id} value={u.name} onSelect={() => { handleChange("assignedTo", u._id); setAssignedOpen(false) }}>
+                          <Check className={cn("mr-2 h-4 w-4", filters.assignedTo === u._id ? "opacity-100" : "opacity-0")} />
+                          {u.name || "Unknown"} ({u.role})
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Received On */}
@@ -472,20 +511,32 @@ export default function AllLeads() {
             <Label htmlFor="filter-status" className="text-s mb-1 ms-1">
               Status
             </Label>
-            <Select value={filters.status} onValueChange={(value) => handleChange("status", value)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>Status</SelectLabel>
-                  <SelectItem className="font-bold" value="all">All</SelectItem>
-                  <SelectItem className="font-bold" value="Hot">Hot</SelectItem>
-                  <SelectItem className="font-bold" value="Warm">Warm</SelectItem>
-                  <SelectItem className="font-bold" value="Cold">Cold</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <Popover open={statusOpen} onOpenChange={setStatusOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" aria-expanded={statusOpen} className="w-full justify-between font-normal">
+                  <span className="truncate">
+                    {filters.status === "all" ? "All" : filters.status}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0">
+                <Command>
+                  <CommandInput placeholder="Search status..." />
+                  <CommandList>
+                    <CommandEmpty>No status found.</CommandEmpty>
+                    <CommandGroup>
+                      {["all", "Hot", "Warm", "Cold"].map((s) => (
+                        <CommandItem key={s} value={s} onSelect={() => { handleChange("status", s); setStatusOpen(false) }}>
+                          <Check className={cn("mr-2 h-4 w-4", filters.status === s ? "opacity-100" : "opacity-0")} />
+                          {s === "all" ? "All" : s}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Stage */}
@@ -493,27 +544,35 @@ export default function AllLeads() {
             <Label htmlFor="filter-stage" className="text-s mb-1 ms-1">
               Stage
             </Label>
-            <Select value={filters.stage} onValueChange={(value) => handleChange("stage", value)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select stage" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>Stage</SelectLabel>
-                  {stages.map((stage) => (
-                    <SelectItem key={stage.id} value={stage.name}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: stage.color }}
-                        />
-                        <span>{stage.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <Popover open={stageOpen} onOpenChange={setStageOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" aria-expanded={stageOpen} className="w-full justify-between font-normal">
+                  <span className="truncate">
+                    {!filters.stage ? "Select stage" : filters.stage}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-0">
+                <Command>
+                  <CommandInput placeholder="Search stage..." />
+                  <CommandList>
+                    <CommandEmpty>No stage found.</CommandEmpty>
+                    <CommandGroup>
+                      {stages.map((stage) => (
+                        <CommandItem key={stage.id} value={stage.name} onSelect={() => { handleChange("stage", stage.name === filters.stage ? "" : stage.name); setStageOpen(false) }}>
+                          <Check className={cn("mr-2 h-4", filters.stage === stage.name ? "opacity-100" : "opacity-0")} />
+                          <div className="flex items-center gap-2 w-full">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stage.color }} />
+                            <span>{stage.name}</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="col-span-1 flex justify-center items-center gap-2 w-full mt-2 ">
@@ -531,9 +590,38 @@ export default function AllLeads() {
         <DataTable
           data={leads}
           columns={columns}
-          initialPageSize={15}
-
+          initialPageSize={PAGE_SIZE}
         />
+
+        {/* Server-side Pagination Controls */}
+        <div className="flex items-center justify-between px-2 py-3">
+          <p className="text-sm text-muted-foreground">
+            Showing {leads.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalLeads)} of {totalLeads} leads
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1 || loading}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous
+            </Button>
+            <span className="text-sm font-medium">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || loading}
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   )
