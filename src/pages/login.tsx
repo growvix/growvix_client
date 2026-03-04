@@ -22,9 +22,9 @@ export default function LoginPage() {
       </div>
       <div className="bg-muted relative hidden lg:block">
         <img
-          src="/login.svg"
+          src="/ai.jpg"
           alt="Image"
-          className="absolute inset-0 h-full w-[90%] object-fit dark:brightness-[0.5]"
+          className="absolute inset-0 h-full w-[90%] object-full dark:brightness-[0.5]"
         />
       </div>
     </div>

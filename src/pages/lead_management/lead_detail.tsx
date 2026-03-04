@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom"
+import { useParams, useNavigate } from "react-router-dom"
 import { useEffect, useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
@@ -40,8 +40,9 @@ import {
     Plus,
     Trash2,
     Info,
+    BookOpen,
 } from "lucide-react";
-import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement } from "@/types"
+import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -56,6 +57,7 @@ import {
     TabsContent,
 } from "@/components/ui/tabs"
 import { decryptId } from "@/lib/crypto"
+import { encodeProjectId } from "@/utils/idEncoder"
 import { DatePicker } from "@/components/ui/date-picker"
 import { TimePicker } from "@/components/ui/time-picker"
 import { format } from "date-fns"
@@ -97,6 +99,10 @@ const GET_LEAD_BY_ID = gql`
                 plot_type
             }
             project
+            interested_projects {
+                project_id
+                project_name
+            }
             merge_id
             acquired {
                 campaign
@@ -117,7 +123,7 @@ const GET_LEAD_BY_ID = gql`
                 key
                 value
             }
-            activities {
+             activities {
                 id
                 user_id
                 user_name
@@ -129,6 +135,8 @@ const GET_LEAD_BY_ID = gql`
                 site_visit_completed_at
                 site_visit_completed_by
                 site_visit_completed_by_name
+                site_visit_project_id
+                site_visit_project_name
                 status
                 notes
                 follow_up_date
@@ -230,6 +238,41 @@ const UPDATE_PROPERTY_REQUIREMENT = gql`
     }
 `;
 
+const GET_ALL_PROJECTS = gql`
+    query GetAllProjects($organization: String!) {
+        getAllProjects(organization: $organization) {
+            product_id
+            name
+            location
+            property
+        }
+    }
+`;
+
+const ADD_INTERESTED_PROJECT = gql`
+    mutation AddInterestedProject($organization: String!, $leadId: String!, $projectId: Int!, $projectName: String!) {
+        addInterestedProject(organization: $organization, leadId: $leadId, projectId: $projectId, projectName: $projectName) {
+            _id
+            interested_projects {
+                project_id
+                project_name
+            }
+        }
+    }
+`;
+
+const REMOVE_INTERESTED_PROJECT = gql`
+    mutation RemoveInterestedProject($organization: String!, $leadId: String!, $projectId: Int!) {
+        removeInterestedProject(organization: $organization, leadId: $leadId, projectId: $projectId) {
+            _id
+            interested_projects {
+                project_id
+                project_name
+            }
+        }
+    }
+`;
+
 interface StageStatCardProps {
     value: string | number;
     label: string;
@@ -254,6 +297,7 @@ export default function LeadDetail() {
     const [loading, setLoading] = useState(true)
     const [leadDetail, setLeadDetail] = useState<Lead | null>(null)
     const { id } = useParams()
+    const navigate = useNavigate()
     const [leadId, setLeadId] = useState<string | undefined>(undefined);
     const [stages, setStages] = useState<Stage[]>([])
     const [selectedStage, setSelectedStage] = useState<string | undefined>(undefined)
@@ -286,6 +330,14 @@ export default function LeadDetail() {
     const [conductedSheetOpen, setConductedSheetOpen] = useState(false)
     const [markingVisitId, setMarkingVisitId] = useState<string | null>(null)
 
+    // Interested projects state
+    const [addProjectSheetOpen, setAddProjectSheetOpen] = useState(false)
+    const [addingProject, setAddingProject] = useState(false)
+    const [removingProjectId, setRemovingProjectId] = useState<number | null>(null)
+
+    // Site visit project selection state
+    const [siteVisitProject, setSiteVisitProject] = useState<{ id: number; name: string } | null>(null)
+
     // Requirement state
     const [reqSheetOpen, setReqSheetOpen] = useState(false)
     const [reqKey, setReqKey] = useState('')
@@ -310,6 +362,8 @@ export default function LeadDetail() {
     const [addRequirementMutation] = useMutation(ADD_REQUIREMENT);
     const [removeRequirementMutation] = useMutation(REMOVE_REQUIREMENT);
     const [updatePropertyRequirementMutation] = useMutation(UPDATE_PROPERTY_REQUIREMENT);
+    const [addInterestedProjectMutation] = useMutation(ADD_INTERESTED_PROJECT);
+    const [removeInterestedProjectMutation] = useMutation(REMOVE_INTERESTED_PROJECT);
     const { setBreadcrumbs } = useBreadcrumb()
     const leadName = leadDetail?.profile?.name;
     const initials = getUserAvatar(leadName);
@@ -396,6 +450,13 @@ export default function LeadDetail() {
             skip: !organization || !id
         }
     );
+
+    // Fetch all org projects
+    const { data: projectsData } = useQuery<GetAllProjectsQueryResponse, GetAllProjectsQueryVariables>(GET_ALL_PROJECTS, {
+        variables: { organization },
+        skip: !organization
+    });
+    const allProjects = projectsData?.getAllProjects || [];
     // Log activities when lead data is fetched
     useEffect(() => {
         if (leadData?.getLeadById?.activities) {
@@ -563,13 +624,18 @@ export default function LeadDetail() {
                         user_id: userId,
                         stage: selectedStage || '',
                         status: selectedStatus || '',
-                        site_visit_date: dateObj.toISOString()
+                        site_visit_date: dateObj.toISOString(),
+                        ...(siteVisitProject ? {
+                            site_visit_project_id: siteVisitProject.id,
+                            site_visit_project_name: siteVisitProject.name
+                        } : {})
                     }
                 }
             })
             toast.success('Site visit scheduled successfully')
             setSiteVisitDate(undefined)
             setSiteVisitTime('')
+            setSiteVisitProject(null)
             setSiteVisitSheetOpen(false)
             refetchLead()
         } catch (error) {
@@ -960,6 +1026,30 @@ export default function LeadDetail() {
                                                 <form onSubmit={handleSiteVisit} className="space-y-4">
                                                     <div className="space-y-4">
                                                         <div className="flex flex-col space-y-2">
+                                                            <Label htmlFor="siteVisitProject">Project</Label>
+                                                            <Select
+                                                                value={siteVisitProject ? String(siteVisitProject.id) : ""}
+                                                                onValueChange={(val) => {
+                                                                    const proj = allProjects.find((p: any) => String(p.product_id) === val)
+                                                                    if (proj) setSiteVisitProject({ id: proj.product_id, name: proj.name })
+                                                                }}
+                                                            >
+                                                                <SelectTrigger id="siteVisitProject" className="w-full">
+                                                                    <SelectValue placeholder="Select a project" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectGroup>
+                                                                        <SelectLabel>Available Projects</SelectLabel>
+                                                                        {allProjects.map((p: any) => (
+                                                                            <SelectItem key={p.product_id} value={String(p.product_id)}>
+                                                                                {p.name} {p.location ? `— ${p.location}` : ''}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectGroup>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <div className="flex flex-col space-y-2">
                                                             <Label htmlFor="siteVisitDate">Date</Label>
                                                             <DatePicker date={siteVisitDate} setDate={setSiteVisitDate} />
                                                         </div>
@@ -986,11 +1076,18 @@ export default function LeadDetail() {
                                                                         <span className="text-xs text-muted-foreground">
                                                                             {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : 'N/A'}
                                                                         </span>
-                                                                        {activity.site_visit_date && (
-                                                                            <Badge variant="outline" className="text-xs">
-                                                                                Visit: {new Date(activity.site_visit_date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                                                                            </Badge>
-                                                                        )}
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            {activity.site_visit_project_name && (
+                                                                                <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                                                                    {activity.site_visit_project_name}
+                                                                                </Badge>
+                                                                            )}
+                                                                            {activity.site_visit_date && (
+                                                                                <Badge variant="outline" className="text-xs">
+                                                                                    Visit: {new Date(activity.site_visit_date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             ))
@@ -1008,7 +1105,7 @@ export default function LeadDetail() {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="my-2 bg-emerald-50 text-white hover:bg-emerald-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-400 relative">
+                                                    <Button variant="outline" size="icon" disabled={!canEdit} className="my-2 bg-emerald-50 text-white hover:bg-emerald-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-400 relative">
                                                         <ClipboardCheck className="size-4 sm:size-5 text-emerald-500 dark:text-emerald-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors" />
                                                         {(leadDetail?.site_visits_completed ?? 0) > 0 && (
                                                             <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full size-4 flex items-center justify-center">
@@ -1397,7 +1494,7 @@ export default function LeadDetail() {
                                 }
                             }}>
                                 <SheetTrigger asChild>
-                                    <Button variant="outline" size="sm" className="gap-1">
+                                    <Button variant="outline" size="sm" disabled={!canEdit} className="gap-1">
                                         <Plus className="size-4" />
                                         Add
                                     </Button>
@@ -1690,7 +1787,7 @@ export default function LeadDetail() {
                                                 <CarouselItem key={req._id} className="md:basis-1/2 lg:basis-1/4 border-r-3">
                                                     <div className="m-2 p-4 h-full relative group">
                                                         <h3 className="text-lg text-start font-semibold mb-2">{req.key} :</h3>
-                                                        <h6 className="text-sm bg-red-300 text-start">{req.value}</h6>
+                                                        <h6 className="text-sm text-start">{req.value}</h6>
                                                         <AlertDialog>
                                                             <AlertDialogTrigger asChild>
                                                                 <Button
@@ -1786,10 +1883,76 @@ export default function LeadDetail() {
                 </div>
                 <div className="xl:col-span-2 lg:col-span-3">
                     <Card className="border-2 shadow-none dark:bg-input/50 pt-2 gap-0 pb-0">
-                        <CardHeader className="mt-0 pt-0 pb-0 mb-2 ">
-                            <CardTitle className="text-center text-muted-foreground text-lg font-bold border-b">
-                                Considered Projects
-                            </CardTitle>
+                        <CardHeader className="mt-0 pt-0 pb-0 mb-2">
+                            <div className="flex items-center justify-between border-b pb-1">
+                                <CardTitle className="text-muted-foreground text-lg font-bold">
+                                    Considered Projects
+                                </CardTitle>
+                                {canEdit && (
+                                    <Sheet open={addProjectSheetOpen} onOpenChange={setAddProjectSheetOpen}>
+                                        <SheetTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
+                                        </SheetTrigger>
+                                        <SheetContent className="w-lg">
+                                            <SheetHeader>
+                                                <SheetTitle>Add Interested Project</SheetTitle>
+                                                <SheetDescription>
+                                                    Select a project to add to this lead's interested projects.
+                                                </SheetDescription>
+                                            </SheetHeader>
+                                            <div className="px-4 py-4">
+                                                <ScrollArea className="h-[500px]">
+                                                    {(() => {
+                                                        const addedIds = new Set((leadDetail?.interested_projects || []).map((ip: any) => ip.project_id));
+                                                        const available = allProjects.filter((p: any) => !addedIds.has(p.product_id));
+                                                        return available.length > 0 ? (
+                                                            <div className="space-y-2">
+                                                                {available.map((p: any) => (
+                                                                    <div key={p.product_id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
+                                                                        <div>
+                                                                            <p className="font-medium text-sm">{p.name}</p>
+                                                                            <p className="text-xs text-muted-foreground">{p.location || 'No location'} · {p.property || 'N/A'}</p>
+                                                                        </div>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            disabled={addingProject}
+                                                                            onClick={async () => {
+                                                                                setAddingProject(true);
+                                                                                try {
+                                                                                    await addInterestedProjectMutation({
+                                                                                        variables: {
+                                                                                            organization,
+                                                                                            leadId: leadDetail?._id,
+                                                                                            projectId: p.product_id,
+                                                                                            projectName: p.name
+                                                                                        }
+                                                                                    });
+                                                                                    toast.success(`Added ${p.name}`);
+                                                                                    refetchLead();
+                                                                                } catch (err: any) {
+                                                                                    toast.error(err?.message || 'Failed to add project');
+                                                                                } finally {
+                                                                                    setAddingProject(false);
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <Plus className="h-3.5 w-3.5 mr-1" /> Add
+                                                                        </Button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-sm text-muted-foreground text-center py-4">All projects have been added.</p>
+                                                        );
+                                                    })()}
+                                                </ScrollArea>
+                                            </div>
+                                        </SheetContent>
+                                    </Sheet>
+                                )}
+                            </div>
                         </CardHeader>
                         <CardContent className="flex justify-center mb-0">
                             <Carousel
@@ -1805,109 +1968,113 @@ export default function LeadDetail() {
                                 ]}
                                 orientation="vertical"
                                 className="h-full w-full" >
-                                <CarouselContent className="-mt-1 h-[200px]" >
-                                    <CarouselItem>
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <div className="col-span-1 flex items-center justify-center">
-                                                <img src="../assets/images/image.png" />
+                                <CarouselContent className="-mt-1 h-[200px]">
+                                    {(leadDetail?.interested_projects && (leadDetail.interested_projects as any[]).length > 0) ? (
+                                        (leadDetail.interested_projects as any[]).map((ip: any) => {
+                                            const projectDetail = allProjects.find((p: any) => p.product_id === ip.project_id);
+                                            return (
+                                                <CarouselItem key={ip.project_id}>
+                                                    <div className="grid grid-cols-3 gap-4">
+                                                        <div className="col-span-1 flex flex-col items-center justify-center gap-2">
+                                                            <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center">
+                                                                <MapPinCheck className="h-8 w-8 text-primary" />
+                                                            </div>
+                                                            <p className="text-sm font-semibold text-center leading-tight">{ip.project_name}</p>
+                                                            <Badge variant="outline" className="text-[10px]">{projectDetail?.property || 'N/A'}</Badge>
+                                                        </div>
+                                                        <div className="col-span-2">
+                                                            <div className="grid grid-cols-3 gap-4 mb-4">
+                                                                <div className="flex flex-col items-center">
+                                                                    <Label className="text-muted-foreground">Location</Label>
+                                                                    <p className="mt-1 text-sm text-center">{projectDetail?.location || '—'}</p>
+                                                                </div>
+                                                                <div className="flex flex-col items-center">
+                                                                    <Label className="text-muted-foreground">Type</Label>
+                                                                    <p className="mt-1 text-sm capitalize">{projectDetail?.property || '—'}</p>
+                                                                </div>
+                                                                <div className="flex flex-col items-center">
+                                                                    <Label className="text-muted-foreground">Lead Stage</Label>
+                                                                    <p className="mt-1 text-sm">{selectedStage || '—'}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-4 gap-4">
+                                                                <div className="flex flex-col items-center">
+                                                                    <Label className="text-muted-foreground">Book</Label>
+                                                                    <Button
+                                                                        className="mt-2 p-2"
+                                                                        size="sm"
+                                                                        variant="default"
+                                                                        onClick={() => {
+                                                                            const encodedId = encodeProjectId(ip.project_id)
+                                                                            navigate(`/project_showcase?id=${encodedId}`, {
+                                                                                state: {
+                                                                                    bookingLead: {
+                                                                                        _id: leadDetail?._id,
+                                                                                        profile_id: leadDetail?.profile_id,
+                                                                                        name: leadDetail?.profile?.name || 'Unknown',
+                                                                                        phone: leadDetail?.profile?.phone || '',
+                                                                                    }
+                                                                                }
+                                                                            })
+                                                                        }}
+                                                                    >
+                                                                        <BookOpen className="h-3.5 w-3.5 mr-1" /> Book
+                                                                    </Button>
+                                                                </div>
+                                                                <div className="flex flex-col items-center">
+                                                                    <Label className="text-muted-foreground">Meeting</Label>
+                                                                    <Button className="mt-2 p-2" size="sm">Schedule Visit</Button>
+                                                                </div>
+                                                                <div className="flex flex-col items-center">
+                                                                    <Label className="text-muted-foreground">Brochure</Label>
+                                                                    <Button className="mt-2 p-2" size="sm">Send</Button>
+                                                                </div>
+                                                                {canEdit && (
+                                                                    <div className="flex flex-col items-center">
+                                                                        <Label className="text-muted-foreground">Remove</Label>
+                                                                        <Button
+                                                                            variant="destructive"
+                                                                            size="sm"
+                                                                            className="mt-2 p-2"
+                                                                            disabled={removingProjectId === ip.project_id}
+                                                                            onClick={async () => {
+                                                                                setRemovingProjectId(ip.project_id);
+                                                                                try {
+                                                                                    await removeInterestedProjectMutation({
+                                                                                        variables: {
+                                                                                            organization,
+                                                                                            leadId: leadDetail?._id,
+                                                                                            projectId: ip.project_id
+                                                                                        }
+                                                                                    });
+                                                                                    toast.success(`Removed ${ip.project_name}`);
+                                                                                    refetchLead();
+                                                                                } catch (err: any) {
+                                                                                    toast.error(err?.message || 'Failed to remove project');
+                                                                                } finally {
+                                                                                    setRemovingProjectId(null);
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                                        </Button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </CarouselItem>
+                                            );
+                                        })
+                                    ) : (
+                                        <CarouselItem>
+                                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                                                <MapPinCheck className="h-10 w-10 mb-2 opacity-30" />
+                                                <p className="text-sm">No interested projects yet</p>
+                                                <p className="text-xs">Click + to add projects</p>
                                             </div>
-                                            <div className="col-span-2">
-                                                <div className="grid grid-cols-3 gap-4 mb-4">
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Meeting</Label>
-                                                        <Button className="mt-2 p-2" size="sm">Schedule Visit</Button>
-                                                    </div>
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Brochure</Label>
-                                                        <Button className="mt-2 p-2" size="sm">Send</Button>
-                                                    </div>
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Price Quote</Label>
-                                                        <Button className="mt-2 p-2" size="sm">Send Quote</Button>
-                                                    </div>
-                                                </div>
-                                                <div className="grid grid-cols-3 gap-4 mb-4">
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Lead Stage</Label>
-                                                        <p className="mt-1">Prospect</p>
-                                                    </div>
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Expected Close Date</Label>
-                                                        <time dateTime="2025-11-22">22/11/2025</time>
-                                                    </div>
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Revenue</Label>
-                                                        <p className="mt-1">10,000</p>
-                                                    </div>
-                                                </div>
-                                                <div className="grid grid-cols-3 gap-4">
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Lead Stage</Label>
-                                                        <p className="mt-1">Prospect</p>
-                                                    </div>
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Expected Close Date</Label>
-                                                        <time dateTime="2025-11-22">22/11/2025</time>
-                                                    </div>
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Revenue</Label>
-                                                        <p className="mt-1">10,000</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </CarouselItem>
-                                    <CarouselItem>
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <div className="col-span-1 flex items-center justify-center">
-                                                <img src="../assets/images/image.png" />
-                                            </div>
-                                            <div className="col-span-2">
-                                                <div className="grid grid-cols-3 gap-4 mb-4">
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Meeting</Label>
-                                                        <Button className="mt-2 p-2" size="sm">Schedule Visit</Button>
-                                                    </div>
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Brochure</Label>
-                                                        <Button className="mt-2 p-2" size="sm">Send</Button>
-                                                    </div>
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Price Quote</Label>
-                                                        <Button className="mt-2 p-2" size="sm">Send Quote</Button>
-                                                    </div>
-                                                </div>
-                                                <div className="grid grid-cols-3 gap-4 mb-4">
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Lead Stage</Label>
-                                                        <p className="mt-1">Prospect</p>
-                                                    </div>
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Expected Close Date</Label>
-                                                        <time dateTime="2025-11-22">22/11/2025</time>
-                                                    </div>
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Revenue</Label>
-                                                        <p className="mt-1">10,000</p>
-                                                    </div>
-                                                </div>
-                                                <div className="grid grid-cols-3 gap-4">
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Lead Stage</Label>
-                                                        <p className="mt-1">Prospect</p>
-                                                    </div>
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Expected Close Date</Label>
-                                                        <time dateTime="2025-11-22">22/11/2025</time>
-                                                    </div>
-                                                    <div className="flex flex-col items-center">
-                                                        <Label className="text-muted-foreground">Revenue</Label>
-                                                        <p className="mt-1">10,000</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </CarouselItem>
+                                        </CarouselItem>
+                                    )}
                                 </CarouselContent>
                             </Carousel>
                         </CardContent>

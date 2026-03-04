@@ -15,6 +15,8 @@ export interface Lead {
 
 export interface GetAllLeadsRequest {
     organization: string;
+    offset?: number;
+    limit?: number;
     filters?: {
         name?: string;
         source?: string;
@@ -28,4 +30,5 @@ export interface GetAllLeadsRequest {
 
 export interface GetAllLeadsResponse {
     leads: Lead[];
+    total: number;
 }

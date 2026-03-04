@@ -5,9 +5,9 @@ import type { Lead, GetAllLeadsRequest, GetAllLeadsResponse } from './types';
 const GRPC_BASE_URL = `${API_URL}/grpc`;
 
 /**
- * Fetch all leads using gRPC/Connect protocol
+ * Fetch leads with pagination using gRPC/Connect protocol
  */
-export async function getAllLeads(request: GetAllLeadsRequest): Promise<Lead[]> {
+export async function getAllLeads(request: GetAllLeadsRequest): Promise<{ leads: Lead[]; total: number }> {
     const response = await fetch(`${GRPC_BASE_URL}/lead/GetAllLeads`, {
         method: 'POST',
         headers: {
@@ -22,7 +22,7 @@ export async function getAllLeads(request: GetAllLeadsRequest): Promise<Lead[]> 
     }
 
     const data: GetAllLeadsResponse = await response.json();
-    return data.leads;
+    return { leads: data.leads, total: data.total };
 }
 
 // Export a client object for consistent API

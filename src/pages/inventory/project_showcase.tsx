@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useEffect, useState, useCallback } from "react"
+import { useSearchParams, useLocation } from "react-router-dom"
 import axios from "axios"
 import { API } from "@/config/api"
 import { getCookie } from "@/utils/cookies"
@@ -9,7 +9,8 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import LoaderScreen from "@/components/ui/loader-screen"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Building2, DoorOpen, ImageIcon, X, Maximize2, ChevronLeft, ChevronRight, Layers, Info } from "lucide-react"
+import { Building2, DoorOpen, ImageIcon, X, Maximize2, ChevronLeft, ChevronRight, Layers, Info, User } from "lucide-react"
+import { BookingDialog } from "@/components/booking-dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -36,6 +37,7 @@ interface Unit {
     facing: string
     status: 'available' | 'booked' | 'sold'
     position: { row: number; col: number }
+    bookedBy?: { leadName: string; leadUuid: string; phone: string }
 }
 
 interface Plot {
@@ -44,6 +46,7 @@ interface Plot {
     size: number
     facing: string
     status: 'available' | 'booked' | 'sold'
+    bookedBy?: { leadName: string; leadUuid: string; phone: string }
 }
 
 interface Floor {
@@ -72,7 +75,11 @@ interface Project {
 
 export default function ProjectShowcase() {
     const [searchParams] = useSearchParams()
+    const location = useLocation()
     const projectId = searchParams.get('id')
+
+    // Lead context from navigation state (passed from lead detail page)
+    const bookingLead = (location.state as any)?.bookingLead || null
 
     const [loading, setLoading] = useState(true)
     const [project, setProject] = useState<Project | null>(null)
@@ -81,6 +88,15 @@ export default function ProjectShowcase() {
     const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null)
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
     const [isGalleryOpen, setIsGalleryOpen] = useState(false)
+
+    // Booking dialog state
+    const [bookingOpen, setBookingOpen] = useState(false)
+    const [bookingTarget, setBookingTarget] = useState<{
+        unitId?: string
+        plotId?: string
+        blockId?: string
+        label: string
+    } | null>(null)
 
     // Keyboard navigation for gallery
     useEffect(() => {
@@ -132,42 +148,53 @@ export default function ProjectShowcase() {
         ])
     }, [setBreadcrumbs, project?.name])
 
-    useEffect(() => {
-        const fetchProject = async () => {
-            if (!projectId) {
-                setLoading(false)
-                return
-            }
-
-            // Decode the encoded project ID
-            const decodedId = decodeProjectId(projectId)
-            if (!decodedId) {
-                console.error('Invalid project ID')
-                setLoading(false)
-                return
-            }
-
-            const organization = getCookie('organization')
-            try {
-                const response = await axios.get(API.getProject(decodedId), {
-                    params: { organization }
-                })
-                const projectData = response.data.data
-                setProject(projectData)
-
-                // Auto-select first block if available
-                if (projectData.blocks && projectData.blocks.length > 0) {
-                    setSelectedBlock(projectData.blocks[0])
-                }
-            } catch (error) {
-                console.error('Failed to fetch project:', error)
-            } finally {
-                setLoading(false)
-            }
+    const fetchProject = useCallback(async () => {
+        if (!projectId) {
+            setLoading(false)
+            return
         }
 
-        fetchProject()
+        // Decode the encoded project ID
+        const decodedId = decodeProjectId(projectId)
+        if (!decodedId) {
+            console.error('Invalid project ID')
+            setLoading(false)
+            return
+        }
+
+        const organization = getCookie('organization')
+        try {
+            const response = await axios.get(API.getProject(decodedId), {
+                params: { organization }
+            })
+            const projectData = response.data.data
+            setProject(projectData)
+
+            // Auto-select first block if available
+            if (projectData.blocks && projectData.blocks.length > 0) {
+                setSelectedBlock(projectData.blocks[0])
+            }
+        } catch (error) {
+            console.error('Failed to fetch project:', error)
+        } finally {
+            setLoading(false)
+        }
     }, [projectId])
+
+    useEffect(() => {
+        fetchProject()
+    }, [fetchProject])
+
+    // Handle booking dialog open
+    const handleOpenBooking = useCallback((target: { unitId?: string; plotId?: string; blockId?: string; label: string }) => {
+        setBookingTarget(target)
+        setBookingOpen(true)
+    }, [])
+
+    // Refetch project after a booking is completed
+    const handleBookingComplete = useCallback(() => {
+        fetchProject()
+    }, [fetchProject])
 
     // Handle block change - reset floor selection and update images
     const handleBlockChange = (block: Block) => {
@@ -258,7 +285,7 @@ export default function ProjectShowcase() {
                                                     ? 'ring-2 ring-primary ring-offset-1'
                                                     : ''
                                                     } ${getStatusColor(plot.status)}`}
-                                                title={`Plot ${plot.plotNumber} - ${plot.size} sqft`}
+                                                title={`Plot ${plot.plotNumber} - ${plot.size} sqft${plot.bookedBy ? ` | Booked by: ${plot.bookedBy.leadName}` : ''}`}
                                             >
                                                 {plot.plotNumber}
                                             </button>
@@ -451,8 +478,34 @@ export default function ProjectShowcase() {
                                         </div>
                                     </div>
 
+                                    {/* Booked By Info */}
+                                    {selectedPlot.bookedBy && (selectedPlot.status === 'booked' || selectedPlot.status === 'sold') && (
+                                        <div className="w-full bg-muted/30 p-4 rounded-lg">
+                                            <p className="text-sm text-muted-foreground mb-2 font-medium">Booked By</p>
+                                            <div className="flex items-center gap-2">
+                                                <User className="h-4 w-4 text-muted-foreground" />
+                                                <span className="font-semibold">{selectedPlot.bookedBy.leadName}</span>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground mt-1">
+                                                ID: {selectedPlot.bookedBy.leadUuid}
+                                            </div>
+                                            {selectedPlot.bookedBy.phone && (
+                                                <div className="text-xs text-muted-foreground mt-0.5">
+                                                    Phone: {selectedPlot.bookedBy.phone}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     <div className="w-full pt-4">
-                                        <Button className="w-full" disabled={selectedPlot.status !== 'available'}>
+                                        <Button
+                                            className="w-full"
+                                            disabled={selectedPlot.status !== 'available'}
+                                            onClick={() => handleOpenBooking({
+                                                plotId: selectedPlot.plotId,
+                                                label: `Plot ${selectedPlot.plotNumber}`,
+                                            })}
+                                        >
                                             {selectedPlot.status === 'available' ? 'Book Now' : 'Not Available'}
                                         </Button>
                                     </div>
@@ -474,12 +527,28 @@ export default function ProjectShowcase() {
                                             <div
                                                 key={unit.unitId}
                                                 className={`p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${getStatusColor(unit.status)}`}
+                                                onClick={() => {
+                                                    if (unit.status === 'available' && selectedBlock) {
+                                                        handleOpenBooking({
+                                                            unitId: unit.unitId,
+                                                            blockId: selectedBlock.blockId,
+                                                            label: `Unit ${unit.unitNumber} (${selectedBlock.blockName})`,
+                                                        })
+                                                    }
+                                                }}
+                                                title={unit.status === 'available' ? `Click to book Unit ${unit.unitNumber}` : `Unit ${unit.unitNumber} - ${unit.status}`}
                                             >
                                                 <div className="text-center">
                                                     <div className="font-bold text-lg">{unit.unitNumber}</div>
                                                     <div className="text-xs">{unit.bhk} BHK</div>
                                                     <div className="text-xs opacity-70">{unit.size} sqft</div>
                                                     <div className="text-xs opacity-70">{unit.facing}</div>
+                                                    {unit.bookedBy && unit.status === 'booked' && (
+                                                        <div className="text-xs mt-1 pt-1 border-t border-current/20 opacity-80 truncate" title={unit.bookedBy.leadName}>
+                                                            <User className="h-3 w-3 inline mr-0.5" />
+                                                            {unit.bookedBy.leadName}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
@@ -588,6 +657,21 @@ export default function ProjectShowcase() {
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* Booking Dialog */}
+            {bookingTarget && project && (
+                <BookingDialog
+                    open={bookingOpen}
+                    onOpenChange={setBookingOpen}
+                    projectId={project.product_id}
+                    unitId={bookingTarget.unitId}
+                    plotId={bookingTarget.plotId}
+                    blockId={bookingTarget.blockId}
+                    unitLabel={bookingTarget.label}
+                    prefilledLead={bookingLead}
+                    onBookingComplete={handleBookingComplete}
+                />
+            )}
         </div>
     )
 }
