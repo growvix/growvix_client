@@ -64,7 +64,7 @@ const getColumns = (
             header: "CP Name",
             accessorFn: (row) => getFullName(row),
             cell: ({ row }) => (
-                <div className="font-medium capitalize">{getFullName(row.original)}</div>
+                <div className="font-medium capitalize">{getFullName(row.original) || "—"}</div>
             ),
         },
         {
