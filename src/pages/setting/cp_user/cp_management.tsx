@@ -29,26 +29,43 @@ import { API } from "@/config/api"
 import { getCookie } from "@/utils/cookies"
 
 // ─── Types ──────────────────────────────────────────────
+// Matches the backend profile sub-object structure
 interface CPData {
     _id: string
-    cpName: string
-    email: string
-    phone: string
-    address: string
+    profile: {
+        firstName: string
+        lastName: string
+        email: string
+        phone: string
+        address: string
+    }
+    company: string
     team: string
 }
 
-const emptyForm = { cpName: "", email: "", phone: "", address: "", team: "" }
+// Helper to build "First Last" display name
+const getFullName = (cp: CPData) =>
+    `${cp.profile?.firstName ?? ""} ${cp.profile?.lastName ?? ""}`.trim()
+
+const emptyForm = {
+    firstName: "", lastName: "",
+    email: "", phone: "", address: "",
+    password: "", company: "", team: "",
+}
 
 // ─── Column factory ──────────────────────────────────────
+// Table headers/UI kept identical — "CP Name", "Email", "Phone", "Address", "Team"
 const getColumns = (
     onEdit: (cp: CPData) => void,
     onDelete: (cp: CPData) => void
 ): ColumnDef<CPData>[] => [
         {
-            accessorKey: "cpName",
+            id: "cpName",
             header: "CP Name",
-            cell: ({ row }) => <div className="font-medium capitalize">{row.getValue("cpName")}</div>,
+            accessorFn: (row) => getFullName(row),
+            cell: ({ row }) => (
+                <div className="font-medium capitalize">{getFullName(row.original)}</div>
+            ),
         },
         {
             id: "email",
@@ -61,18 +78,20 @@ const getColumns = (
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             ),
-            accessorFn: (row) => row.email,
-            cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
+            accessorFn: (row) => row.profile?.email ?? "",
+            cell: ({ row }) => <div className="lowercase">{row.original.profile?.email ?? "—"}</div>,
         },
         {
-            accessorKey: "phone",
+            id: "phone",
             header: "Phone",
-            cell: ({ row }) => <div>{row.getValue("phone") || "—"}</div>,
+            accessorFn: (row) => row.profile?.phone ?? "",
+            cell: ({ row }) => <div>{row.original.profile?.phone || "—"}</div>,
         },
         {
-            accessorKey: "address",
+            id: "address",
             header: "Address",
-            cell: ({ row }) => <div>{row.getValue("address") || "—"}</div>,
+            accessorFn: (row) => row.profile?.address ?? "",
+            cell: ({ row }) => <div>{row.original.profile?.address || "—"}</div>,
         },
         {
             accessorKey: "team",
@@ -182,19 +201,21 @@ export default function CPManagement() {
         if (organization) fetchCpUsers()
     }, [fetchCpUsers, organization])
 
-    // ── Handlers ──
+    // ── Form input handler (shared for add form) ──
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { id, value } = e.target
-        const key = id === "cp-name" ? "cpName" : id
-        setFormData((prev) => ({ ...prev, [key]: value }))
+        setFormData((prev) => ({ ...prev, [id]: value }))
     }
 
+    // ── Edit form input handler ──
     const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { id, value } = e.target
-        const key = id === "edit-cp-name" ? "cpName" : id.replace("edit-", "")
+        // ids are prefixed with "edit-" — strip prefix to get field name
+        const key = id.startsWith("edit-") ? id.replace("edit-", "") : id
         setEditFormData((prev) => ({ ...prev, [key]: value }))
     }
 
+    // ── Create CP ──
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setSubmitting(true)
@@ -216,18 +237,23 @@ export default function CPManagement() {
         }
     }
 
+    // ── Open Edit Sheet (pre-fill from existing record) ──
     const handleEdit = (cp: CPData) => {
         setEditingCp(cp)
         setEditFormData({
-            cpName: cp.cpName,
-            email: cp.email,
-            phone: cp.phone,
-            address: cp.address,
-            team: cp.team || "",
+            firstName: cp.profile?.firstName ?? "",
+            lastName: cp.profile?.lastName ?? "",
+            email: cp.profile?.email ?? "",
+            phone: cp.profile?.phone ?? "",
+            address: cp.profile?.address ?? "",
+            password: "", // never pre-fill password
+            company: cp.company ?? "",
+            team: cp.team ?? "",
         })
         setEditOpen(true)
     }
 
+    // ── Save Edit ──
     const handleEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!editingCp) return
@@ -252,8 +278,9 @@ export default function CPManagement() {
         }
     }
 
+    // ── Delete CP ──
     const handleDelete = async (cp: CPData) => {
-        if (!confirm(`Are you sure you want to delete "${cp.cpName}"?`)) return
+        if (!confirm(`Are you sure you want to delete "${getFullName(cp)}"?`)) return
         try {
             const token = getCookie("token")
             await axios.delete(`${API.deleteCpUser(cp._id)}?organization=${organization}`, {
@@ -274,7 +301,7 @@ export default function CPManagement() {
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold tracking-tight">Channel Partners</h2>
 
-                {/* Add CP Sheet */}
+                {/* ── Add CP Sheet ── */}
                 <Sheet open={open} onOpenChange={setOpen}>
                     <SheetTrigger asChild>
                         <Button>Add CP</Button>
@@ -287,13 +314,23 @@ export default function CPManagement() {
                             </SheetDescription>
                         </SheetHeader>
                         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="cp-name">CP Name</Label>
-                                <Input id="cp-name" placeholder="Partner Name" value={formData.cpName} onChange={handleInputChange} required />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="firstName">First Name</Label>
+                                    <Input id="firstName" placeholder="John" value={formData.firstName} onChange={handleInputChange} required />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="lastName">Last Name</Label>
+                                    <Input id="lastName" placeholder="Doe" value={formData.lastName} onChange={handleInputChange} required />
+                                </div>
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="email">Email</Label>
                                 <Input id="email" type="email" placeholder="partner@example.com" value={formData.email} onChange={handleInputChange} required />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="password">Password</Label>
+                                <Input id="password" type="password" placeholder="••••••••" value={formData.password} onChange={handleInputChange} required />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="phone">Phone Number</Label>
@@ -311,6 +348,10 @@ export default function CPManagement() {
                                 />
                             </div>
                             <div className="grid gap-2">
+                                <Label htmlFor="company">Company (optional)</Label>
+                                <Input id="company" placeholder="Partner Ltd." value={formData.company} onChange={handleInputChange} />
+                            </div>
+                            <div className="grid gap-2">
                                 <Label htmlFor="team">Team (optional)</Label>
                                 <Input id="team" placeholder="Assigned Team" value={formData.team} onChange={handleInputChange} />
                             </div>
@@ -322,7 +363,7 @@ export default function CPManagement() {
                 </Sheet>
             </div>
 
-            {/* Edit CP Sheet */}
+            {/* ── Edit CP Sheet ── */}
             <Sheet open={editOpen} onOpenChange={setEditOpen}>
                 <SheetContent className="w-xl px-5">
                     <SheetHeader>
@@ -331,9 +372,15 @@ export default function CPManagement() {
                     </SheetHeader>
                     {editingCp && (
                         <form onSubmit={handleEditSubmit} className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="edit-cp-name">CP Name</Label>
-                                <Input id="edit-cp-name" placeholder="Partner Name" value={editFormData.cpName} onChange={handleEditInputChange} required />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-firstName">First Name</Label>
+                                    <Input id="edit-firstName" placeholder="John" value={editFormData.firstName} onChange={handleEditInputChange} required />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-lastName">Last Name</Label>
+                                    <Input id="edit-lastName" placeholder="Doe" value={editFormData.lastName} onChange={handleEditInputChange} required />
+                                </div>
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="edit-email">Email</Label>
@@ -355,6 +402,10 @@ export default function CPManagement() {
                                 />
                             </div>
                             <div className="grid gap-2">
+                                <Label htmlFor="edit-company">Company (optional)</Label>
+                                <Input id="edit-company" placeholder="Partner Ltd." value={editFormData.company} onChange={handleEditInputChange} />
+                            </div>
+                            <div className="grid gap-2">
                                 <Label htmlFor="edit-team">Team (optional)</Label>
                                 <Input id="edit-team" placeholder="Assigned Team" value={editFormData.team} onChange={handleEditInputChange} />
                             </div>
@@ -366,7 +417,7 @@ export default function CPManagement() {
                 </SheetContent>
             </Sheet>
 
-            {/* Table */}
+            {/* ── Table ── */}
             {loading ? (
                 <div className="flex items-center justify-center py-20">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
