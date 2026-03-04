@@ -34,6 +34,13 @@ export const API = {
     removeTeamMember: (teamId: string, userId: string) => `${API_URL}/api/teams/${teamId}/members/${userId}`,
     getTeamUsers: () => `${API_URL}/api/teams/users`,
 
+    // CP User endpoints
+    CP_USERS: `${API_URL}/api/cp-users`,
+    
+    getCpUser: (id: string) => `${API_URL}/api/cp-users/${id}`,
+    updateCpUser: (id: string) => `${API_URL}/api/cp-users/${id}`,
+    deleteCpUser: (id: string) => `${API_URL}/api/cp-users/${id}`,
+
     // Upload endpoints
     UPLOAD: {
         FLOOR_PLANS: `${API_URL}/api/upload/floor-plans`,
