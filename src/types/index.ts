@@ -115,6 +115,7 @@ export interface Lead {
   status?: string;
   exe_user?: string;
   exe_user_name?: string;
+  exe_user_department?: string;
   activities?: {
     id: string;
     user_id: string;

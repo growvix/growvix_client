@@ -55,7 +55,6 @@ import {
     TabsTrigger,
     TabsContent,
 } from "@/components/ui/tabs"
-import { decryptId } from "@/lib/crypto"
 import { encodeProjectId } from "@/utils/idEncoder"
 import { DatePicker } from "@/components/ui/date-picker"
 import { TimePicker } from "@/components/ui/time-picker"
@@ -116,6 +115,7 @@ const GET_LEAD_BY_ID = gql`
             updatedAt
             exe_user
             exe_user_name
+            exe_user_department
             site_visits_completed
             requirements {
                 _id
@@ -300,7 +300,7 @@ export default function LeadDetail() {
     const [leadDetail, setLeadDetail] = useState<Lead | null>(null)
     const { id } = useParams()
     const navigate = useNavigate()
-    const [leadId, setLeadId] = useState<string | undefined>(undefined);
+    const [, setLeadId] = useState<string | undefined>(undefined);
     const [stages, setStages] = useState<Stage[]>([])
     const [selectedStage, setSelectedStage] = useState<string | undefined>(undefined)
     const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined)
@@ -1860,17 +1860,17 @@ export default function LeadDetail() {
                                 <div className="col-span-1">
                                     <Avatar className="size-12 ring-2 ring-primary/20 shadow">
                                         <AvatarFallback className="text-xl sm:text-2xl font-semibold uppercase">
-                                            EN
+                                            {leadDetail?.exe_user_name ? leadDetail.exe_user_name.substring(0, 2) : 'UN'}
                                         </AvatarFallback>
                                     </Avatar>
                                 </div>
                                 <div className="col-span-5">
 
                                     <CardTitle className="text-lg sm:text-xl md:text-2xl font-semibold">
-                                        Executive name
+                                        {leadDetail?.exe_user_name || 'Unassigned'}
                                     </CardTitle>
-                                    <CardDescription className="text-xs sm:text-sm opacity-70 tracking-wide">
-                                        team presales
+                                    <CardDescription className="text-xs sm:text-sm opacity-70 tracking-wide capitalize">
+                                        {leadDetail?.exe_user_department ? `team ${leadDetail.exe_user_department}` : 'team pre-sales'}
                                     </CardDescription>
                                 </div>
                             </div>
