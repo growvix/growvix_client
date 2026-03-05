@@ -2,12 +2,9 @@
 
 import * as React from "react"
 import {
-  AudioWaveform,
   Calendar,
-  Command,
   Package,
   GalleryVerticalEnd,
-  Map,
   PieChart,
   Settings,
   Users,

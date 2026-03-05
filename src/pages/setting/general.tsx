@@ -100,6 +100,16 @@ export default function GeneralSetting() {
             hoverGradient: "from-orange-50/50 dark:from-orange-950/20",
             path: "/setting/channel_partner",
         },
+        {
+            title: "Manage CP Teams",
+            description: "Create new teams and manage team assignments.",
+            icon: UsersRound,
+            colorClass: "text-purple-600 dark:text-purple-400",
+            bgClass: "bg-purple-100 dark:bg-purple-900/40",
+            hoverBorder: "hover:border-purple-300 dark:hover:border-purple-800",
+            hoverGradient: "from-purple-50/50 dark:from-purple-950/20",
+            path: "/setting/cp_teams",
+        },
     ]
 
     const filteredCards = settingsCards.filter(
