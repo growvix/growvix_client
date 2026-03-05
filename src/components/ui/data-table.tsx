@@ -55,6 +55,7 @@ interface DataTableProps<TData, TValue> {
     filterColumn?: string
     filterPlaceholder?: string
     onRowClick?: (row: TData) => void
+    hidePagination?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -64,6 +65,7 @@ export function DataTable<TData, TValue>({
     filterColumn = "",
     filterPlaceholder = "Filter...",
     onRowClick,
+    hidePagination = false,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -147,26 +149,28 @@ export function DataTable<TData, TValue>({
                     </div>
                 )}
                 <div className="flex gap-4 ml-auto">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Rows per page</span>
-                        <Select
-                            value={`${table.getState().pagination.pageSize}`}
-                            onValueChange={(value) => {
-                                table.setPageSize(Number(value))
-                            }}
-                        >
-                            <SelectTrigger className="h-9 w-[80px]">
-                                <SelectValue placeholder={`${table.getState().pagination.pageSize}`} />
-                            </SelectTrigger>
-                            <SelectContent side="top">
-                                {PAGE_SIZE_OPTIONS.map((pageSize) => (
-                                    <SelectItem key={pageSize} value={`${pageSize}`}>
-                                        {pageSize}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {!hidePagination && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Rows per page</span>
+                            <Select
+                                value={`${table.getState().pagination.pageSize}`}
+                                onValueChange={(value) => {
+                                    table.setPageSize(Number(value))
+                                }}
+                            >
+                                <SelectTrigger className="h-9 w-[80px]">
+                                    <SelectValue placeholder={`${table.getState().pagination.pageSize}`} />
+                                </SelectTrigger>
+                                <SelectContent side="top">
+                                    {PAGE_SIZE_OPTIONS.map((pageSize) => (
+                                        <SelectItem key={pageSize} value={`${pageSize}`}>
+                                            {pageSize}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="ml-auto">
@@ -247,46 +251,48 @@ export function DataTable<TData, TValue>({
                     </TableBody>
                 </Table>
             </div>
-            <div className="flex items-center justify-between space-x-2 py-4">
-                <div className="text-sm text-muted-foreground">
-                    Showing {table.getRowModel().rows.length} of {data.length} entries
+            {!hidePagination && (
+                <div className="flex items-center justify-between space-x-2 py-4">
+                    <div className="text-sm text-muted-foreground">
+                        Showing {table.getRowModel().rows.length} of {data.length} entries
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Pagination>
+                            <PaginationContent>
+                                <PaginationItem>
+                                    <PaginationPrevious
+                                        onClick={() => table.previousPage()}
+                                        className={!table.getCanPreviousPage() ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                    />
+                                </PaginationItem>
+                                {getVisiblePages().map((page, index) =>
+                                    page === "ellipsis" ? (
+                                        <PaginationItem key={`ellipsis-${index}`}>
+                                            <PaginationEllipsis />
+                                        </PaginationItem>
+                                    ) : (
+                                        <PaginationItem key={page}>
+                                            <PaginationLink
+                                                onClick={() => table.setPageIndex(page as number)}
+                                                isActive={currentPage === page}
+                                                className="cursor-pointer"
+                                            >
+                                                {(page as number) + 1}
+                                            </PaginationLink>
+                                        </PaginationItem>
+                                    )
+                                )}
+                                <PaginationItem>
+                                    <PaginationNext
+                                        onClick={() => table.nextPage()}
+                                        className={!table.getCanNextPage() ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                    />
+                                </PaginationItem>
+                            </PaginationContent>
+                        </Pagination>
+                    </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                    <Pagination>
-                        <PaginationContent>
-                            <PaginationItem>
-                                <PaginationPrevious
-                                    onClick={() => table.previousPage()}
-                                    className={!table.getCanPreviousPage() ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                                />
-                            </PaginationItem>
-                            {getVisiblePages().map((page, index) =>
-                                page === "ellipsis" ? (
-                                    <PaginationItem key={`ellipsis-${index}`}>
-                                        <PaginationEllipsis />
-                                    </PaginationItem>
-                                ) : (
-                                    <PaginationItem key={page}>
-                                        <PaginationLink
-                                            onClick={() => table.setPageIndex(page as number)}
-                                            isActive={currentPage === page}
-                                            className="cursor-pointer"
-                                        >
-                                            {(page as number) + 1}
-                                        </PaginationLink>
-                                    </PaginationItem>
-                                )
-                            )}
-                            <PaginationItem>
-                                <PaginationNext
-                                    onClick={() => table.nextPage()}
-                                    className={!table.getCanNextPage() ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                                />
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
-                </div>
-            </div>
+            )}
         </div>
     )
 }

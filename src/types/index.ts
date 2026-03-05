@@ -179,6 +179,9 @@ export interface ProjectSummary {
   name: string;
   location: string;
   property: string;
+  img_location?: {
+    logo?: string;
+  };
 }
 
 export interface GetAllProjectsQueryResponse {
