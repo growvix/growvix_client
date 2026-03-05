@@ -14,14 +14,6 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Routes, Route, Navigate, Outlet, useNavigate } from "react-router-dom"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ModeToggle } from "@/components/mode-toggle"
@@ -71,6 +63,8 @@ import LeadStageAnalysis from "./pages/reports/leadStage_analysis";
 import GeneralReports from "./pages/reports/general_reports";
 import TeamManagement from "./pages/setting/team/team_management";
 import TeamDetailPage from "./pages/setting/team/team_detail";
+import CpTeamManagement from "./pages/setting/cp_team/cp_team_management";
+import CpTeamDetailPage from "./pages/setting/cp_team/cp_team_detail";
 import ImportLeads from "./pages/setting/import_data/import_leads";
 
 // Searchable pages index
@@ -328,6 +322,9 @@ export default function App() {
             <Route path="/lead_stage_analysis" element={<LeadStageAnalysis />} />
 
             <Route path="/setting/teams" element={<TeamManagement />} />
+            <Route path="/setting/teams/:id" element={<TeamDetailPage />} />
+            <Route path="/setting/cp_teams" element={<CpTeamManagement />} />
+            <Route path="/setting/cp_teams/:id" element={<CpTeamDetailPage />} />
             <Route path="/setting/channel_partner" element={<CPManagement />} />
             <Route path="/setting/import_leads" element={<ImportLeads />} />
 
