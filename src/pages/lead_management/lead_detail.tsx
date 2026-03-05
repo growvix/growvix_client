@@ -1868,7 +1868,7 @@ export default function LeadDetail() {
                                     </CardDescription>
                                 </div>
                             </div>
-                            <ScrollArea className="h-35 mt-5">
+                            <ScrollArea className="h-36 mt-5">
                                 <div className="text-sm flex gap-10"><FontAwesomeIcon icon={faWhatsapp} className="text-zinc-700 dark:text-zinc-300 pointer-events-none" style={{ fontSize: "1.2rem" }} /> <span className="ml-10">Whatsapp Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
                                 <Separator className="mt-1 mb-3" />
                                 <div className="text-sm flex gap-10"><Mail className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">mail Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
@@ -1891,8 +1891,8 @@ export default function LeadDetail() {
                                 {canEdit && (
                                     <Sheet open={addProjectSheetOpen} onOpenChange={setAddProjectSheetOpen}>
                                         <SheetTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                                                <Plus className="h-4 w-4" />
+                                            <Button variant="ghost" size="sm" className="gap-1">
+                                                <Plus className="size-4" />Add
                                             </Button>
                                         </SheetTrigger>
                                         <SheetContent className="w-lg">
@@ -2208,11 +2208,13 @@ export default function LeadDetail() {
                             <Tabs defaultValue="all" className="">
                                 <TabsList className="w-full mb-4 py-2 h-11 dark:bg-input/50">
                                     <TabsTrigger value="all">All</TabsTrigger>
-                                    <TabsTrigger value="Whatsapp">Whatsapp</TabsTrigger>
+                                    <TabsTrigger value="notes">Notes</TabsTrigger>
                                     <TabsTrigger value="Phonecall">Phonecall</TabsTrigger>
-                                    <TabsTrigger value="Site visit">Site visit</TabsTrigger>
+                                    <TabsTrigger value="Whatsapp">Whatsapp</TabsTrigger>
+                                    <TabsTrigger value="sms">SMS</TabsTrigger>
                                     <TabsTrigger value="Mail">Mail</TabsTrigger>
-                                    <TabsTrigger value="password">Password</TabsTrigger>
+                                    <TabsTrigger value="site_visit">Site visit</TabsTrigger>
+                                    <TabsTrigger value="follow_up">Follow up</TabsTrigger>
                                 </TabsList>
 
                                 <ScrollArea className="h-[75vh] pr-4">
@@ -2244,104 +2246,125 @@ export default function LeadDetail() {
                                                                     : isRequirement ? <ClipboardCheck className="size-5 text-zinc-700 dark:text-zinc-300" />
                                                                         : <Mail className="size-5 text-zinc-700 dark:text-zinc-300" />;
 
-                                                return (
-                                                    <TabsContent value="all" key={activity.id}>
-                                                        <li className="mb-6 ms-6">
-                                                            <span className="absolute flex items-center justify-center w-10 h-10 rounded-full -start-5 ring-4 ring-background bg-zinc-100 dark:bg-zinc-800">
-                                                                {iconEl}
-                                                            </span>
-                                                            <div className="relative overflow-hidden rounded-xl border bg-gray-100/20 dark:bg-neutral-950 shadow-sm transition-all duration-200 border-l-[3px] border-l-zinc-400 dark:border-l-zinc-600">
-                                                                {/* Header row */}
-                                                                <div className="flex items-center justify-between px-4 pt-3 pb-2">
-                                                                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                                                                        {isStageUpdate && 'Stage Update'}
-                                                                        {isStatusUpdate && 'Status Update'}
-                                                                        {isFollowUp && 'Follow Up'}
-                                                                        {isSiteVisit && (activity.site_visit_completed ? 'Site Visit ✓' : 'Site Visit')}
-                                                                        {isNotes && 'Note'}
-                                                                        {isRequirement && 'Requirement'}
-                                                                        {(!isStageUpdate && !isStatusUpdate && !isFollowUp && !isSiteVisit && !isNotes && !isRequirement) && 'Update'}
-                                                                    </span>
-                                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                                        <span className="hidden sm:inline">{activity.user_name || 'Unknown'}</span>
-                                                                        <span className="hidden sm:inline">·</span>
-                                                                        <time className="font-medium">{formattedDate}</time>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Content area */}
-                                                                <div className="px-4 pb-3">
-                                                                    {isStageUpdate && (
-                                                                        <p className="text-md">
-                                                                            Stage changed to
-                                                                            <span className="font-semibold text-zinc-900 dark:text-zinc-100 ml-1">{activity.stage}</span>
-                                                                        </p>
-                                                                    )}
-                                                                    {isStatusUpdate && (
-                                                                        <p className="text-md">
-                                                                            Status changed to
-                                                                            <span className="text-zinc-900 dark:text-zinc-100 ml-1">{activity.status}</span>
-                                                                        </p>
-                                                                    )}
-                                                                    {isFollowUp && (
-                                                                        <div className="space-y-2">
-                                                                            <p className="text-md">
-                                                                                Scheduled for
-                                                                                <span className="text-zinc-900 dark:text-zinc-100 ml-1">{new Date(activity.follow_up_date).toLocaleDateString()}</span>
-                                                                            </p>
-                                                                            <Separator />
-                                                                            <p className="text-md text-muted-foreground leading-relaxed">{activity.reason || 'N/A'}</p>
-                                                                        </div>
-                                                                    )}
-                                                                    {isNotes && (
-                                                                        <div className="space-y-2">
-                                                                            <Separator />
-                                                                            <p className="text-md text-muted-foreground leading-relaxed">{activity.notes || 'No content'}</p>
-                                                                        </div>
-                                                                    )}
-                                                                    {isRequirement && (
-                                                                        <div className="space-y-2">
-                                                                            <p className="text-md text-muted-foreground leading-relaxed font-semibold">{activity.notes}</p>
-                                                                        </div>
-                                                                    )}
-                                                                    {isSiteVisit && (
-                                                                        <div className="space-y-2">
-                                                                            <p className="text-md">
-                                                                                Scheduled for
-                                                                                <span className="text-zinc-900 dark:text-zinc-100 ml-1">{activity.site_visit_date ? new Date(activity.site_visit_date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}</span>
-                                                                            </p>
-                                                                            {activity.site_visit_completed ? (
-                                                                                <div className="space-y-1.5">
-                                                                                    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 text-xs">
-                                                                                        ✓ Visit Completed
-                                                                                    </Badge>
-                                                                                    <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-1">
-                                                                                        {activity.site_visit_completed_at && (
-                                                                                            <span>
-                                                                                                Completed on: <span className="font-medium text-zinc-700 dark:text-zinc-300">{new Date(activity.site_visit_completed_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                                                                                            </span>
-                                                                                        )}
-                                                                                        {activity.site_visit_completed_by_name && (
-                                                                                            <span>
-                                                                                                Marked by: <span className="font-medium text-zinc-700 dark:text-zinc-300">{activity.site_visit_completed_by_name}</span>
-                                                                                            </span>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </div>
-                                                                            ) : (
-                                                                                <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-xs">
-                                                                                    Pending
-                                                                                </Badge>
-                                                                            )}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                                <div className="sm:hidden px-4 pb-2">
-                                                                    <p className="text-xs text-muted-foreground">{activity.user_name || 'Unknown'}</p>
+                                                const activityContent = (
+                                                    <li className="mb-6 ms-6">
+                                                        <span className="absolute flex items-center justify-center w-10 h-10 rounded-full -start-5 ring-4 ring-background bg-zinc-100 dark:bg-zinc-800">
+                                                            {iconEl}
+                                                        </span>
+                                                        <div className="relative overflow-hidden rounded-xl border bg-gray-100/20 dark:bg-neutral-950 shadow-sm transition-all duration-200 border-l-[3px] border-l-zinc-400 dark:border-l-zinc-600">
+                                                            {/* Header row */}
+                                                            <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                                                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                                                                    {isStageUpdate && 'Stage Update'}
+                                                                    {isStatusUpdate && 'Status Update'}
+                                                                    {isFollowUp && 'Follow Up'}
+                                                                    {isSiteVisit && (activity.site_visit_completed ? 'Site Visit ✓' : 'Site Visit')}
+                                                                    {isNotes && 'Note'}
+                                                                    {isRequirement && 'Requirement'}
+                                                                    {(!isStageUpdate && !isStatusUpdate && !isFollowUp && !isSiteVisit && !isNotes && !isRequirement) && 'Update'}
+                                                                </span>
+                                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                    <span className="hidden sm:inline">{activity.user_name || 'Unknown'}</span>
+                                                                    <span className="hidden sm:inline">·</span>
+                                                                    <time className="font-medium">{formattedDate}</time>
                                                                 </div>
                                                             </div>
-                                                        </li>
-                                                    </TabsContent>
+
+                                                            {/* Content area */}
+                                                            <div className="px-4 pb-3">
+                                                                {isStageUpdate && (
+                                                                    <p className="text-md">
+                                                                        Stage changed to
+                                                                        <span className="font-semibold text-zinc-900 dark:text-zinc-100 ml-1">{activity.stage}</span>
+                                                                    </p>
+                                                                )}
+                                                                {isStatusUpdate && (
+                                                                    <p className="text-md">
+                                                                        Status changed to
+                                                                        <span className="text-zinc-900 dark:text-zinc-100 ml-1">{activity.status}</span>
+                                                                    </p>
+                                                                )}
+                                                                {isFollowUp && (
+                                                                    <div className="space-y-2">
+                                                                        <p className="text-md">
+                                                                            Scheduled for
+                                                                            <span className="text-zinc-900 dark:text-zinc-100 ml-1">{new Date(activity.follow_up_date).toLocaleDateString()}</span>
+                                                                        </p>
+                                                                        <Separator />
+                                                                        <p className="text-md text-muted-foreground leading-relaxed">{activity.reason || 'N/A'}</p>
+                                                                    </div>
+                                                                )}
+                                                                {isNotes && (
+                                                                    <div className="space-y-2">
+                                                                        <Separator />
+                                                                        <p className="text-md text-muted-foreground leading-relaxed">{activity.notes || 'No content'}</p>
+                                                                    </div>
+                                                                )}
+                                                                {isRequirement && (
+                                                                    <div className="space-y-2">
+                                                                        <p className="text-md text-muted-foreground leading-relaxed font-semibold">{activity.notes}</p>
+                                                                    </div>
+                                                                )}
+                                                                {isSiteVisit && (
+                                                                    <div className="space-y-2">
+                                                                        <p className="text-md">
+                                                                            Scheduled for
+                                                                            <span className="text-zinc-900 dark:text-zinc-100 ml-1">{activity.site_visit_date ? new Date(activity.site_visit_date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}</span>
+                                                                        </p>
+                                                                        {activity.site_visit_completed ? (
+                                                                            <div className="space-y-1.5">
+                                                                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 text-xs hover:bg-emerald-100 dark:hover:bg-emerald-500/10">
+                                                                                    ✓ Visit Completed
+                                                                                </Badge>
+                                                                                <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-1">
+                                                                                    {activity.site_visit_completed_at && (
+                                                                                        <span>
+                                                                                            Completed on: <span className="font-medium text-zinc-700 dark:text-zinc-300">{new Date(activity.site_visit_completed_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                                                                        </span>
+                                                                                    )}
+                                                                                    {activity.site_visit_completed_by_name && (
+                                                                                        <span>
+                                                                                            Marked by: <span className="font-medium text-zinc-700 dark:text-zinc-300">{activity.site_visit_completed_by_name}</span>
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20 text-xs">
+                                                                                Pending
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="sm:hidden px-4 pb-2">
+                                                                <p className="text-xs text-muted-foreground">{activity.user_name || 'Unknown'}</p>
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                );
+
+                                                return (
+                                                    <div key={activity.id} className="contents">
+                                                        <TabsContent value="all">
+                                                            {activityContent}
+                                                        </TabsContent>
+                                                        {isSiteVisit && (
+                                                            <TabsContent value="site_visit">
+                                                                {activityContent}
+                                                            </TabsContent>
+                                                        )}
+                                                        {isNotes && (
+                                                            <TabsContent value="notes">
+                                                                {activityContent}
+                                                            </TabsContent>
+                                                        )}
+                                                        {isFollowUp && (
+                                                            <TabsContent value="follow_up">
+                                                                {activityContent}
+                                                            </TabsContent>
+                                                        )}
+                                                    </div>
                                                 );
                                             })
                                         ) : (

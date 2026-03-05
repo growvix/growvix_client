@@ -26,6 +26,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import type { projects } from "@/types"
 import { DataTable } from "@/components/ui/data-table"
 
@@ -44,6 +46,12 @@ export default function ProjectListing() {
         property: "",
     })
     const [editLoading, setEditLoading] = React.useState(false)
+
+    // Booked Units State
+    const [bookedUnitsOpen, setBookedUnitsOpen] = React.useState(false)
+    const [bookedUnitsData, setBookedUnitsData] = React.useState<any[]>([])
+    const [bookedUnitsLoading, setBookedUnitsLoading] = React.useState(false)
+    const [bookedProjectName, setBookedProjectName] = React.useState('')
 
     const navigate = useNavigate()
 
@@ -146,6 +154,25 @@ export default function ProjectListing() {
         }
     }
 
+    const handleBookedUnitsClick = async (e: React.MouseEvent, project: projects) => {
+        e.stopPropagation()
+        setBookedProjectName(project.name)
+        setBookedUnitsOpen(true)
+        setBookedUnitsLoading(true)
+
+        try {
+            const org = getCookie('organization')
+            const response = await axios.get(API.getProjectBookedUnits(project.product_id) + `?organization=${org}`)
+            setBookedUnitsData(response.data.data || [])
+        } catch (err: any) {
+            console.error("Error fetching booked units:", err)
+            toast.error(err.response?.data?.message || "Failed to fetch booked units")
+            setBookedUnitsData([])
+        } finally {
+            setBookedUnitsLoading(false)
+        }
+    }
+
     const columns: ColumnDef<projects>[] = React.useMemo(() => [
         {
             accessorKey: "product_id",
@@ -199,12 +226,45 @@ export default function ProjectListing() {
                         variant="ghost"
                         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                     >
-                        Units
+                        Total Units
                         <ArrowUpDown />
                     </Button>
                 )
             },
             cell: ({ row }) => <div className="text-center font-medium">{row.getValue("totalUnits") ?? 0}</div>,
+        },
+        {
+            accessorKey: "bookedCount",
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    >
+                        Booked Units
+                        <ArrowUpDown />
+                    </Button>
+                )
+            },
+            cell: ({ row }) => {
+                const count = row.getValue("bookedCount") as number ?? 0
+                const project = row.original
+                return (
+                    <div className="text-center">
+                        {count > 0 ? (
+                            <Badge
+                                variant="secondary"
+                                className="cursor-pointer hover:bg-secondary/80 bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300"
+                                onClick={(e) => handleBookedUnitsClick(e, project)}
+                            >
+                                {count} Booked
+                            </Badge>
+                        ) : (
+                            <span className="text-muted-foreground">-</span>
+                        )}
+                    </div>
+                )
+            },
         },
         {
             accessorKey: "createdAt",
@@ -323,6 +383,71 @@ export default function ProjectListing() {
                             </Button>
                         </form>
                     )}
+                </SheetContent>
+            </Sheet>
+
+            <Sheet open={bookedUnitsOpen} onOpenChange={setBookedUnitsOpen}>
+                <SheetContent side="right" className="w-[400px] sm:w-[540px] px-0 flex flex-col">
+                    <SheetHeader className="px-6 pb-4 border-b">
+                        <SheetTitle>Booked Units - {bookedProjectName}</SheetTitle>
+                        <SheetDescription>
+                            List of all units and plots currently booked for this project.
+                        </SheetDescription>
+                    </SheetHeader>
+
+                    <ScrollArea className="flex-1 px-6">
+                        <div className="py-6 space-y-4">
+                            {bookedUnitsLoading ? (
+                                <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                    <p className="text-sm text-muted-foreground">Loading booked units...</p>
+                                </div>
+                            ) : bookedUnitsData.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-center">
+                                    <div className="bg-muted/50 p-4 rounded-full mb-4">
+                                        <Ban className="h-8 w-8 text-muted-foreground/60" />
+                                    </div>
+                                    <p className="text-sm font-medium text-muted-foreground">No booked units found</p>
+                                </div>
+                            ) : (
+                                <div className="grid gap-3">
+                                    {bookedUnitsData.map((unit, index) => (
+                                        <Card key={index} className="overflow-hidden">
+                                            <CardContent className="p-4 flex flex-col gap-2 relative">
+                                                <Badge className="absolute top-4 right-4 bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 pointer-events-none hover:bg-orange-100 border-none shadow-none">
+                                                    Booked
+                                                </Badge>
+
+                                                <div className="font-semibold">{unit.label}</div>
+
+                                                <div className="grid gap-1.5 text-sm mt-1">
+                                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                                        <span className="font-medium text-foreground w-16">Lead:</span>
+                                                        <span>{unit.bookedBy?.leadName || 'Unknown'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                                        <span className="font-medium text-foreground w-16">Phone:</span>
+                                                        <span>{unit.bookedBy?.phone || 'Unknown'}</span>
+                                                    </div>
+                                                    {unit.bookedBy?.userName && (
+                                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                                            <span className="font-medium text-foreground w-16">Booked By:</span>
+                                                            <span>{unit.bookedBy.userName}</span>
+                                                        </div>
+                                                    )}
+                                                    {unit.bookedBy?.bookedAt && (
+                                                        <div className="flex items-center gap-2 text-muted-foreground mt-1">
+                                                            <span className="text-xs">{new Date(unit.bookedBy.bookedAt).toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </ScrollArea>
                 </SheetContent>
             </Sheet>
         </div >

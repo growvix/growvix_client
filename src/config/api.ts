@@ -4,7 +4,7 @@
  */
 
 // Get API URL from environment, fallback to localhost for development
-export const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.10:5000';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.7:5000';
 
 // API endpoints
 export const API = {
@@ -23,6 +23,8 @@ export const API = {
     getProjectBlocks: (id: number | string) => `${API_URL}/api/projects/${id}/blocks`,
     updateProject: (id: number | string) => `${API_URL}/api/projects/${id}`,
     bookUnit: (projectId: number | string) => `${API_URL}/api/projects/${projectId}/book`,
+    getProjectBookedUnits: (projectId: number | string) => `${API_URL}/api/projects/${projectId}/booked`,
+    getAllBookedUnits: () => `${API_URL}/api/projects/booked/all`,
 
     // User specific endpoints
     getUser: (id: string) => `${API_URL}/api/users/${id}`,
@@ -37,7 +39,7 @@ export const API = {
 
     // CP User endpoints
     CP_USERS: `${API_URL}/api/cp-users`,
-    
+
     getCpUser: (id: string) => `${API_URL}/api/cp-users/${id}`,
     updateCpUser: (id: string) => `${API_URL}/api/cp-users/${id}`,
     deleteCpUser: (id: string) => `${API_URL}/api/cp-users/${id}`,
