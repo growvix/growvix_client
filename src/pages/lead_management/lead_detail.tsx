@@ -115,7 +115,6 @@ const GET_LEAD_BY_ID = gql`
             updatedAt
             exe_user
             exe_user_name
-            exe_user_department
             site_visits_completed
             requirements {
                 _id
@@ -2051,7 +2050,7 @@ export default function LeadDetail() {
                                         {leadDetail?.exe_user_name || 'Unassigned'}
                                     </CardTitle>
                                     <CardDescription className="text-xs sm:text-sm opacity-70 tracking-wide capitalize">
-                                        {leadDetail?.exe_user_department ? `team ${leadDetail.exe_user_department}` : 'team pre-sales'}
+                                        team pre-sales
                                     </CardDescription>
                                 </div>
                             </div>
