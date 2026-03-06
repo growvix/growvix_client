@@ -211,7 +211,7 @@ export default function AllLeads() {
   const [stages, setStages] = useState<Stage[]>([])
 
   // Pagination state
-  const PAGE_SIZE = 5
+  const PAGE_SIZE = 50
   const [page, setPage] = useState(1)
   const [totalLeads, setTotalLeads] = useState(0)
 
@@ -368,7 +368,6 @@ export default function AllLeads() {
           received: lead.received,
           exe_user_name: lead.exe_user_name || '',
         }))
-
         setLeads(transformedLeads)
         setTotalLeads(total)
       } catch (err) {
