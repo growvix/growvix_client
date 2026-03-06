@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import LoaderScreen from "@/components/ui/loader-screen"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Building2, DoorOpen, ImageIcon, X, Maximize2, ChevronLeft, ChevronRight, Layers, Info, User } from "lucide-react"
+import { Building2, DoorOpen, ImageIcon, X, Maximize2, ChevronLeft, ChevronRight, Layers, Info, User, CalendarClock, CalendarCheck, ExternalLink } from "lucide-react"
 import { BookingDialog } from "@/components/booking-dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
@@ -37,7 +37,14 @@ interface Unit {
     facing: string
     status: 'available' | 'booked' | 'sold'
     position: { row: number; col: number }
-    bookedBy?: { leadName: string; leadUuid: string; phone: string }
+    bookedBy?: {
+        leadName: string;
+        profileId?: string;
+        leadUuid?: string;
+        phone?: string;
+        userName?: string;
+        bookedAt?: string;
+    }
 }
 
 interface Plot {
@@ -46,7 +53,14 @@ interface Plot {
     size: number
     facing: string
     status: 'available' | 'booked' | 'sold'
-    bookedBy?: { leadName: string; leadUuid: string; phone: string }
+    bookedBy?: {
+        leadName: string;
+        profileId?: string;
+        leadUuid?: string;
+        phone?: string;
+        userName?: string;
+        bookedAt?: string;
+    }
 }
 
 interface Floor {
@@ -455,61 +469,81 @@ export default function ProjectShowcase() {
                     <CardContent className="flex-1 p-2">
                         {project.property === 'plots' ? (
                             selectedPlot ? (
-                                <div className="h-full flex flex-col items-center justify-center p-6 text-center space-y-4">
-                                    <div className={`p-4 rounded-full ${getStatusColor(selectedPlot.status).split(' ')[0]} bg-opacity-20`}>
-                                        <Layers className={`h-12 w-12 ${getStatusColor(selectedPlot.status).split(' ')[1]}`} />
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-3xl font-bold">Plot {selectedPlot.plotNumber}</h3>
-                                        <Badge className="mt-2 text-lg px-4 py-1" variant={selectedPlot.status === 'available' ? 'default' : 'secondary'}>
-                                            {selectedPlot.status.toUpperCase()}
-                                        </Badge>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4 w-full mt-6 bg-muted/30 p-4 rounded-lg">
-                                        <div className="text-left">
-                                            <p className="text-sm text-muted-foreground">Size</p>
-                                            <p className="font-semibold text-lg">{selectedPlot.size} sqft</p>
+                                <ScrollArea className="h-full">
+                                    <div className="flex flex-col items-center p-6 text-center space-y-3">
+                                        <div className={`p-4 rounded-full ${getStatusColor(selectedPlot.status).split(' ')[0]} bg-opacity-20`}>
+                                            <Layers className={`h-12 w-12 ${getStatusColor(selectedPlot.status).split(' ')[1]}`} />
                                         </div>
-                                        <div className="text-left">
-                                            <p className="text-sm text-muted-foreground">Facing</p>
-                                            <p className="font-semibold text-lg">{selectedPlot.facing || 'N/A'}</p>
-                                        </div>
-                                    </div>
 
-                                    {/* Booked By Info */}
-                                    {selectedPlot.bookedBy && (selectedPlot.status === 'booked' || selectedPlot.status === 'sold') && (
-                                        <div className="w-full bg-muted/30 p-4 rounded-lg">
-                                            <p className="text-sm text-muted-foreground mb-2 font-medium">Booked By</p>
-                                            <div className="flex items-center gap-2">
-                                                <User className="h-4 w-4 text-muted-foreground" />
-                                                <span className="font-semibold">{selectedPlot.bookedBy.leadName}</span>
+                                        <div>
+                                            <h3 className="text-3xl font-bold">Plot {selectedPlot.plotNumber}</h3>
+                                            <Badge className="mt-2 text-lg px-4 py-1" variant={selectedPlot.status === 'available' ? 'default' : 'secondary'}>
+                                                {selectedPlot.status.toUpperCase()}
+                                            </Badge>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4 w-full mt-6 bg-muted/30 p-4 rounded-lg">
+                                            <div className="text-left">
+                                                <p className="text-sm text-muted-foreground">Size</p>
+                                                <p className="font-semibold text-lg">{selectedPlot.size} sqft</p>
                                             </div>
-                                            <div className="text-xs text-muted-foreground mt-1">
-                                                ID: {selectedPlot.bookedBy.leadUuid}
+                                            <div className="text-left">
+                                                <p className="text-sm text-muted-foreground">Facing</p>
+                                                <p className="font-semibold text-lg">{selectedPlot.facing || 'N/A'}</p>
                                             </div>
-                                            {selectedPlot.bookedBy.phone && (
-                                                <div className="text-xs text-muted-foreground mt-0.5">
-                                                    Phone: {selectedPlot.bookedBy.phone}
+                                        </div>
+
+                                        {/* Booked By Info */}
+                                        {selectedPlot.bookedBy && (selectedPlot.status === 'booked' || selectedPlot.status === 'sold') && (
+                                            <div className="w-full mt-4 bg-muted/30 p-4 rounded-lg text-left space-y-3">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <div className="h-2 w-2 rounded-full shrink-0 bg-emerald-500" />
+                                                        <span className="font-semibold text-[15px] text-foreground truncate">
+                                                            {selectedPlot.bookedBy.leadName}
+                                                        </span>
+                                                    </div>
+                                                    <Badge className="bg-background hover:bg-muted text-foreground font-medium text-[10px] px-2 py-0.5 rounded-md shrink-0 border">
+                                                        {selectedPlot.status.charAt(0).toUpperCase() + selectedPlot.status.slice(1)}
+                                                    </Badge>
                                                 </div>
-                                            )}
-                                        </div>
-                                    )}
 
-                                    <div className="w-full pt-4">
-                                        <Button
-                                            className="w-full"
-                                            disabled={selectedPlot.status !== 'available'}
-                                            onClick={() => handleOpenBooking({
-                                                plotId: selectedPlot.plotId,
-                                                label: `Plot ${selectedPlot.plotNumber}`,
-                                            })}
-                                        >
-                                            {selectedPlot.status === 'available' ? 'Book Now' : 'Not Available'}
-                                        </Button>
+                                                <div className="grid grid-cols-2 gap-y-2 gap-x-1 text-xs text-muted-foreground pl-4">
+                                                    {selectedPlot.bookedBy.userName && (
+                                                        <div className="col-span-2 flex items-center gap-1.5 text-emerald-600 dark:text-emerald-500 mt-1">
+                                                            <CalendarCheck className="h-3.5 w-3.5 shrink-0" />
+                                                            <span className="truncate">{selectedPlot.status.charAt(0).toUpperCase() + selectedPlot.status.slice(1)} by {selectedPlot.bookedBy.userName}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="pl-2 pt-1">
+                                                    <a
+                                                        href={`/lead_detail/${selectedPlot.bookedBy.leadUuid || selectedPlot.bookedBy.profileId}`}
+                                                        className="inline-flex h-6 items-center text-[13px] font-medium gap-1 text-primary hover:text-primary/80 transition-colors p-0"
+                                                    >
+                                                        View Lead <ExternalLink className="h-3.5 w-3.5" />
+                                                    </a>
+                                                </div>
+                                                
+                                            </div>
+                                        )}
+                                        <div className="w-full pt-2">
+                                            <Button
+                                                className="w-full"
+                                                disabled={selectedPlot.status !== 'available'}
+                                                onClick={() => handleOpenBooking({
+                                                    plotId: selectedPlot.plotId,
+                                                    label: `Plot ${selectedPlot.plotNumber}`,
+                                                })}
+                                            >
+                                                {selectedPlot.status === 'available' ? 'Book Now' : 'Not Available'}
+                                            </Button>
+                                        </div>
+
+                                        
                                     </div>
-                                </div>
+                                </ScrollArea>
                             ) : (
                                 <div className="h-full flex items-center justify-center text-center text-muted-foreground">
                                     <div>

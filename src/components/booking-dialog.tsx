@@ -236,6 +236,8 @@ export function BookingDialog({
                 unitId: unitId || undefined,
                 plotId: plotId || undefined,
                 blockId: blockId || undefined,
+                userId: getCookie("user_id") || undefined,
+                userName: getCookie("first_name") ? `${getCookie("first_name")} ${getCookie("last_name") || ""}`.trim() : undefined,
             })
 
             toast.success(

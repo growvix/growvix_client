@@ -136,10 +136,27 @@ interface UserData {
   teams: { teamId: string; teamName: string }[]
 }
 
+interface BookedUnitEntry {
+  id: string
+  label: string
+  type: string
+  bookedBy: {
+    leadName: string
+    leadUuid: string
+    phone: string
+    userId?: string
+    userName?: string
+    bookedAt?: string
+  }
+  project_name: string
+  project_id: number
+}
+
 // ─── Statuses for CalendarItem ───────────────────────────
 const statuses = {
   scheduled: { id: "scheduled", name: "Scheduled", color: "#6366F1" },
   completed: { id: "completed", name: "Completed", color: "#10B981" },
+  booked: { id: "booked", name: "Booked", color: "#F59E0B" } // Amber
 }
 
 // ─── Helpers ─────────────────────────────────────────────
@@ -302,25 +319,64 @@ export default function UserCalendar() {
   })
   const allProjects = projectsData?.getAllProjects || []
 
-  // ── Group visits by date ──
-  const visitsByDate = useMemo(() => {
-    const map = new Map<string, SiteVisitEntry[]>()
+  // ── Fetch Booked Units ──
+  const [bookedUnits, setBookedUnits] = useState<BookedUnitEntry[]>([])
+  const [bookedLoading, setBookedLoading] = useState(false)
+
+  useEffect(() => {
+    const fetchBookedUnits = async () => {
+      if (!organization) return
+      setBookedLoading(true)
+      try {
+        const token = getCookie("token")
+        let url = `${API.getAllBookedUnits()}?organization=${organization}`
+        if (selectedTeamId !== "all") url += `&teamId=${selectedTeamId}`
+        if (selectedUserId !== "all") url += `&userId=${selectedUserId}`
+        if (selectedProjectId !== "all") url += `&projectId=${selectedProjectId}`
+
+        const res = await axios.get(url, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        setBookedUnits(res.data.data || [])
+      } catch (err) {
+        console.error("Failed to fetch booked units:", err)
+      } finally {
+        setBookedLoading(false)
+      }
+    }
+    fetchBookedUnits()
+  }, [organization, selectedTeamId, selectedUserId, selectedProjectId])
+
+  // ── Group items by date ──
+  const itemsByDate = useMemo(() => {
+    const map = new Map<string, { visits: SiteVisitEntry[], booked: BookedUnitEntry[] }>()
+
     for (const v of visits) {
       const key = getDateKey(v.site_visit_date)
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(v)
+      if (!map.has(key)) map.set(key, { visits: [], booked: [] })
+      map.get(key)!.visits.push(v)
     }
+
+    for (const b of bookedUnits) {
+      if (!b.bookedBy?.bookedAt) continue
+      const key = getDateKey(b.bookedBy.bookedAt)
+      if (!map.has(key)) map.set(key, { visits: [], booked: [] })
+      map.get(key)!.booked.push(b)
+    }
+
     return map
-  }, [visits])
+  }, [visits, bookedUnits])
 
   // ── Build calendar features (items that appear on the grid) ──
   const calendarFeatures = useMemo(() => {
     const features: any[] = []
-    visitsByDate.forEach((dayVisits, dateKey) => {
+    itemsByDate.forEach((dayItems, dateKey) => {
       const [y, m, d] = dateKey.split("-").map(Number)
       const date = new Date(y, m - 1, d)
-      const scheduled = dayVisits.filter((v) => !v.site_visit_completed).length
-      const completed = dayVisits.filter((v) => v.site_visit_completed).length
+
+      const scheduled = dayItems.visits.filter((v) => !v.site_visit_completed).length
+      const completed = dayItems.visits.filter((v) => v.site_visit_completed).length
+      const bookedCount = dayItems.booked.length
 
       if (scheduled > 0) {
         features.push({
@@ -340,19 +396,29 @@ export default function UserCalendar() {
           status: statuses.completed,
         })
       }
+      if (bookedCount > 0) {
+        features.push({
+          id: `booked-${dateKey}`,
+          name: `Booked [${bookedCount}]`,
+          startAt: new Date(date),
+          endAt: new Date(date),
+          status: statuses.booked,
+        })
+      }
     })
     return features
-  }, [visitsByDate])
+  }, [itemsByDate])
 
-  // ── Selected day visits ──
-  const selectedDayVisits = useMemo(() => {
-    if (!selectedDate) return []
-    return visitsByDate.get(selectedDate) || []
-  }, [selectedDate, visitsByDate])
+  // ── Selected day items ──
+  const selectedDayItems = useMemo(() => {
+    if (!selectedDate) return { visits: [], booked: [] }
+    return itemsByDate.get(selectedDate) || { visits: [], booked: [] }
+  }, [selectedDate, itemsByDate])
 
   // ── Stats ──
   const totalScheduled = visits.filter((v) => !v.site_visit_completed).length
   const totalCompleted = visits.filter((v) => v.site_visit_completed).length
+  const totalBooked = bookedUnits.length
 
   const hasFilters = selectedTeamId !== "all" || selectedUserId !== "all" || selectedProjectId !== "all"
 
@@ -400,19 +466,19 @@ export default function UserCalendar() {
         </div>
         <div className="flex items-center gap-3 rounded-lg border p-3 bg-white dark:bg-zinc-900 shadow-sm">
           <div className="rounded-full bg-amber-100 dark:bg-amber-900/40 p-2">
-            <User className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <Check className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">total Leads</p>
+            <p className="text-xs text-muted-foreground">Booked Units</p>
             <p className="text-lg font-bold">
-              {new Set(visits.map((v) => v.lead_id)).size}
+              {totalBooked}
             </p>
           </div>
         </div>
       </div>
 
       {/* ── Calendar ── */}
-      {loading && !data ? (
+      {(loading && !data) || bookedLoading ? (
         <div className="space-y-3">
           <Skeleton className="h-10 w-full rounded-lg" />
           <Skeleton className="h-[500px] w-full rounded-lg" />
@@ -585,6 +651,10 @@ export default function UserCalendar() {
             <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: statuses.completed.color }} />
             Completed
           </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: statuses.booked.color }} />
+            Booked
+          </div>
           <span className="ml-auto">Click on a day's item to view details</span>
         </div>
       )}
@@ -595,103 +665,167 @@ export default function UserCalendar() {
           <SheetHeader className="pb-4 border-b">
             <SheetTitle className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-indigo-600" />
-              Site Visits
+              Day Details
             </SheetTitle>
             <SheetDescription >
               {selectedDate ? formatDate(selectedDate + "T00:00:00") : ""}
               {" · "}
-              {selectedDayVisits.length} visit{selectedDayVisits.length !== 1 ? "s" : ""}
+              {selectedDayItems.visits.length + selectedDayItems.booked.length} activity{selectedDayItems.visits.length + selectedDayItems.booked.length !== 1 ? "s" : ""}
             </SheetDescription>
           </SheetHeader>
 
           {/* Summary badges */}
-          {selectedDayVisits.length > 0 && (
-            <div className="flex gap-2 pt-4 px-1">
-              <Badge variant="secondary" className="gap-1 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
-                <CalendarClock className="h-3 w-3" />
-                {selectedDayVisits.filter((v) => !v.site_visit_completed).length} Scheduled
-              </Badge>
-              <Badge variant="secondary" className="gap-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                <CalendarCheck className="h-3 w-3" />
-                {selectedDayVisits.filter((v) => v.site_visit_completed).length} Completed
-              </Badge>
+          {(selectedDayItems.visits.length > 0 || selectedDayItems.booked.length > 0) && (
+            <div className="flex flex-wrap gap-2 pt-4 px-1">
+              {selectedDayItems.visits.filter((v) => !v.site_visit_completed).length > 0 && (
+                <Badge variant="secondary" className="gap-1 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                  <CalendarClock className="h-3 w-3" />
+                  {selectedDayItems.visits.filter((v) => !v.site_visit_completed).length} Scheduled
+                </Badge>
+              )}
+              {selectedDayItems.visits.filter((v) => v.site_visit_completed).length > 0 && (
+                <Badge variant="secondary" className="gap-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                  <CalendarCheck className="h-3 w-3" />
+                  {selectedDayItems.visits.filter((v) => v.site_visit_completed).length} Completed
+                </Badge>
+              )}
+              {selectedDayItems.booked.length > 0 && (
+                <Badge variant="secondary" className="gap-1 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                  <Check className="h-3 w-3" />
+                  {selectedDayItems.booked.length} Booked Units
+                </Badge>
+              )}
             </div>
           )}
 
-          {/* Visit list */}
+          {/* Activity list */}
           <div className="space-y-3 pt-4">
-            {selectedDayVisits.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No visits on this day</p>
+            {selectedDayItems.visits.length === 0 && selectedDayItems.booked.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No activities on this day</p>
             ) : (
-              selectedDayVisits.map((visit) => (
-                <div
-                  key={visit.id}
-                  className="rounded-lg border p-3 space-y-2 hover:bg-accent/50 transition-colors"
-                >
-                  {/* Lead name + status badge */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div
-                        className="h-2.5 w-2.5 rounded-full shrink-0"
-                        style={{
-                          backgroundColor: visit.site_visit_completed
-                            ? statuses.completed.color
-                            : statuses.scheduled.color,
-                        }}
-                      />
-                      <span className="font-medium truncate">
-                        {visit.lead_name}
-                      </span>
+              <>
+                {/* Render Booked Units First */}
+                {selectedDayItems.booked.map((unit) => (
+                  <div
+                    key={`booked-${unit.id}`}
+                    className="rounded-lg border p-3 space-y-2 hover:bg-accent/50 transition-colors bg-orange-50/30 dark:bg-orange-950/20"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: statuses.booked.color }}
+                        />
+                        <span className="font-medium truncate">
+                          {unit.bookedBy?.leadName || "Unknown"}
+                        </span>
+                      </div>
+                      <Badge
+                        className="bg-amber-600 hover:bg-amber-700 text-white text-[10px] shrink-0"
+                      >
+                        Booked
+                      </Badge>
                     </div>
-                    <Badge
-                      variant={visit.site_visit_completed ? "default" : "outline"}
-                      className={
-                        visit.site_visit_completed
-                          ? "bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] shrink-0"
-                          : "text-[10px] shrink-0"
-                      }
-                    >
-                      {visit.site_visit_completed ? "Completed" : "Scheduled"}
-                    </Badge>
-                  </div>
 
-                  {/* Details */}
-                  <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground pl-5">
-                    <div className="flex items-center gap-1">
-                      <CalendarClock className="h-3 w-3" />
-                      {formatTime(visit.site_visit_date)}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      {visit.user_name}
-                    </div>
-                    {visit.site_visit_project_name && (
+                    <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground pl-5">
+                      <div className="flex items-center gap-1">
+                        <CalendarClock className="h-3 w-3" />
+                        {unit.bookedBy?.bookedAt ? formatTime(unit.bookedBy.bookedAt) : "N/A"}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {unit.bookedBy?.userName || "Unknown user"}
+                      </div>
                       <div className="col-span-2 flex items-center gap-1 text-blue-600 dark:text-blue-400">
                         <Building2 className="h-3 w-3" />
-                        {visit.site_visit_project_name}
+                        {unit.project_name} - {unit.label}
                       </div>
-                    )}
-                    {visit.site_visit_completed && visit.site_visit_completed_by_name && (
-                      <div className="col-span-2 flex items-center gap-1 text-emerald-600">
-                        <CalendarCheck className="h-3 w-3" />
-                        Completed by {visit.site_visit_completed_by_name}
-                      </div>
-                    )}
-                  </div>
+                    </div>
 
-                  {/* Link to lead */}
-                  <div className="pl-5">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-xs gap-1 text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 p-0"
-                      onClick={() => navigate(`/lead_detail/${visit.lead_id}`)}
-                    >
-                      View Lead <ExternalLink className="h-3 w-3" />
-                    </Button>
+                    <div className="pl-5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs gap-1 text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 p-0"
+                        onClick={() => navigate(`/lead_detail/${unit.bookedBy?.leadUuid}`)}
+                      >
+                        View Lead <ExternalLink className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+
+                {/* Render Site Visits */}
+                {selectedDayItems.visits.map((visit) => (
+                  <div
+                    key={`visit-${visit.id}`}
+                    className="rounded-lg border p-3 space-y-2 hover:bg-accent/50 transition-colors"
+                  >
+                    {/* Lead name + status badge */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{
+                            backgroundColor: visit.site_visit_completed
+                              ? statuses.completed.color
+                              : statuses.scheduled.color,
+                          }}
+                        />
+                        <span className="font-medium truncate">
+                          {visit.lead_name}
+                        </span>
+                      </div>
+                      <Badge
+                        variant={visit.site_visit_completed ? "default" : "outline"}
+                        className={
+                          visit.site_visit_completed
+                            ? "bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] shrink-0"
+                            : "text-[10px] shrink-0"
+                        }
+                      >
+                        {visit.site_visit_completed ? "Completed" : "Scheduled"}
+                      </Badge>
+                    </div>
+
+                    {/* Details */}
+                    <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground pl-5">
+                      <div className="flex items-center gap-1">
+                        <CalendarClock className="h-3 w-3" />
+                        {formatTime(visit.site_visit_date)}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {visit.user_name}
+                      </div>
+                      {visit.site_visit_project_name && (
+                        <div className="col-span-2 flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                          <Building2 className="h-3 w-3" />
+                          {visit.site_visit_project_name}
+                        </div>
+                      )}
+                      {visit.site_visit_completed && visit.site_visit_completed_by_name && (
+                        <div className="col-span-2 flex items-center gap-1 text-emerald-600">
+                          <CalendarCheck className="h-3 w-3" />
+                          Completed by {visit.site_visit_completed_by_name}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Link to lead */}
+                    <div className="pl-5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs gap-1 text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 p-0"
+                        onClick={() => navigate(`/lead_detail/${visit.lead_id}`)}
+                      >
+                        View Lead <ExternalLink className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </>
             )}
           </div>
         </SheetContent>
