@@ -232,6 +232,7 @@ export function BookingDialog({
                 organization,
                 leadName: selectedLead.name,
                 leadUuid: selectedLead._id,
+                profileId: selectedLead.profile_id,
                 phone: phoneNumber,
                 unitId: unitId || undefined,
                 plotId: plotId || undefined,

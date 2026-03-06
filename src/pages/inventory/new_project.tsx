@@ -3,13 +3,12 @@ import axios from 'axios'
 import { API } from '@/config/api'
 import { toast } from 'sonner'
 import { useBreadcrumb } from "@/context/breadcrumb-context"
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import LoaderScreen from '@/components/ui/loader-screen'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Trash2, Plus, Building2, Layers, DoorOpen, X, Copy, Edit2, Info, Ban } from 'lucide-react'
+import { Trash2, Plus, Building2, Layers, DoorOpen, X, Copy, Edit2 } from 'lucide-react'
 import {
     Select,
     SelectContent,
@@ -31,7 +30,14 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
-import { getCookie, getPermissions } from '@/utils/cookies'
+
+// Helper function to get cookie value
+const getCookie = (name: string): string => {
+    const value = `; ${document.cookie}`
+    const parts = value.split(`; ${name}=`)
+    if (parts.length === 2) return parts.pop()?.split(';').shift() || ''
+    return ''
+}
 
 // Types
 interface Unit {
@@ -170,9 +176,6 @@ export default function NewProject() {
     const [blockConfigs, setBlockConfigs] = useState<Record<string, BlockConfig>>({})
     const { setBreadcrumbs } = useBreadcrumb()
 
-    const userPermissions = getPermissions()
-    const canCreateProject = userPermissions.includes("create_project")
-
     // Floor editor modal state
     const [floorEditorOpen, setFloorEditorOpen] = useState(false)
     const [editingFloor, setEditingFloor] = useState<{ blockId: string; floorNumber: number } | null>(null)
@@ -273,21 +276,7 @@ export default function NewProject() {
     useEffect(() => {
         setBreadcrumbs([
             { label: "Project Listing", href: "/project_listing" },
-            { label: "New Project" },
-            {
-                label: (
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Info className="h-4.5 w-4.5" />
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
-                                <p className="font-medium">Create Project</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                )
-            },
+            { label: "New Project" }
         ])
     }, [setBreadcrumbs])
 
@@ -507,35 +496,52 @@ export default function NewProject() {
     }
 
     // Handle floor plan image upload
-    const handleImageUpload = async (blockId: string, files: FileList | null) => {
-        if (!files || files.length === 0) return
+   const  handleImageUpload = async (blockId: string, files: FileList | null) => {
+    if (!files || files.length === 0) return
 
-        // Check max 5 images limit
-        const block = formData.blocks.find(b => b.blockId === blockId)
-        const currentCount = block?.floorPlanImages?.length || 0
-        if (currentCount + files.length > 5) {
-            toast.error('Maximum 5 images allowed per block')
-            return
-        }
+    const fileArray = Array.from(files)
 
-        const formDataUpload = new FormData()
-        Array.from(files).forEach(file => {
-            formDataUpload.append('images', file)
+    // ✅ Allow only SVG files
+    const nonSvgFile = fileArray.find(
+        file => file.type !== "image/svg+xml" && !file.name.toLowerCase().endsWith(".svg")
+    )
+
+    if (nonSvgFile) {
+        toast.error("Only SVG images are allowed")
+        return
+    }
+
+    // Check max 5 images limit
+    const block = formData.blocks.find(b => b.blockId === blockId)
+    const currentCount = block?.floorPlanImages?.length || 0
+    if (currentCount + fileArray.length > 5) {
+        toast.error('Maximum 5 images allowed per block')
+        return
+    }
+
+    const formDataUpload = new FormData()
+    fileArray.forEach(file => {
+        formDataUpload.append('images', file)
+    })
+
+    try {
+        const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
+            headers: { 'Content-Type': 'multipart/form-data' }
         })
 
-        try {
-            const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            })
+        const newUrls = response.data.data.urls
+        updateBlock(
+            blockId,
+            'floorPlanImages',
+            [...(block?.floorPlanImages || []), ...newUrls].slice(0, 5)
+        )
 
-            const newUrls = response.data.data.urls
-            updateBlock(blockId, 'floorPlanImages', [...(block?.floorPlanImages || []), ...newUrls].slice(0, 5))
-            toast.success(`${newUrls.length} image(s) uploaded successfully`)
-        } catch (error: any) {
-            console.error('Failed to upload images:', error)
-            toast.error(error.response?.data?.message || 'Failed to upload images')
-        }
+        toast.success(`${newUrls.length} SVG image(s) uploaded successfully`)
+    } catch (error: any) {
+        console.error('Failed to upload images:', error)
+        toast.error(error.response?.data?.message || 'Failed to upload images')
     }
+}
 
     // Handle plot layout image upload
     const handleLayoutImageUpload = async (files: FileList | null) => {
@@ -627,22 +633,6 @@ export default function NewProject() {
 
     if (pageLoading) {
         return <LoaderScreen />
-    }
-
-    if (!canCreateProject) {
-        return (
-            <div className="flex flex-1 flex-col items-center justify-center py-20 px-4 mt-20">
-                <div className="flex flex-col items-center justify-center max-w-3xl w-full p-20 border border-dashed rounded-2xl bg-card min-h-[400px]">
-                    <div className="flex items-center justify-center w-20 h-20 rounded-full bg-muted/30 border mb-8">
-                        <Ban className="h-10 w-10 text-muted-foreground/70" />
-                    </div>
-                    <h2 className="text-2xl font-bold tracking-tight mb-4">Access Denied</h2>
-                    <p className="text-base text-muted-foreground text-center leading-relaxed max-w-md gap-4">
-                        This page is restricted. You don't have permission to create projects.
-                    </p>
-                </div>
-            </div>
-        )
     }
 
     return (
@@ -856,8 +846,8 @@ export default function NewProject() {
 
 
                             {formData.property !== 'plots' && (
-                                <Card>
-                                    <CardHeader className="pb-1">
+                                <Card className="mb-4">
+                                    <CardHeader className="pb-3">
                                         <div className="flex items-center justify-between">
                                             <div>
                                                 <CardTitle className="flex items-center gap-2">
@@ -880,10 +870,10 @@ export default function NewProject() {
                                                 <p className="text-sm">Click "Add Block" to get started</p>
                                             </div>
                                         ) : (
-                                            <ScrollArea className="h-[74vh] pr-4">
+                                            <ScrollArea className="h-[70vh] pr-4">
                                                 <Accordion type="multiple" value={expandedBlocks} onValueChange={setExpandedBlocks}>
                                                     {formData.blocks.map((block) => (
-                                                        <AccordionItem key={block.blockId} value={block.blockId} className="border-2 active:border-primary focus:border-primary rounded-lg mb-3 px-4">
+                                                        <AccordionItem key={block.blockId} value={block.blockId} className="border rounded-lg mb-3 px-4">
                                                             <AccordionTrigger className="hover:no-underline">
                                                                 <div className="flex items-center gap-3">
                                                                     <Building2 className="h-5 w-5 text-primary" />
@@ -909,12 +899,12 @@ export default function NewProject() {
                                                                             <Label>Floor Plan Images (Max 5)</Label>
                                                                             <div className="flex gap-2">
                                                                                 <Input
-                                                                                    type="file"
-                                                                                    accept="image/*"
-                                                                                    multiple
-                                                                                    onChange={e => handleImageUpload(block.blockId, e.target.files)}
-                                                                                    className="flex-1"
-                                                                                />
+  type="file"
+  accept=".svg,image/svg+xml"
+  multiple
+  onChange={e => handleImageUpload(block.blockId, e.target.files)}
+  className="flex-1"
+/>
                                                                             </div>
                                                                             {block.floorPlanImages.length > 0 && (
                                                                                 <ScrollArea className="h-20 mt-2">
@@ -968,7 +958,7 @@ export default function NewProject() {
                                                                                 <Label className="text-xs">Number of Floors</Label>
                                                                                 <Input
                                                                                     type="number"
-                                                                                    className='bg-background dark:bg-background'
+                                                                                    className='bg-background/100 dark:bg-background/100'
                                                                                     min="1"
                                                                                     max="100"
                                                                                     value={getBlockConfig(block.blockId).floors}
@@ -981,7 +971,7 @@ export default function NewProject() {
                                                                                     value={getBlockConfig(block.blockId).pattern}
                                                                                     onValueChange={v => updateBlockConfig(block.blockId, { pattern: v })}
                                                                                 >
-                                                                                    <SelectTrigger className='bg-background dark:bg-background w-full'>
+                                                                                    <SelectTrigger className='bg-background/100 dark:bg-background/100 w-full'>
                                                                                         <SelectValue />
                                                                                     </SelectTrigger>
                                                                                     <SelectContent>
@@ -1175,54 +1165,6 @@ export default function NewProject() {
                                                 value={formData.location}
                                                 onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
                                             />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Project Logo</Label>
-                                            {formData.img_location.logo ? (
-                                                <div className="relative w-20 h-20 border rounded-lg overflow-hidden group">
-                                                    <img
-                                                        src={formData.img_location.logo}
-                                                        alt="Project Logo"
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                    <Button
-                                                        type="button"
-                                                        onClick={() => setFormData(prev => ({
-                                                            ...prev,
-                                                            img_location: { ...prev.img_location, logo: '' }
-                                                        }))}
-                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <X className="h-3 w-3" />
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <Input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    onChange={async (e) => {
-                                                        const files = e.target.files
-                                                        if (!files || files.length === 0) return
-                                                        const formDataUpload = new FormData()
-                                                        formDataUpload.append('images', files[0])
-                                                        try {
-                                                            const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
-                                                                headers: { 'Content-Type': 'multipart/form-data' }
-                                                            })
-                                                            const url = response.data.data.urls[0]
-                                                            setFormData(prev => ({
-                                                                ...prev,
-                                                                img_location: { ...prev.img_location, logo: url }
-                                                            }))
-                                                            toast.success('Logo uploaded successfully')
-                                                        } catch (error: any) {
-                                                            console.error('Failed to upload logo:', error)
-                                                            toast.error(error.response?.data?.message || 'Failed to upload logo')
-                                                        }
-                                                        e.target.value = ''
-                                                    }}
-                                                />
-                                            )}
                                         </div>
                                     </div>
                                 </CardContent>

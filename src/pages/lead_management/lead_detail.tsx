@@ -1680,7 +1680,7 @@ export default function LeadDetail() {
                                 }
                             }}>
                                 <SheetTrigger asChild>
-                                    <Button variant="outline" size="sm" disabled={!canEdit} className="gap-1">
+                                    <Button variant="ghost" size="sm" disabled={!canEdit} className="gap-1">
                                         <Plus className="size-4" />
                                         Add
                                     </Button>

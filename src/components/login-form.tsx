@@ -63,7 +63,8 @@ export function LoginForm({
       navigate("/dashboard") // Redirect to dashboard
     } catch (error: any) {
       console.error("Login failed:", error)
-      toast(`${error.response.data.message}`)
+      const errorMessage = error.response?.data?.message || error.message || "Unable to connect to the server."
+      toast.error(errorMessage)
       setIsLoading(false)
     }
   }
