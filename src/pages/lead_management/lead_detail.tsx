@@ -59,6 +59,7 @@ import { encodeProjectId } from "@/utils/idEncoder"
 import { DatePicker } from "@/components/ui/date-picker"
 import { TimePicker } from "@/components/ui/time-picker"
 import { format } from "date-fns"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 
 // GraphQL query to get lead details by ID
 const GET_LEAD_BY_ID = gql` 
@@ -361,6 +362,13 @@ export default function LeadDetail() {
     const [conductedSheetOpen, setConductedSheetOpen] = useState(false)
     const [markingVisitId, setMarkingVisitId] = useState<string | null>(null)
 
+    // Mail state
+    const [mailSheetOpen, setMailSheetOpen] = useState(false)
+    const [mailSubject, setMailSubject] = useState('')
+    const [mailBody, setMailBody] = useState('')
+    const [mailAttachments, setMailAttachments] = useState<File[]>([])
+    const [mailLoading, setMailLoading] = useState(false)
+
     // Reassign state
     const [reassignSheetOpen, setReassignSheetOpen] = useState(false)
     const [reassignUsers, setReassignUsers] = useState<{ _id: string; name: string; role?: string }[]>([])
@@ -627,6 +635,65 @@ export default function LeadDetail() {
         }
     };
 
+    const handleSendMail = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        const toEmail = leadDetail?.profile?.email
+        if (!toEmail) {
+            toast.error('This lead has no email address on file')
+            return
+        }
+        if (!mailSubject.trim()) {
+            toast.error('Please enter a subject')
+            return
+        }
+        if (!mailBody || mailBody === '<p></p>') {
+            toast.error('Please write a message body')
+            return
+        }
+        setMailLoading(true)
+        try {
+            const formData = new FormData()
+            formData.append('to', toEmail)
+            formData.append('subject', mailSubject)
+            formData.append('html', mailBody)
+            mailAttachments.forEach((file) => formData.append('attachments', file))
+
+            await axios.post(`${API_URL}/api/mail/send`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            })
+
+            // Log mail activity
+            if (leadDetail?.profile_id && leadDetail?._id) {
+                await createLeadActivity({
+                    variables: {
+                        organization,
+                        input: {
+                            profile_id: leadDetail.profile_id,
+                            updates: 'mail',
+                            lead_id: leadDetail._id,
+                            user_id: userId,
+                            stage: selectedStage || '',
+                            status: selectedStatus || '',
+                            notes: `Subject: ${mailSubject}`,
+                        },
+                    },
+                })
+            }
+
+            toast.success('Email sent successfully')
+            setMailSubject('')
+            setMailBody('')
+            setMailAttachments([])
+            setMailSheetOpen(false)
+            refetchLead()
+        } catch (err: any) {
+            console.error('Mail send error:', err)
+            toast.error(err.response?.data?.message || 'Failed to send email')
+        } finally {
+            setMailLoading(false)
+        }
+    };
+
     const handleSiteVisit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         if (!leadDetail?.profile_id || !organization || !userId || !leadDetail?._id) {
@@ -845,8 +912,8 @@ export default function LeadDetail() {
                             {!canEdit && (
                                 <div className="mb-2">
                                     <div className="flex items-center justify-center gap-2 mb-2">
-                                        <ShieldAlert className="size-3.5 text-gray-600 dark:text-gray-400 " />
-                                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400 ">View Only — This lead is assigned to {leadDetail?.exe_user_name || 'another user'}</span>
+                                        <ShieldAlert className="text-md text-yellow-500 dark:text-amber-400 " />
+                                        <span className="text-md font-medium text-yellow-500 dark:text-amber-400 ">View Only — This lead is assigned to {leadDetail?.exe_user_name || 'another user'}</span>
                                     </div>
                                     <Separator />
                                 </div>
@@ -923,7 +990,7 @@ export default function LeadDetail() {
                                 </div>
 
                                 <div className="flex justify-center">
-                                    <Sheet>
+                                    <Sheet open={mailSheetOpen} onOpenChange={setMailSheetOpen}>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
@@ -933,16 +1000,106 @@ export default function LeadDetail() {
                                                 </SheetTrigger>
                                             </TooltipTrigger>
                                             <TooltipContent>
-                                                <p>Mail</p>
+                                                <p>Send Email</p>
                                             </TooltipContent>
                                         </Tooltip>
-                                        <SheetContent>
+                                        <SheetContent className="w-full sm:max-w-2xl flex flex-col">
                                             <SheetHeader>
-                                                <SheetTitle>Send Email</SheetTitle>
+                                                <SheetTitle>Compose Email</SheetTitle>
                                                 <SheetDescription>
-                                                    Compose and send an email to the lead.
+                                                    Send an email to <span className="font-medium text-foreground">{leadDetail?.profile?.name || 'this lead'}</span>
                                                 </SheetDescription>
                                             </SheetHeader>
+                                            <div className="flex-1 overflow-y-auto px-1 py-4 px-5">
+                                                <form id="mail-compose-form" onSubmit={handleSendMail} className="space-y-4">
+                                                    {/* To */}
+                                                    <div className="space-y-1.5">
+                                                        <Label htmlFor="mailTo">To</Label>
+                                                        <Input
+                                                            id="mailTo"
+                                                            value={leadDetail?.profile?.email || ''}
+                                                            readOnly
+                                                            className="bg-muted/40 cursor-not-allowed"
+                                                        />
+                                                    </div>
+
+                                                    {/* Subject */}
+                                                    <div className="space-y-1.5">
+                                                        <Label htmlFor="mailSubject">Subject</Label>
+                                                        <Input
+                                                            id="mailSubject"
+                                                            placeholder="Email subject…"
+                                                            value={mailSubject}
+                                                            onChange={(e) => setMailSubject(e.target.value)}
+                                                            required
+                                                        />
+                                                    </div>
+
+                                                    {/* Body — Tiptap rich-text editor */}
+                                                    <div className="space-y-1.5">
+                                                        <Label>Message</Label>
+                                                        <RichTextEditor
+                                                            value={mailBody}
+                                                            onChange={setMailBody}
+                                                            placeholder="Write your email here…"
+                                                            minHeight="220px"
+                                                        />
+                                                    </div>
+
+                                                    {/* Attachments */}
+                                                    <div className="space-y-1.5">
+                                                        <Label htmlFor="mailAttachments">Attachments</Label>
+                                                        <Input
+                                                            id="mailAttachments"
+                                                            type="file"
+                                                            multiple
+                                                            accept="image/*,.pdf"
+                                                            className="cursor-pointer file:cursor-pointer"
+                                                            onChange={(e) => {
+                                                                const files = Array.from(e.target.files || [])
+                                                                setMailAttachments(files)
+                                                            }}
+                                                        />
+                                                        {mailAttachments.length > 0 && (
+                                                            <ul className="mt-1 space-y-1">
+                                                                {mailAttachments.map((f, i) => (
+                                                                    <li key={i} className="flex items-center justify-between text-xs text-muted-foreground rounded border px-2 py-1">
+                                                                        <span className="truncate max-w-[80%]">{f.name}</span>
+                                                                        <button
+                                                                            type="button"
+                                                                            className="text-destructive hover:text-destructive/80"
+                                                                            onClick={() => setMailAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                                                                        >
+                                                                            ✕
+                                                                        </button>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                        <p className="text-xs text-muted-foreground">Images and PDF brochures (max 10 MB each)</p>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                            <Separator />
+
+                                            {/* Footer */}
+                                            <div className=" flex gap-4 p-7 m-3 bg-stone-200 rounded-lg">
+                                                <Button
+                                                    type="submit"
+                                                    form="mail-compose-form"
+                                                    className="flex-1"
+                                                    disabled={mailLoading}
+                                                >
+                                                    {mailLoading ? 'Sending…' : 'Send Email'}
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => setMailSheetOpen(false)}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            </div>
                                         </SheetContent>
                                     </Sheet>
                                 </div>
@@ -2474,6 +2631,7 @@ export default function LeadDetail() {
 
                                                 const isNotes = activity.updates === "notes";
                                                 const isRequirement = activity.updates === "requirement";
+                                                const isMail = activity.updates === "mail";
 
                                                 // Pick icon & color based on update type
                                                 const iconEl = isStageUpdate
@@ -2484,7 +2642,8 @@ export default function LeadDetail() {
                                                             : isSiteVisit ? <CalendarClock className="size-5 text-zinc-700 dark:text-zinc-300" />
                                                                 : isNotes ? <NotebookPen className="size-5 text-zinc-700 dark:text-zinc-300" />
                                                                     : isRequirement ? <ClipboardCheck className="size-5 text-zinc-700 dark:text-zinc-300" />
-                                                                        : <Mail className="size-5 text-zinc-700 dark:text-zinc-300" />;
+                                                                        : isMail ? <Mail className="size-5 text-blue-500 dark:text-blue-400" />
+                                                                            : <Mail className="size-5 text-zinc-700 dark:text-zinc-300" />;
 
                                                 const activityContent = (
                                                     <li className="mb-6 ms-6">
@@ -2501,7 +2660,8 @@ export default function LeadDetail() {
                                                                     {isSiteVisit && (activity.site_visit_completed ? 'Site Visit ✓' : 'Site Visit')}
                                                                     {isNotes && 'Note'}
                                                                     {isRequirement && 'Requirement'}
-                                                                    {(!isStageUpdate && !isStatusUpdate && !isFollowUp && !isSiteVisit && !isNotes && !isRequirement) && 'Update'}
+                                                                    {isMail && 'Email Sent'}
+                                                                    {(!isStageUpdate && !isStatusUpdate && !isFollowUp && !isSiteVisit && !isNotes && !isRequirement && !isMail) && 'Update'}
                                                                 </span>
                                                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                                                     <span className="hidden sm:inline">{activity.user_name || 'Unknown'}</span>
@@ -2576,6 +2736,14 @@ export default function LeadDetail() {
                                                                         )}
                                                                     </div>
                                                                 )}
+                                                                {isMail && (
+                                                                    <div className="space-y-1">
+                                                                        <p className="text-md">
+                                                                            <span className="font-semibold text-zinc-900 dark:text-zinc-100">{activity.notes || 'No subject'}</span>
+                                                                        </p>
+                                                                        <p className="text-xs text-muted-foreground">Sent to {leadDetail?.profile?.email || 'lead'}</p>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             <div className="sm:hidden px-4 pb-2">
                                                                 <p className="text-xs text-muted-foreground">{activity.user_name || 'Unknown'}</p>
@@ -2601,6 +2769,11 @@ export default function LeadDetail() {
                                                         )}
                                                         {isFollowUp && (
                                                             <TabsContent value="follow_up">
+                                                                {activityContent}
+                                                            </TabsContent>
+                                                        )}
+                                                        {isMail && (
+                                                            <TabsContent value="Mail">
                                                                 {activityContent}
                                                             </TabsContent>
                                                         )}
