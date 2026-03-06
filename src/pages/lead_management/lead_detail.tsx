@@ -41,7 +41,7 @@ import {
     Info,
     BookOpen,
 } from "lucide-react";
-import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables } from "@/types"
+import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables, GetLeadStagesQueryResponse, GetLeadStagesQueryVariables, GetOrganizationUsersQueryResponse, GetOrganizationUsersQueryVariables } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -275,6 +275,36 @@ const REMOVE_INTERESTED_PROJECT = gql`
     }
 `;
 
+const GET_LEAD_STAGES = gql`
+    query GetLeadStages($organization: String!) {
+        getLeadStages(organization: $organization) {
+            stages {
+                id
+                name
+                color
+                nextStages
+            }
+        }
+    }
+`;
+
+const GET_ORG_USERS = gql`
+    query GetOrganizationUsers($organization: String!) {
+        getOrganizationUsers(organization: $organization) {
+            _id
+            globalUserId
+            profile {
+                firstName
+                lastName
+                email
+                phone
+            }
+            role
+            isActive
+        }
+    }
+`;
+
 interface StageStatCardProps {
     value: string | number;
     label: string;
@@ -331,6 +361,14 @@ export default function LeadDetail() {
     // Site Visit Conducted state
     const [conductedSheetOpen, setConductedSheetOpen] = useState(false)
     const [markingVisitId, setMarkingVisitId] = useState<string | null>(null)
+
+    // Reassign state
+    const [reassignSheetOpen, setReassignSheetOpen] = useState(false)
+    const [reassignUsers, setReassignUsers] = useState<{ _id: string; name: string; role?: string }[]>([])
+    const [reassignLoading, setReassignLoading] = useState(false)
+    const [reassignUsersLoading, setReassignUsersLoading] = useState(false)
+    const [reassignSearch, setReassignSearch] = useState('')
+    const [selectedReassignUserId, setSelectedReassignUserId] = useState<string | null>(null)
 
     // Interested projects state
     const [addProjectSheetOpen, setAddProjectSheetOpen] = useState(false)
@@ -465,22 +503,17 @@ export default function LeadDetail() {
             console.log('Lead Activities:', leadData.getLeadById.activities);
         }
     }, [leadData]);
-    // Fetch stages
+    // Fetch stages via GraphQL
+    const { data: stagesData } = useQuery<GetLeadStagesQueryResponse, GetLeadStagesQueryVariables>(GET_LEAD_STAGES, {
+        variables: { organization },
+        skip: !organization,
+    });
     useEffect(() => {
-        const fetchStages = async () => {
-            if (!organization) return;
-            try {
-                const response = await axios.get(`${API_URL}/api/leads/stages/${organization}`);
-                if (response.data.success && response.data.data.stages) {
-                    setStages(response.data.data.stages);
-                    console.log("Fetched stages:", response.data);
-                }
-            } catch (error) {
-                console.error("Failed to fetch stages:", error);
-            }
-        };
-        fetchStages();
-    }, [organization]);
+        if (stagesData?.getLeadStages?.stages) {
+            setStages(stagesData.getLeadStages.stages);
+            console.log('Fetched stages via GraphQL:', stagesData.getLeadStages.stages);
+        }
+    }, [stagesData]);
     useEffect(() => {
         if (leadData?.getLeadById) {
             setLeadDetail(leadData.getLeadById);
@@ -1311,7 +1344,34 @@ export default function LeadDetail() {
                                 </div>
 
                                 <div className="flex justify-center">
-                                    <Sheet>
+                                    <Sheet open={reassignSheetOpen} onOpenChange={(open) => {
+                                        setReassignSheetOpen(open)
+                                        if (open) {
+                                            // Fetch users from org DB via GraphQL when sheet opens
+                                            setReassignUsersLoading(true)
+                                            setReassignSearch('')
+                                            setSelectedReassignUserId(null)
+                                            apolloClient.query<GetOrganizationUsersQueryResponse, GetOrganizationUsersQueryVariables>({
+                                                query: GET_ORG_USERS,
+                                                variables: { organization },
+                                                fetchPolicy: 'network-only'
+                                            }).then(({ data }) => {
+                                                if (data?.getOrganizationUsers) {
+                                                    const mapped = data.getOrganizationUsers
+                                                        .filter((u: any) => u.isActive !== false)
+                                                        .map((u: any) => ({
+                                                            _id: u._id || u.globalUserId,
+                                                            name: `${u.profile?.firstName || ''} ${u.profile?.lastName || ''}`.trim(),
+                                                            role: u.role || 'User'
+                                                        }))
+                                                    setReassignUsers(mapped)
+                                                }
+                                            }).catch(err => {
+                                                console.error('Failed to fetch users for reassign', err)
+                                                toast.error('Failed to load users')
+                                            }).finally(() => setReassignUsersLoading(false))
+                                        }
+                                    }}>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
@@ -1324,13 +1384,134 @@ export default function LeadDetail() {
                                                 <p>Reassign lead</p>
                                             </TooltipContent>
                                         </Tooltip>
-                                        <SheetContent>
+                                        <SheetContent className="w-lg">
                                             <SheetHeader>
                                                 <SheetTitle>Reassign Lead</SheetTitle>
                                                 <SheetDescription>
-                                                    Assign this lead to another owner.
+                                                    Select a user to reassign this lead to.
                                                 </SheetDescription>
                                             </SheetHeader>
+                                            <div className="px-4 py-4">
+                                                {/* Current assignment */}
+                                                <div className="mb-4 p-3 rounded-lg border bg-muted/30">
+                                                    <p className="text-xs text-muted-foreground mb-1">Currently assigned to</p>
+                                                    <p className="text-sm font-semibold">{leadDetail?.exe_user_name || 'Unassigned'}</p>
+                                                </div>
+
+                                                {/* Search */}
+                                                <div className="mb-3">
+                                                    <Input
+                                                        placeholder="Search users..."
+                                                        value={reassignSearch}
+                                                        onChange={(e) => setReassignSearch(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                {/* User list */}
+                                                <ScrollArea className="h-[400px]">
+                                                    {reassignUsersLoading ? (
+                                                        <div className="flex items-center justify-center py-10">
+                                                            <p className="text-sm text-muted-foreground">Loading users...</p>
+                                                        </div>
+                                                    ) : (() => {
+                                                        const filteredUsers = reassignUsers.filter(u =>
+                                                            u.name.toLowerCase().includes(reassignSearch.toLowerCase())
+                                                        )
+                                                        return filteredUsers.length ? (
+                                                            filteredUsers.map(user => {
+                                                                const isCurrentUser = leadDetail?.exe_user === user._id
+                                                                const isSelected = selectedReassignUserId === user._id
+                                                                return (
+                                                                    <div
+                                                                        key={user._id}
+                                                                        onClick={() => {
+                                                                            if (!isCurrentUser) setSelectedReassignUserId(isSelected ? null : user._id)
+                                                                        }}
+                                                                        className={`mb-2 p-3 rounded-lg border cursor-pointer transition-all duration-150 ${isCurrentUser
+                                                                            ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-900/20 dark:border-indigo-700 cursor-default'
+                                                                            : isSelected
+                                                                                ? 'bg-indigo-100 border-indigo-400 dark:bg-indigo-900/40 dark:border-indigo-500 ring-2 ring-indigo-400'
+                                                                                : 'bg-muted/30 hover:bg-muted/60'
+                                                                            }`}
+                                                                    >
+                                                                        <div className="flex items-center justify-between">
+                                                                            <div className="flex items-center gap-3">
+                                                                                <div className="flex items-center justify-center w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-sm font-bold">
+                                                                                    {user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                                                                                </div>
+                                                                                <div>
+                                                                                    <p className="text-sm font-medium">{user.name}</p>
+                                                                                    <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+                                                                                </div>
+                                                                            </div>
+                                                                            {isCurrentUser && (
+                                                                                <Badge variant="outline" className="text-xs text-indigo-600 border-indigo-300 bg-indigo-50 dark:bg-indigo-900/30">
+                                                                                    Current
+                                                                                </Badge>
+                                                                            )}
+                                                                            {isSelected && !isCurrentUser && (
+                                                                                <Badge className="text-xs bg-indigo-500 text-white">
+                                                                                    Selected
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )
+                                                            })
+                                                        ) : (
+                                                            <p className="text-sm text-muted-foreground text-center py-4">No users found</p>
+                                                        )
+                                                    })()}
+                                                </ScrollArea>
+
+                                                {/* Reassign button */}
+                                                <Button
+                                                    className="w-full mt-4"
+                                                    disabled={!selectedReassignUserId || reassignLoading}
+                                                    onClick={async () => {
+                                                        if (!selectedReassignUserId || !leadDetail?._id) return
+                                                        setReassignLoading(true)
+                                                        try {
+                                                            const selectedUser = reassignUsers.find(u => u._id === selectedReassignUserId)
+                                                            // Update lead's exe_user
+                                                            await updateLead({
+                                                                variables: {
+                                                                    organization,
+                                                                    id: leadDetail._id,
+                                                                    input: { exe_user: selectedReassignUserId }
+                                                                }
+                                                            })
+                                                            // Create activity log for reassignment
+                                                            if (leadDetail.profile_id && userId) {
+                                                                await createLeadActivity({
+                                                                    variables: {
+                                                                        organization,
+                                                                        input: {
+                                                                            profile_id: leadDetail.profile_id,
+                                                                            updates: 'stage',
+                                                                            lead_id: leadDetail._id,
+                                                                            user_id: userId,
+                                                                            stage: selectedStage || '',
+                                                                            status: selectedStatus || '',
+                                                                            notes: `Lead reassigned to ${selectedUser?.name || 'another user'}`
+                                                                        }
+                                                                    }
+                                                                })
+                                                            }
+                                                            toast.success(`Lead reassigned to ${selectedUser?.name || 'new user'}`)
+                                                            setReassignSheetOpen(false)
+                                                            refetchLead()
+                                                        } catch (error) {
+                                                            console.error('Failed to reassign lead:', error)
+                                                            toast.error('Failed to reassign lead')
+                                                        } finally {
+                                                            setReassignLoading(false)
+                                                        }
+                                                    }}
+                                                >
+                                                    {reassignLoading ? 'Reassigning...' : 'Reassign Lead'}
+                                                </Button>
+                                            </div>
                                         </SheetContent>
                                     </Sheet>
                                 </div>

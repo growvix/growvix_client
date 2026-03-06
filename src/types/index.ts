@@ -192,3 +192,34 @@ export interface GetAllProjectsQueryResponse {
 export interface GetAllProjectsQueryVariables {
   organization: string;
 }
+
+export interface GetLeadStagesQueryResponse {
+  getLeadStages: {
+    stages: Stage[];
+  };
+}
+
+export interface GetLeadStagesQueryVariables {
+  organization: string;
+}
+
+export interface OrganizationUser {
+  _id: string;
+  globalUserId: string;
+  profile: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
+  role: string;
+  isActive: boolean;
+}
+
+export interface GetOrganizationUsersQueryResponse {
+  getOrganizationUsers: OrganizationUser[];
+}
+
+export interface GetOrganizationUsersQueryVariables {
+  organization: string;
+}
