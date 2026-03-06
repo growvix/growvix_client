@@ -687,13 +687,13 @@ export default function NewProject() {
                                                     {formData.layoutImages.map((url, idx) => (
                                                         <div key={idx} className="relative w-24 h-24 shrink-0 border rounded overflow-hidden group">
                                                             <img src={url} alt={`Layout ${idx + 1}`} className="w-full h-full object-cover" />
-                                                            <button
+                                                            <Button
                                                                 type="button"
                                                                 onClick={() => removeLayoutImage(url)}
                                                                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                                             >
                                                                 <X className="h-3 w-3" />
-                                                            </button>
+                                                            </Button>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -926,13 +926,13 @@ export default function NewProject() {
                                                                                                     alt={`Floor plan ${idx + 1}`}
                                                                                                     className="h-16 w-16 object-cover rounded border"
                                                                                                 />
-                                                                                                <button
+                                                                                                <Button
                                                                                                     type="button"
                                                                                                     onClick={() => removeFloorPlanImage(block.blockId, url)}
                                                                                                     className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                                                                                                 >
                                                                                                     <X className="h-3 w-3" />
-                                                                                                </button>
+                                                                                                </Button>
                                                                                             </div>
                                                                                         ))}
                                                                                     </div>
@@ -1185,7 +1185,7 @@ export default function NewProject() {
                                                         alt="Project Logo"
                                                         className="w-full h-full object-cover"
                                                     />
-                                                    <button
+                                                    <Button
                                                         type="button"
                                                         onClick={() => setFormData(prev => ({
                                                             ...prev,
@@ -1194,7 +1194,7 @@ export default function NewProject() {
                                                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                                     >
                                                         <X className="h-3 w-3" />
-                                                    </button>
+                                                    </Button>
                                                 </div>
                                             ) : (
                                                 <Input
