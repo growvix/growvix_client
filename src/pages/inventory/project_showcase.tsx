@@ -39,7 +39,7 @@ interface Unit {
     position: { row: number; col: number }
     bookedBy?: {
         leadName: string;
-        profileId?: string;
+        profileId?: number;
         leadUuid?: string;
         phone?: string;
         userName?: string;
@@ -55,7 +55,7 @@ interface Plot {
     status: 'available' | 'booked' | 'sold'
     bookedBy?: {
         leadName: string;
-        profileId?: string;
+        profileId?: number;
         leadUuid?: string;
         phone?: string;
         userName?: string;
@@ -299,7 +299,7 @@ export default function ProjectShowcase() {
                                                     ? 'ring-2 ring-primary ring-offset-1'
                                                     : ''
                                                     } ${getStatusColor(plot.status)}`}
-                                                title={`Plot ${plot.plotNumber} - ${plot.size} sqft${plot.bookedBy ? ` | Booked by: ${plot.bookedBy.leadName}` : ''}`}
+                                                title={`Plot ${plot.plotNumber} - ${plot.size} sqft${plot.bookedBy ? ` | Booked by: #${plot.bookedBy.profileId}` : ''}`}
                                             >
                                                 {plot.plotNumber}
                                             </button>
@@ -466,10 +466,10 @@ export default function ProjectShowcase() {
                             )}
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="flex-1 p-2">
+                    <CardContent className="flex-1 p-2 overflow-hidden">
                         {project.property === 'plots' ? (
                             selectedPlot ? (
-                                <ScrollArea className="h-full">
+                                <ScrollArea className="h-full pr-3">
                                     <div className="flex flex-col items-center p-6 text-center space-y-3">
                                         <div className={`p-4 rounded-full ${getStatusColor(selectedPlot.status).split(' ')[0]} bg-opacity-20`}>
                                             <Layers className={`h-12 w-12 ${getStatusColor(selectedPlot.status).split(' ')[1]}`} />
@@ -500,7 +500,7 @@ export default function ProjectShowcase() {
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <div className="h-2 w-2 rounded-full shrink-0 bg-emerald-500" />
                                                         <span className="font-semibold text-[15px] text-foreground truncate">
-                                                            {selectedPlot.bookedBy.leadName}
+                                                            #{selectedPlot.bookedBy.profileId}
                                                         </span>
                                                     </div>
                                                     <Badge className="bg-background hover:bg-muted text-foreground font-medium text-[10px] px-2 py-0.5 rounded-md shrink-0 border">
@@ -509,6 +509,12 @@ export default function ProjectShowcase() {
                                                 </div>
 
                                                 <div className="grid grid-cols-2 gap-y-2 gap-x-1 text-xs text-muted-foreground pl-4">
+                                                    {selectedPlot.bookedBy.bookedAt && (
+                                                        <div className="col-span-2 flex items-center gap-1.5 mt-1">
+                                                            <CalendarClock className="h-3.5 w-3.5 shrink-0" />
+                                                            <span className="truncate">{new Date(selectedPlot.bookedBy.bookedAt).toLocaleDateString()}</span>
+                                                        </div>
+                                                    )}
                                                     {selectedPlot.bookedBy.userName && (
                                                         <div className="col-span-2 flex items-center gap-1.5 text-emerald-600 dark:text-emerald-500 mt-1">
                                                             <CalendarCheck className="h-3.5 w-3.5 shrink-0" />
@@ -525,7 +531,7 @@ export default function ProjectShowcase() {
                                                         View Lead <ExternalLink className="h-3.5 w-3.5" />
                                                     </a>
                                                 </div>
-                                                
+
                                             </div>
                                         )}
                                         <div className="w-full pt-2">
@@ -541,7 +547,7 @@ export default function ProjectShowcase() {
                                             </Button>
                                         </div>
 
-                                        
+
                                     </div>
                                 </ScrollArea>
                             ) : (
@@ -555,7 +561,7 @@ export default function ProjectShowcase() {
                             )
                         ) : (
                             selectedFloor && selectedFloor.units && selectedFloor.units.length > 0 ? (
-                                <ScrollArea className="h-full">
+                                <ScrollArea className="h-full pr-3">
                                     <div className="grid grid-cols-4 gap-2">
                                         {selectedFloor.units.map((unit) => (
                                             <div
@@ -578,9 +584,9 @@ export default function ProjectShowcase() {
                                                     <div className="text-xs opacity-70">{unit.size} sqft</div>
                                                     <div className="text-xs opacity-70">{unit.facing}</div>
                                                     {unit.bookedBy && unit.status === 'booked' && (
-                                                        <div className="text-xs mt-1 pt-1 border-t border-current/20 opacity-80 truncate" title={unit.bookedBy.leadName}>
+                                                        <div className="text-xs mt-1 pt-1 border-t border-current/20 opacity-80 truncate" title={`#${unit.bookedBy.profileId}`}>
                                                             <User className="h-3 w-3 inline mr-0.5" />
-                                                            {unit.bookedBy.leadName}
+                                                            #{unit.bookedBy.profileId}
                                                         </div>
                                                     )}
                                                 </div>
