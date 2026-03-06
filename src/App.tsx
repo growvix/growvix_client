@@ -276,10 +276,7 @@ function SidebarLayout() {
               </CommandDialog>
 
 
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500"></span>
-              </Button>
+            
               <ModeToggle />
             </div>
           </header>
