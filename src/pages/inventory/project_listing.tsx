@@ -9,11 +9,12 @@ import {
     type ColumnDef,
 } from "@tanstack/react-table"
 
-import { ArrowUpDown, Ban, Info, MoreHorizontal, Pencil } from "lucide-react"
+import { ArrowUpDown, Ban, Info, MoreHorizontal, Pencil, CalendarClock } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { getCookie, getPermissions } from "@/utils/cookies"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { encodeProjectId } from "@/utils/idEncoder"
@@ -52,6 +53,17 @@ export default function ProjectListing() {
     const [bookedUnitsData, setBookedUnitsData] = React.useState<any[]>([])
     const [bookedUnitsLoading, setBookedUnitsLoading] = React.useState(false)
     const [bookedProjectName, setBookedProjectName] = React.useState('')
+    const [searchBookedQuery, setSearchBookedQuery] = React.useState('')
+
+    const filteredBookedUnitsData = React.useMemo(() => {
+        if (!searchBookedQuery) return bookedUnitsData;
+        const queryLower = searchBookedQuery.toLowerCase();
+        return bookedUnitsData.filter((unit) => {
+            const profileId = unit.bookedBy?.profileId?.toString() || '';
+            const leadName = unit.bookedBy?.leadName?.toLowerCase() || '';
+            return profileId.includes(queryLower) || leadName.includes(queryLower);
+        });
+    }, [bookedUnitsData, searchBookedQuery]);
 
     const navigate = useNavigate()
 
@@ -254,7 +266,7 @@ export default function ProjectListing() {
                         {count > 0 ? (
                             <Badge
                                 variant="secondary"
-                                className="cursor-pointer hover:bg-secondary/80 bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300"
+                                className="cursor-pointer bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300"
                                 onClick={(e) => handleBookedUnitsClick(e, project)}
                             >
                                 {count} Booked
@@ -388,21 +400,30 @@ export default function ProjectListing() {
 
             <Sheet open={bookedUnitsOpen} onOpenChange={setBookedUnitsOpen}>
                 <SheetContent side="right" className="w-[400px] sm:w-[540px] px-0 flex flex-col">
-                    <SheetHeader className="px-6 pb-4 border-b">
+                    <SheetHeader className="px-6 pb-4">
                         <SheetTitle>Booked Units - {bookedProjectName}</SheetTitle>
                         <SheetDescription>
                             List of all units and plots currently booked for this project.
                         </SheetDescription>
                     </SheetHeader>
 
-                    <ScrollArea className="flex-1 px-6">
-                        <div className="py-6 space-y-4">
+                    <div className="px-6 pb-2 pt-0">
+                        <Input
+                            placeholder="Search by Profile ID or Name..."
+                            value={searchBookedQuery}
+                            onChange={(e) => setSearchBookedQuery(e.target.value)}
+                            className="h-9"
+                        />
+                    </div>
+
+                    <ScrollArea className="h-[calc(100vh-140px)] px-6 overflow-y-auto">
+                        <div className="py-2 space-y-2 pr-1">
                             {bookedUnitsLoading ? (
                                 <div className="flex flex-col items-center justify-center py-10 space-y-4">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                                     <p className="text-sm text-muted-foreground">Loading booked units...</p>
                                 </div>
-                            ) : bookedUnitsData.length === 0 ? (
+                            ) : filteredBookedUnitsData.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
                                     <div className="bg-muted/50 p-4 rounded-full mb-4">
                                         <Ban className="h-8 w-8 text-muted-foreground/60" />
@@ -410,39 +431,48 @@ export default function ProjectListing() {
                                     <p className="text-sm font-medium text-muted-foreground">No booked units found</p>
                                 </div>
                             ) : (
-                                <div className="grid gap-3">
-                                    {bookedUnitsData.map((unit, index) => (
-                                        <Card key={index} className="overflow-hidden">
-                                            <CardContent className="p-4 flex flex-col gap-2 relative">
-                                                <Badge className="absolute top-4 right-4 bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 pointer-events-none hover:bg-orange-100 border-none shadow-none">
-                                                    Booked
-                                                </Badge>
+                                <div className="flex flex-col">
+                                    {filteredBookedUnitsData.map((unit, index) => (
+                                        <div key={index}>
+                                            <div
+                                                className="flex flex-col py-3 hover:bg-muted/50 transition-colors px-2 rounded-md justify-center"
+                                            >
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="text-base font-semibold truncate">{unit.label}</span>
+                                                    <Badge className="bg-zinc-200 text-black dark:bg-stone-800 dark:text-white flex items-center gap-1.5 font-medium">
+                                                        <span className="text-sm">
+                                                            {unit.bookedBy?.bookedAt ? new Date(unit.bookedBy.bookedAt).toLocaleDateString() : 'Booked'}
+                                                        </span>
+                                                    </Badge>
+                                                </div>
 
-                                                <div className="font-semibold">{unit.label}</div>
-
-                                                <div className="grid gap-1.5 text-sm mt-1">
-                                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                                        <span className="font-medium text-foreground w-16">Lead:</span>
-                                                        <span>{unit.bookedBy?.leadName || 'Unknown'}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                                        <span className="font-medium text-foreground w-16">Phone:</span>
-                                                        <span>{unit.bookedBy?.phone || 'Unknown'}</span>
-                                                    </div>
-                                                    {unit.bookedBy?.userName && (
-                                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                                            <span className="font-medium text-foreground w-16">Booked By:</span>
-                                                            <span>{unit.bookedBy.userName}</span>
+                                                <div className="flex items-center justify-between gap-2 mt-1">
+                                                    {unit.bookedBy?.profileId ? (
+                                                        <div className="flex flex-col gap-1">
+                                                            <div
+                                                                className="flex items-center gap-1.5 cursor-pointer group w-fit"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    navigate(`/lead_detail/${unit.bookedBy?.leadUuid || unit.bookedBy?.profileId}`)
+                                                                }}
+                                                            >
+                                                                <span className="font-semibold text-sm text-foreground group-hover:text-primary group-hover:underline transition-colors truncate">
+                                                                    #{unit.bookedBy.profileId}
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                    )}
-                                                    {unit.bookedBy?.bookedAt && (
-                                                        <div className="flex items-center gap-2 text-muted-foreground mt-1">
-                                                            <span className="text-xs">{new Date(unit.bookedBy.bookedAt).toLocaleString()}</span>
+                                                    ) : (
+                                                        <div className="flex flex-col gap-1">
+                                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                                                <span className="font-medium text-foreground text-xs w-10">Lead:</span>
+                                                                <span className="text-xs">{unit.bookedBy?.leadName || 'Unknown'}</span>
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
-                                            </CardContent>
-                                        </Card>
+                                            </div>
+                                            {index < filteredBookedUnitsData.length - 1 && <Separator />}
+                                        </div>
                                     ))}
                                 </div>
                             )}

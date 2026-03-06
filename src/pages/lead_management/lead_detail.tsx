@@ -39,7 +39,7 @@ import {
     Plus,
     Trash2,
     Info,
-    BookOpen,
+    HousePlus,
 } from "lucide-react";
 import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables, GetLeadStagesQueryResponse, GetLeadStagesQueryVariables, GetOrganizationUsersQueryResponse, GetOrganizationUsersQueryVariables } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
@@ -373,6 +373,7 @@ export default function LeadDetail() {
     const [addProjectSheetOpen, setAddProjectSheetOpen] = useState(false)
     const [addingProject, setAddingProject] = useState(false)
     const [removingProjectId, setRemovingProjectId] = useState<number | null>(null)
+    const [projectSearch, setProjectSearch] = useState('')
 
     // Site visit project selection state
     const [siteVisitProject, setSiteVisitProject] = useState<{ id: number; name: string } | null>(null)
@@ -2086,25 +2087,35 @@ export default function LeadDetail() {
                                                 <SheetTitle>Add Interested Project</SheetTitle>
                                                 <SheetDescription>
                                                     Select a project to add to this lead's interested projects.
+                                                    <search className="mt-6">
+                                                        <Input placeholder="Search projects..." value={projectSearch} onChange={(e) => setProjectSearch(e.target.value)} />
+                                                    </search>
                                                 </SheetDescription>
                                             </SheetHeader>
-                                            <div className="px-4 py-4">
-                                                <ScrollArea className="h-[500px]">
+
+                                            <div className="px-3">
+                                                <ScrollArea className="h-[600px]">
                                                     {(() => {
                                                         const addedIds = new Set((leadDetail?.interested_projects || []).map((ip: any) => ip.project_id));
-                                                        const available = allProjects.filter((p: any) => !addedIds.has(p.product_id));
+                                                        const searchLower = projectSearch.toLowerCase();
+                                                        const available = allProjects.filter((p: any) =>
+                                                            !addedIds.has(p.product_id) &&
+                                                            (!searchLower ||
+                                                                p.name?.toLowerCase().includes(searchLower) ||
+                                                                p.location?.toLowerCase().includes(searchLower) ||
+                                                                p.property?.toLowerCase().includes(searchLower) ||
+                                                                (p.property === 'apartments' && 'apartments'.includes(searchLower)) ||
+                                                                (p.property === 'plots' && 'plots'.includes(searchLower))
+                                                            )
+                                                        );
                                                         return available.length > 0 ? (
-                                                            <div className="space-y-2">
-                                                                {available.map((p: any) => (
-                                                                    <div key={p.product_id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
-                                                                        <div>
-                                                                            <p className="font-medium text-sm">{p.name}</p>
-                                                                            <p className="text-xs text-muted-foreground">{p.location || 'No location'} · {p.property || 'N/A'}</p>
-                                                                        </div>
-                                                                        <Button
-                                                                            size="sm"
-                                                                            disabled={addingProject}
+                                                            <div className="flex flex-col">
+                                                                {available.map((p: any, index: number) => (
+                                                                    <div key={p.product_id}>
+                                                                        <div
+                                                                            className="flex items-center justify-between py-3 hover:bg-muted/50 transition-colors px-2 cursor-pointer rounded-md"
                                                                             onClick={async () => {
+                                                                                if (addingProject) return;
                                                                                 setAddingProject(true);
                                                                                 try {
                                                                                     await addInterestedProjectMutation({
@@ -2124,8 +2135,16 @@ export default function LeadDetail() {
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <Plus className="h-3.5 w-3.5 mr-1" /> Add
-                                                                        </Button>
+                                                                            <div className="flex-1 min-w-0 pr-4 flex flex-col gap-1">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className="text-base font-bold truncate">{p.name}</span>
+                                                                                    <Badge variant="outline" className="text-[10px] capitalize shrink-0">{p.property || 'N/A'}</Badge>
+                                                                                </div>
+                                                                                <span className="text-muted-foreground text-sm flex-wrap leading-tight">{p.location || 'No location'}</span>
+                                                                            </div>
+                                                                            <span className="text-sm font-medium text-primary hover:underline whitespace-nowrap">Click Here</span>
+                                                                        </div>
+                                                                        {index < available.length - 1 && <Separator />}
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -2160,9 +2179,10 @@ export default function LeadDetail() {
                                             const projectDetail = allProjects.find((p: any) => p.product_id === ip.project_id);
                                             return (
                                                 <CarouselItem key={ip.project_id}>
-                                                    <div className="grid grid-cols-3 gap-4">
-                                                        <div className="col-span-1 flex flex-col items-center justify-center gap-2">
-                                                            <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden">
+                                                    <div className="grid grid-cols-4 gap-4 px-2 py-3 min-h-[150px] items-center">
+                                                        {/* Col 1: Logo */}
+                                                        <div className="col-span-1 flex flex-col items-center justify-center min-w-0">
+                                                            <div className="w-28 h-28 rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
                                                                 {projectDetail?.img_location?.logo ? (
                                                                     <img
                                                                         src={projectDetail.img_location.logo}
@@ -2170,91 +2190,117 @@ export default function LeadDetail() {
                                                                         className="w-full h-full object-cover"
                                                                     />
                                                                 ) : (
-                                                                    <MapPinCheck className="h-8 w-8 text-primary" />
+                                                                    <MapPinCheck className="h-10 w-10 text-primary" />
                                                                 )}
                                                             </div>
-                                                            <p className="text-sm font-semibold text-center leading-tight">{ip.project_name}</p>
-                                                            <Badge variant="outline" className="text-[10px]">{projectDetail?.property || 'N/A'}</Badge>
                                                         </div>
-                                                        <div className="col-span-2">
-                                                            <div className="grid grid-cols-3 gap-4 mb-4">
-                                                                <div className="flex flex-col items-center">
-                                                                    <Label className="text-muted-foreground">Location</Label>
-                                                                    <p className="mt-1 text-sm text-center">{projectDetail?.location || '—'}</p>
-                                                                </div>
-                                                                <div className="flex flex-col items-center">
-                                                                    <Label className="text-muted-foreground">Type</Label>
-                                                                    <p className="mt-1 text-sm capitalize">{projectDetail?.property || '—'}</p>
-                                                                </div>
-                                                                <div className="flex flex-col items-center">
-                                                                    <Label className="text-muted-foreground">Lead Stage</Label>
-                                                                    <p className="mt-1 text-sm">{selectedStage || '—'}</p>
-                                                                </div>
+
+                                                        {/* Col 2: Name & Book */}
+                                                        <div className="col-span-1 flex flex-col items-center justify-between h-full py-2 min-w-0">
+                                                            <div className="flex flex-col items-center min-w-0">
+                                                                <Label className="text-muted-foreground text-xs text-center mb-1">Name</Label>
+                                                                <p className="text-md font-bold text-center truncate w-full">{ip.project_name}</p>
                                                             </div>
-                                                            <div className="grid grid-cols-4 gap-4">
-                                                                <div className="flex flex-col items-center">
-                                                                    <Label className="text-muted-foreground">Book</Label>
-                                                                    <Button
-                                                                        className="mt-2 p-2"
-                                                                        size="sm"
-                                                                        variant="default"
-                                                                        onClick={() => {
-                                                                            const encodedId = encodeProjectId(ip.project_id)
-                                                                            navigate(`/project_showcase?id=${encodedId}`, {
-                                                                                state: {
-                                                                                    bookingLead: {
-                                                                                        _id: leadDetail?._id,
-                                                                                        profile_id: leadDetail?.profile_id,
-                                                                                        name: leadDetail?.profile?.name || 'Unknown',
-                                                                                        phone: leadDetail?.profile?.phone || '',
-                                                                                    }
+                                                            <div className="mt-auto pt-4">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-8 text-sm px-3 gap-1"
+                                                                    onClick={() => {
+                                                                        const encodedId = encodeProjectId(ip.project_id)
+                                                                        navigate(`/project_showcase?id=${encodedId}`, {
+                                                                            state: {
+                                                                                bookingLead: {
+                                                                                    _id: leadDetail?._id,
+                                                                                    profile_id: leadDetail?.profile_id,
+                                                                                    name: leadDetail?.profile?.name || 'Unknown',
+                                                                                    phone: leadDetail?.profile?.phone || '',
                                                                                 }
-                                                                            })
-                                                                        }}
-                                                                    >
-                                                                        <BookOpen className="h-3.5 w-3.5 mr-1" /> Book
-                                                                    </Button>
-                                                                </div>
-                                                                <div className="flex flex-col items-center">
-                                                                    <Label className="text-muted-foreground">Meeting</Label>
-                                                                    <Button className="mt-2 p-2" size="sm">Schedule Visit</Button>
-                                                                </div>
-                                                                <div className="flex flex-col items-center">
-                                                                    <Label className="text-muted-foreground">Brochure</Label>
-                                                                    <Button className="mt-2 p-2" size="sm">Send</Button>
-                                                                </div>
-                                                                {canEdit && (
-                                                                    <div className="flex flex-col items-center">
-                                                                        <Label className="text-muted-foreground">Remove</Label>
-                                                                        <Button
-                                                                            variant="destructive"
-                                                                            size="sm"
-                                                                            className="mt-2 p-2"
-                                                                            disabled={removingProjectId === ip.project_id}
-                                                                            onClick={async () => {
-                                                                                setRemovingProjectId(ip.project_id);
-                                                                                try {
-                                                                                    await removeInterestedProjectMutation({
-                                                                                        variables: {
-                                                                                            organization,
-                                                                                            leadId: leadDetail?._id,
-                                                                                            projectId: ip.project_id
+                                                                            }
+                                                                        })
+                                                                    }}
+                                                                >
+                                                                    <HousePlus className="h-3.5 w-3.5" /> Book
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Col 3: Location & Schedule Visit */}
+                                                        <div className="col-span-1 flex flex-col items-center justify-between h-full py-2 min-w-0">
+                                                            <div className="flex flex-col items-center min-w-0">
+                                                                <Label className="text-muted-foreground text-xs text-center mb-1">Location</Label>
+                                                                <p className="text-md text-center truncate w-full font-medium">{projectDetail?.location || '—'}</p>
+                                                            </div>
+                                                            <div className="mt-auto pt-4">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-8 text-sm px-3 gap-1"
+                                                                    onClick={() => {
+                                                                        setSiteVisitProject({ id: ip.project_id, name: ip.project_name });
+                                                                        setSiteVisitSheetOpen(true);
+                                                                    }}
+                                                                >
+                                                                    <CalendarCheck className="h-3.5 w-3.5" /> Schedule Visit
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Col 4: Type Badge & Delete Icon */}
+                                                        <div className="col-span-1 flex flex-col items-center justify-between h-full py-2 min-w-0 relative">
+                                                            <div className="flex flex-col items-center min-w-0 w-full px-2">
+                                                                <Label className="text-muted-foreground text-xs text-center mb-1">Type</Label>
+                                                                <p className="text-md text-center truncate w-full font-medium">{projectDetail?.property || 'N/A'}</p>
+                                                            </div>
+                                                            {canEdit && (
+                                                                <div className="mt-auto pt-4">
+                                                                    <AlertDialog>
+                                                                        <AlertDialogTrigger asChild>
+                                                                            <Button
+                                                                                variant="destructive"
+                                                                                size="icon"
+                                                                                className="h-8 w-8 rounded-md"
+                                                                                disabled={removingProjectId === ip.project_id}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </AlertDialogTrigger>
+                                                                        <AlertDialogContent>
+                                                                            <AlertDialogHeader>
+                                                                                <AlertDialogTitle>Remove Project</AlertDialogTitle>
+                                                                                <AlertDialogDescription>
+                                                                                    Are you sure you want to remove <span className="font-semibold text-foreground">{ip.project_name}</span> from interested projects?
+                                                                                </AlertDialogDescription>
+                                                                            </AlertDialogHeader>
+                                                                            <AlertDialogFooter>
+                                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                                <AlertDialogAction
+                                                                                    onClick={async () => {
+                                                                                        setRemovingProjectId(ip.project_id);
+                                                                                        try {
+                                                                                            await removeInterestedProjectMutation({
+                                                                                                variables: {
+                                                                                                    organization,
+                                                                                                    leadId: leadDetail?._id,
+                                                                                                    projectId: ip.project_id
+                                                                                                }
+                                                                                            });
+                                                                                            toast.success(`Removed ${ip.project_name}`);
+                                                                                            refetchLead();
+                                                                                        } catch (err: any) {
+                                                                                            toast.error(err?.message || 'Failed to remove project');
+                                                                                        } finally {
+                                                                                            setRemovingProjectId(null);
                                                                                         }
-                                                                                    });
-                                                                                    toast.success(`Removed ${ip.project_name}`);
-                                                                                    refetchLead();
-                                                                                } catch (err: any) {
-                                                                                    toast.error(err?.message || 'Failed to remove project');
-                                                                                } finally {
-                                                                                    setRemovingProjectId(null);
-                                                                                }
-                                                                            }}
-                                                                        >
-                                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                                        </Button>
-                                                                    </div>
-                                                                )}
-                                                            </div>
+                                                                                    }}
+                                                                                >
+                                                                                    Confirm
+                                                                                </AlertDialogAction>
+                                                                            </AlertDialogFooter>
+                                                                        </AlertDialogContent>
+                                                                    </AlertDialog>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </CarouselItem>
