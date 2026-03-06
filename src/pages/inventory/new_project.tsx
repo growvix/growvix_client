@@ -1176,6 +1176,54 @@ export default function NewProject() {
                                                 onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
                                             />
                                         </div>
+                                        <div className="space-y-2">
+                                            <Label>Project Logo</Label>
+                                            {formData.img_location.logo ? (
+                                                <div className="relative w-20 h-20 border rounded-lg overflow-hidden group">
+                                                    <img
+                                                        src={formData.img_location.logo}
+                                                        alt="Project Logo"
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setFormData(prev => ({
+                                                            ...prev,
+                                                            img_location: { ...prev.img_location, logo: '' }
+                                                        }))}
+                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <Input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={async (e) => {
+                                                        const files = e.target.files
+                                                        if (!files || files.length === 0) return
+                                                        const formDataUpload = new FormData()
+                                                        formDataUpload.append('images', files[0])
+                                                        try {
+                                                            const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
+                                                                headers: { 'Content-Type': 'multipart/form-data' }
+                                                            })
+                                                            const url = response.data.data.urls[0]
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                img_location: { ...prev.img_location, logo: url }
+                                                            }))
+                                                            toast.success('Logo uploaded successfully')
+                                                        } catch (error: any) {
+                                                            console.error('Failed to upload logo:', error)
+                                                            toast.error(error.response?.data?.message || 'Failed to upload logo')
+                                                        }
+                                                        e.target.value = ''
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
                                     </div>
                                 </CardContent>
                                 <CardFooter className="flex justify-end gap-3">

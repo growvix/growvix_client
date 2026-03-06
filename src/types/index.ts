@@ -115,6 +115,7 @@ export interface Lead {
   status?: string;
   exe_user?: string;
   exe_user_name?: string;
+  exe_user_department?: string;
   activities?: {
     id: string;
     user_id: string;
@@ -179,6 +180,9 @@ export interface ProjectSummary {
   name: string;
   location: string;
   property: string;
+  img_location?: {
+    logo?: string;
+  };
 }
 
 export interface GetAllProjectsQueryResponse {
@@ -186,5 +190,36 @@ export interface GetAllProjectsQueryResponse {
 }
 
 export interface GetAllProjectsQueryVariables {
+  organization: string;
+}
+
+export interface GetLeadStagesQueryResponse {
+  getLeadStages: {
+    stages: Stage[];
+  };
+}
+
+export interface GetLeadStagesQueryVariables {
+  organization: string;
+}
+
+export interface OrganizationUser {
+  _id: string;
+  globalUserId: string;
+  profile: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
+  role: string;
+  isActive: boolean;
+}
+
+export interface GetOrganizationUsersQueryResponse {
+  getOrganizationUsers: OrganizationUser[];
+}
+
+export interface GetOrganizationUsersQueryVariables {
   organization: string;
 }

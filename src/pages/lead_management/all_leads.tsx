@@ -211,7 +211,7 @@ export default function AllLeads() {
   const [stages, setStages] = useState<Stage[]>([])
 
   // Pagination state
-  const PAGE_SIZE = 30
+  const PAGE_SIZE = 5
   const [page, setPage] = useState(1)
   const [totalLeads, setTotalLeads] = useState(0)
 
@@ -464,7 +464,7 @@ export default function AllLeads() {
             </Label>
             <Popover open={assignedOpen} onOpenChange={setAssignedOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={assignedOpen} className="w-full justify-between font-normal">
+                <Button variant="outline" role="combobox" aria-expanded={assignedOpen} className="w-full justify-between font-normal dark:bg-background hover:dark:bg-background">
                   <span className="truncate">
                     {filters.assignedTo === "all" ? "All Users" : users.find(u => u._id === filters.assignedTo)?.name || "All Users"}
                   </span>
@@ -502,7 +502,7 @@ export default function AllLeads() {
             <DatePicker
               date={filters.receivedOn ? new Date(filters.receivedOn) : undefined}
               setDate={(date) => handleChange("receivedOn", date ? format(date, "yyyy-MM-dd") : "")}
-              className="w-full bg-background dark:bg-background text-black dark:text-white"
+              className="w-full bg-background dark:bg-background hover:dark:bg-background text-black dark:text-white"
             />
           </div>
 
@@ -513,7 +513,7 @@ export default function AllLeads() {
             </Label>
             <Popover open={statusOpen} onOpenChange={setStatusOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={statusOpen} className="w-full justify-between font-normal">
+                <Button variant="outline" role="combobox" aria-expanded={statusOpen} className="w-full justify-between font-normal dark:bg-background hover:dark:bg-background">
                   <span className="truncate">
                     {filters.status === "all" ? "All" : filters.status}
                   </span>
@@ -546,7 +546,7 @@ export default function AllLeads() {
             </Label>
             <Popover open={stageOpen} onOpenChange={setStageOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={stageOpen} className="w-full justify-between font-normal">
+                <Button variant="outline" role="combobox" aria-expanded={stageOpen} className="w-full justify-between font-normal dark:bg-background hover:dark:bg-background">
                   <span className="truncate">
                     {!filters.stage ? "Select stage" : filters.stage}
                   </span>
@@ -591,6 +591,7 @@ export default function AllLeads() {
           data={leads}
           columns={columns}
           initialPageSize={PAGE_SIZE}
+          hidePagination
         />
 
         {/* Server-side Pagination Controls */}

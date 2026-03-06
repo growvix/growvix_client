@@ -27,7 +27,6 @@ import {
     CalendarCheck,
     Shuffle,
     Smartphone,
-    SquarePen,
     Calendar,
     CalendarClock,
     NotebookPen,
@@ -42,7 +41,7 @@ import {
     Info,
     BookOpen,
 } from "lucide-react";
-import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables } from "@/types"
+import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables, GetLeadStagesQueryResponse, GetLeadStagesQueryVariables, GetOrganizationUsersQueryResponse, GetOrganizationUsersQueryVariables } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -56,7 +55,6 @@ import {
     TabsTrigger,
     TabsContent,
 } from "@/components/ui/tabs"
-import { decryptId } from "@/lib/crypto"
 import { encodeProjectId } from "@/utils/idEncoder"
 import { DatePicker } from "@/components/ui/date-picker"
 import { TimePicker } from "@/components/ui/time-picker"
@@ -117,6 +115,7 @@ const GET_LEAD_BY_ID = gql`
             updatedAt
             exe_user
             exe_user_name
+            exe_user_department
             site_visits_completed
             requirements {
                 _id
@@ -245,6 +244,9 @@ const GET_ALL_PROJECTS = gql`
             name
             location
             property
+            img_location {
+                logo
+            }
         }
     }
 `;
@@ -269,6 +271,36 @@ const REMOVE_INTERESTED_PROJECT = gql`
                 project_id
                 project_name
             }
+        }
+    }
+`;
+
+const GET_LEAD_STAGES = gql`
+    query GetLeadStages($organization: String!) {
+        getLeadStages(organization: $organization) {
+            stages {
+                id
+                name
+                color
+                nextStages
+            }
+        }
+    }
+`;
+
+const GET_ORG_USERS = gql`
+    query GetOrganizationUsers($organization: String!) {
+        getOrganizationUsers(organization: $organization) {
+            _id
+            globalUserId
+            profile {
+                firstName
+                lastName
+                email
+                phone
+            }
+            role
+            isActive
         }
     }
 `;
@@ -298,7 +330,7 @@ export default function LeadDetail() {
     const [leadDetail, setLeadDetail] = useState<Lead | null>(null)
     const { id } = useParams()
     const navigate = useNavigate()
-    const [leadId, setLeadId] = useState<string | undefined>(undefined);
+    const [, setLeadId] = useState<string | undefined>(undefined);
     const [stages, setStages] = useState<Stage[]>([])
     const [selectedStage, setSelectedStage] = useState<string | undefined>(undefined)
     const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined)
@@ -329,6 +361,14 @@ export default function LeadDetail() {
     // Site Visit Conducted state
     const [conductedSheetOpen, setConductedSheetOpen] = useState(false)
     const [markingVisitId, setMarkingVisitId] = useState<string | null>(null)
+
+    // Reassign state
+    const [reassignSheetOpen, setReassignSheetOpen] = useState(false)
+    const [reassignUsers, setReassignUsers] = useState<{ _id: string; name: string; role?: string }[]>([])
+    const [reassignLoading, setReassignLoading] = useState(false)
+    const [reassignUsersLoading, setReassignUsersLoading] = useState(false)
+    const [reassignSearch, setReassignSearch] = useState('')
+    const [selectedReassignUserId, setSelectedReassignUserId] = useState<string | null>(null)
 
     // Interested projects state
     const [addProjectSheetOpen, setAddProjectSheetOpen] = useState(false)
@@ -463,22 +503,17 @@ export default function LeadDetail() {
             console.log('Lead Activities:', leadData.getLeadById.activities);
         }
     }, [leadData]);
-    // Fetch stages
+    // Fetch stages via GraphQL
+    const { data: stagesData } = useQuery<GetLeadStagesQueryResponse, GetLeadStagesQueryVariables>(GET_LEAD_STAGES, {
+        variables: { organization },
+        skip: !organization,
+    });
     useEffect(() => {
-        const fetchStages = async () => {
-            if (!organization) return;
-            try {
-                const response = await axios.get(`${API_URL}/api/leads/stages/${organization}`);
-                if (response.data.success && response.data.data.stages) {
-                    setStages(response.data.data.stages);
-                    console.log("Fetched stages:", response.data);
-                }
-            } catch (error) {
-                console.error("Failed to fetch stages:", error);
-            }
-        };
-        fetchStages();
-    }, [organization]);
+        if (stagesData?.getLeadStages?.stages) {
+            setStages(stagesData.getLeadStages.stages);
+            console.log('Fetched stages via GraphQL:', stagesData.getLeadStages.stages);
+        }
+    }, [stagesData]);
     useEffect(() => {
         if (leadData?.getLeadById) {
             setLeadDetail(leadData.getLeadById);
@@ -776,7 +811,7 @@ export default function LeadDetail() {
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
                 <div className="xl:col-span-1 lg:col-span-2 md:col-span-2y">
-                    <Card className="overflow-hidden border-2 shadow-none rounded-x pt-0 h-full min-h-[160px] flex flex-col dark:bg-primary/10">
+                    <Card className="overflow-hidden border-2 gap-2 shadow-none rounded-x pt-0 h-full min-h-[160px] flex flex-col dark:bg-primary/10">
                         {/* Header */}
                         <CardHeader
                             className="bg-gradient-to-r from-[var(--stage-color)] to-gray-10 dark:from-[var(--stage-color)] dark:to-gray-200 py-3 sm:py-5 px-3 sm:px-4 transition-colors duration-500 ease-in-out"
@@ -799,21 +834,24 @@ export default function LeadDetail() {
                                     </CardTitle>
                                 </div>
                                 {leadDetail?.exe_user_name && (
-                                    <div className="ml-auto flex items-center gap-1.5 bg-white/80 dark:bg-black/30 px-2.5 py-1 rounded-full">
-                                        <UserCheck className="size-3.5 text-emerald-600" />
-                                        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{leadDetail.exe_user_name}</span>
+                                    <div className="ml-auto flex items-center gap-1.5 bg-white/80 dark:bg-black px-2.5 py-1 rounded-full">
+                                        <span className="text-sm font-medium text-emerald-700 dark:text-white">{leadDetail.exe_user_name}</span>
                                     </div>
                                 )}
                             </div>
-                            {!canEdit && (
-                                <div className="flex items-center gap-2 mt-2 px-2 py-1.5 bg-amber-100/80 dark:bg-amber-900/30 rounded-md border border-amber-300/50">
-                                    <ShieldAlert className="size-3.5 text-amber-600" />
-                                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400">View Only — This lead is assigned to {leadDetail?.exe_user_name || 'another user'}</span>
-                                </div>
-                            )}
                         </CardHeader>
 
                         <CardContent className="">
+                            {!canEdit && (
+                                <div className="mb-2">
+                                    <div className="flex items-center justify-center gap-2 mb-2">
+                                        <ShieldAlert className="size-3.5 text-gray-600 dark:text-gray-400 " />
+                                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400 ">View Only — This lead is assigned to {leadDetail?.exe_user_name || 'another user'}</span>
+                                    </div>
+                                    <Separator />
+                                </div>
+
+                            )}
                             <div className="grid grid-cols-5 sm:gap-2 ">
                                 {/* Notes */}
                                 <div className="flex justify-center">
@@ -934,47 +972,48 @@ export default function LeadDetail() {
                                     </Sheet>
                                 </div>
                                 <div className="flex justify-center">
-                                    <AlertDialog>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="icon"
-                                                        disabled={!canEdit}
-                                                        className="my-2 bg-emerald-50 text-white hover:bg-emerald-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    >
-                                                        <PhoneCall className="size-4 sm:size-5 text-emerald-500 dark:text-emerald-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors" />
-                                                    </Button>
-                                                </AlertDialogTrigger>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>Phone call</p>
-                                            </TooltipContent>
-                                        </Tooltip>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                disabled={!canEdit}
+                                                className="my-2 bg-emerald-50 text-white hover:bg-emerald-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                onClick={async () => {
+                                                    const assignedUser = leadDetail?.exe_user_name || 'Unassigned';
+                                                    const clientPhone = leadDetail?.profile?.phone || 'N/A';
 
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    This action cannot be undone. This will permanently delete your account and remove your data from our servers.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction
-                                                    onClick={() =>
-                                                        window.open(
-                                                            "/ivr-call",
-                                                            "IVRCallWindow",
-                                                            "width=400,height=600,menubar=no,toolbar=no,location=no,status=no,resizable=no,scrollbars=no,left=100,top=100"
-                                                        )
-                                                    }>
-                                                    call
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
+                                                    console.log('--- IVR Call Request ---');
+                                                    console.log('Assigned User:', assignedUser);
+                                                    console.log('Client Phone:', clientPhone);
+                                                    console.log('Lead ID:', leadDetail?._id);
+                                                    console.log('Lead Name:', leadName);
+                                                    console.log('-----------------------');
+
+                                                    try {
+                                                        const response = await axios.post(`${API_URL}/api/ivr-call`, {
+                                                            organization,
+                                                            userId: currentUserId,
+                                                            assignedUser,
+                                                            clientPhone,
+                                                            leadId: leadDetail?._id,
+                                                            leadName,
+                                                        });
+                                                        console.log('IVR Call Response:', response.data);
+                                                        toast.success('IVR call request sent');
+                                                    } catch (err: any) {
+                                                        console.error('IVR Call Error:', err);
+                                                        toast.error(err.response?.data?.message || 'Failed to initiate IVR call');
+                                                    }
+                                                }}
+                                            >
+                                                <PhoneCall className="size-4 sm:size-5 text-emerald-500 dark:text-emerald-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>IVR Call</p>
+                                        </TooltipContent>
+                                    </Tooltip>
                                 </div>
                                 <div className="flex justify-center">
                                     <Sheet>
@@ -1305,7 +1344,34 @@ export default function LeadDetail() {
                                 </div>
 
                                 <div className="flex justify-center">
-                                    <Sheet>
+                                    <Sheet open={reassignSheetOpen} onOpenChange={(open) => {
+                                        setReassignSheetOpen(open)
+                                        if (open) {
+                                            // Fetch users from org DB via GraphQL when sheet opens
+                                            setReassignUsersLoading(true)
+                                            setReassignSearch('')
+                                            setSelectedReassignUserId(null)
+                                            apolloClient.query<GetOrganizationUsersQueryResponse, GetOrganizationUsersQueryVariables>({
+                                                query: GET_ORG_USERS,
+                                                variables: { organization },
+                                                fetchPolicy: 'network-only'
+                                            }).then(({ data }) => {
+                                                if (data?.getOrganizationUsers) {
+                                                    const mapped = data.getOrganizationUsers
+                                                        .filter((u: any) => u.isActive !== false)
+                                                        .map((u: any) => ({
+                                                            _id: u._id || u.globalUserId,
+                                                            name: `${u.profile?.firstName || ''} ${u.profile?.lastName || ''}`.trim(),
+                                                            role: u.role || 'User'
+                                                        }))
+                                                    setReassignUsers(mapped)
+                                                }
+                                            }).catch(err => {
+                                                console.error('Failed to fetch users for reassign', err)
+                                                toast.error('Failed to load users')
+                                            }).finally(() => setReassignUsersLoading(false))
+                                        }
+                                    }}>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
@@ -1318,13 +1384,134 @@ export default function LeadDetail() {
                                                 <p>Reassign lead</p>
                                             </TooltipContent>
                                         </Tooltip>
-                                        <SheetContent>
+                                        <SheetContent className="w-lg">
                                             <SheetHeader>
                                                 <SheetTitle>Reassign Lead</SheetTitle>
                                                 <SheetDescription>
-                                                    Assign this lead to another owner.
+                                                    Select a user to reassign this lead to.
                                                 </SheetDescription>
                                             </SheetHeader>
+                                            <div className="px-4 py-4">
+                                                {/* Current assignment */}
+                                                <div className="mb-4 p-3 rounded-lg border bg-muted/30">
+                                                    <p className="text-xs text-muted-foreground mb-1">Currently assigned to</p>
+                                                    <p className="text-sm font-semibold">{leadDetail?.exe_user_name || 'Unassigned'}</p>
+                                                </div>
+
+                                                {/* Search */}
+                                                <div className="mb-3">
+                                                    <Input
+                                                        placeholder="Search users..."
+                                                        value={reassignSearch}
+                                                        onChange={(e) => setReassignSearch(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                {/* User list */}
+                                                <ScrollArea className="h-[400px]">
+                                                    {reassignUsersLoading ? (
+                                                        <div className="flex items-center justify-center py-10">
+                                                            <p className="text-sm text-muted-foreground">Loading users...</p>
+                                                        </div>
+                                                    ) : (() => {
+                                                        const filteredUsers = reassignUsers.filter(u =>
+                                                            u.name.toLowerCase().includes(reassignSearch.toLowerCase())
+                                                        )
+                                                        return filteredUsers.length ? (
+                                                            filteredUsers.map(user => {
+                                                                const isCurrentUser = leadDetail?.exe_user === user._id
+                                                                const isSelected = selectedReassignUserId === user._id
+                                                                return (
+                                                                    <div
+                                                                        key={user._id}
+                                                                        onClick={() => {
+                                                                            if (!isCurrentUser) setSelectedReassignUserId(isSelected ? null : user._id)
+                                                                        }}
+                                                                        className={`mb-2 p-3 rounded-lg border cursor-pointer transition-all duration-150 ${isCurrentUser
+                                                                            ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-900/20 dark:border-indigo-700 cursor-default'
+                                                                            : isSelected
+                                                                                ? 'bg-indigo-100 border-indigo-400 dark:bg-indigo-900/40 dark:border-indigo-500 ring-2 ring-indigo-400'
+                                                                                : 'bg-muted/30 hover:bg-muted/60'
+                                                                            }`}
+                                                                    >
+                                                                        <div className="flex items-center justify-between">
+                                                                            <div className="flex items-center gap-3">
+                                                                                <div className="flex items-center justify-center w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-sm font-bold">
+                                                                                    {user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                                                                                </div>
+                                                                                <div>
+                                                                                    <p className="text-sm font-medium">{user.name}</p>
+                                                                                    <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+                                                                                </div>
+                                                                            </div>
+                                                                            {isCurrentUser && (
+                                                                                <Badge variant="outline" className="text-xs text-indigo-600 border-indigo-300 bg-indigo-50 dark:bg-indigo-900/30">
+                                                                                    Current
+                                                                                </Badge>
+                                                                            )}
+                                                                            {isSelected && !isCurrentUser && (
+                                                                                <Badge className="text-xs bg-indigo-500 text-white">
+                                                                                    Selected
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )
+                                                            })
+                                                        ) : (
+                                                            <p className="text-sm text-muted-foreground text-center py-4">No users found</p>
+                                                        )
+                                                    })()}
+                                                </ScrollArea>
+
+                                                {/* Reassign button */}
+                                                <Button
+                                                    className="w-full mt-4"
+                                                    disabled={!selectedReassignUserId || reassignLoading}
+                                                    onClick={async () => {
+                                                        if (!selectedReassignUserId || !leadDetail?._id) return
+                                                        setReassignLoading(true)
+                                                        try {
+                                                            const selectedUser = reassignUsers.find(u => u._id === selectedReassignUserId)
+                                                            // Update lead's exe_user
+                                                            await updateLead({
+                                                                variables: {
+                                                                    organization,
+                                                                    id: leadDetail._id,
+                                                                    input: { exe_user: selectedReassignUserId }
+                                                                }
+                                                            })
+                                                            // Create activity log for reassignment
+                                                            if (leadDetail.profile_id && userId) {
+                                                                await createLeadActivity({
+                                                                    variables: {
+                                                                        organization,
+                                                                        input: {
+                                                                            profile_id: leadDetail.profile_id,
+                                                                            updates: 'stage',
+                                                                            lead_id: leadDetail._id,
+                                                                            user_id: userId,
+                                                                            stage: selectedStage || '',
+                                                                            status: selectedStatus || '',
+                                                                            notes: `Lead reassigned to ${selectedUser?.name || 'another user'}`
+                                                                        }
+                                                                    }
+                                                                })
+                                                            }
+                                                            toast.success(`Lead reassigned to ${selectedUser?.name || 'new user'}`)
+                                                            setReassignSheetOpen(false)
+                                                            refetchLead()
+                                                        } catch (error) {
+                                                            console.error('Failed to reassign lead:', error)
+                                                            toast.error('Failed to reassign lead')
+                                                        } finally {
+                                                            setReassignLoading(false)
+                                                        }
+                                                    }}
+                                                >
+                                                    {reassignLoading ? 'Reassigning...' : 'Reassign Lead'}
+                                                </Button>
+                                            </div>
                                         </SheetContent>
                                     </Sheet>
                                 </div>
@@ -1854,17 +2041,17 @@ export default function LeadDetail() {
                                 <div className="col-span-1">
                                     <Avatar className="size-12 ring-2 ring-primary/20 shadow">
                                         <AvatarFallback className="text-xl sm:text-2xl font-semibold uppercase">
-                                            EN
+                                            {leadDetail?.exe_user_name ? leadDetail.exe_user_name.substring(0, 2) : 'UN'}
                                         </AvatarFallback>
                                     </Avatar>
                                 </div>
                                 <div className="col-span-5">
 
                                     <CardTitle className="text-lg sm:text-xl md:text-2xl font-semibold">
-                                        Executive name
+                                        {leadDetail?.exe_user_name || 'Unassigned'}
                                     </CardTitle>
-                                    <CardDescription className="text-xs sm:text-sm opacity-70 tracking-wide">
-                                        team presales
+                                    <CardDescription className="text-xs sm:text-sm opacity-70 tracking-wide capitalize">
+                                        {leadDetail?.exe_user_department ? `team ${leadDetail.exe_user_department}` : 'team pre-sales'}
                                     </CardDescription>
                                 </div>
                             </div>
@@ -1976,8 +2163,16 @@ export default function LeadDetail() {
                                                 <CarouselItem key={ip.project_id}>
                                                     <div className="grid grid-cols-3 gap-4">
                                                         <div className="col-span-1 flex flex-col items-center justify-center gap-2">
-                                                            <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center">
-                                                                <MapPinCheck className="h-8 w-8 text-primary" />
+                                                            <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden">
+                                                                {projectDetail?.img_location?.logo ? (
+                                                                    <img
+                                                                        src={projectDetail.img_location.logo}
+                                                                        alt={ip.project_name}
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                ) : (
+                                                                    <MapPinCheck className="h-8 w-8 text-primary" />
+                                                                )}
                                                             </div>
                                                             <p className="text-sm font-semibold text-center leading-tight">{ip.project_name}</p>
                                                             <Badge variant="outline" className="text-[10px]">{projectDetail?.property || 'N/A'}</Badge>

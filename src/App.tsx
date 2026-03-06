@@ -50,7 +50,7 @@ import LeadDetail from "@/pages/lead_management/lead_detail"
 import NewLead from "./pages/lead_management/new_lead";
 import UserCalendar from "@/pages/calendar/user_calendar"
 import ProfilePage from "@/pages/profile"
-import CallWindow from "@/components/call-window"
+
 import ProjectListing from "./pages/inventory/project_listing";
 import ProjectShowcase from "./pages/inventory/project_showcase";
 import NewProject from "./pages/inventory/new_project";
@@ -299,7 +299,7 @@ export default function App() {
         <Toaster position="top-center" />
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/ivr-call" element={<CallWindow />} />
+
           <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
