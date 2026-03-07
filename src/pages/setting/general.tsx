@@ -7,7 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { UserRoundCog, FileText, CalendarClock, Import, UsersRound, Search, SearchX, Handshake } from "lucide-react"
+import { UserRoundCog, FileText, CalendarClock, Import, UsersRound, Search, SearchX, Handshake, Mail } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -109,6 +109,18 @@ export default function GeneralSetting() {
             hoverGradient: "from-purple-50/50 dark:from-purple-950/20",
             path: "/setting/cp_teams",
         },
+        {
+            title: "Mail",
+            description: "Fast and reliable email communication for personal and business.",
+            icon: Mail,
+            colorClass: "text-red-600 dark:text-purple-400",
+             bgClass: "bg-orange-100 dark:bg-orange-900/40",
+            hoverBorder: "hover:border-purple-300 dark:hover:border-purple-800",
+            hoverGradient: "from-purple-50/50 dark:from-purple-950/20",
+            path: "/setting/mail",
+        },
+
+      
     ]
 
     const filteredCards = settingsCards.filter(
