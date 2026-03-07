@@ -53,6 +53,7 @@ export default function ProjectListing() {
     const [bookedUnitsData, setBookedUnitsData] = React.useState<any[]>([])
     const [bookedUnitsLoading, setBookedUnitsLoading] = React.useState(false)
     const [bookedProjectName, setBookedProjectName] = React.useState('')
+    const [bookedProjectId, setBookedProjectId] = React.useState<number>(0)
     const [searchBookedQuery, setSearchBookedQuery] = React.useState('')
 
     const filteredBookedUnitsData = React.useMemo(() => {
@@ -169,6 +170,7 @@ export default function ProjectListing() {
     const handleBookedUnitsClick = async (e: React.MouseEvent, project: projects) => {
         e.stopPropagation()
         setBookedProjectName(project.name)
+        setBookedProjectId(project.product_id)
         setBookedUnitsOpen(true)
         setBookedUnitsLoading(true)
 
@@ -419,9 +421,9 @@ export default function ProjectListing() {
                     <ScrollArea className="h-[calc(100vh-140px)] px-6 overflow-y-auto">
                         <div className="py-2 space-y-2 pr-1">
                             {bookedUnitsLoading ? (
-                                <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                                <div className="flex flex-col items-center justify-center py-10 space-y-4 ">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                                    <p className="text-sm text-muted-foreground">Loading booked units...</p>
+                                    <p className="text-sm text-muted-foreground ">Loading booked units...</p>
                                 </div>
                             ) : filteredBookedUnitsData.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -437,7 +439,7 @@ export default function ProjectListing() {
                                             <div
                                                 className="flex flex-col py-3 hover:bg-muted/50 transition-colors px-2 rounded-md justify-center"
                                             >
-                                                <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center justify-between gap-2 cursor-pointer">
                                                     <span className="text-base font-semibold truncate">{unit.label}</span>
                                                     <Badge className="bg-zinc-200 text-black dark:bg-stone-800 dark:text-white flex items-center gap-1.5 font-medium">
                                                         <span className="text-sm">
@@ -453,7 +455,9 @@ export default function ProjectListing() {
                                                                 className="flex items-center gap-1.5 cursor-pointer group w-fit"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation()
-                                                                    navigate(`/lead_detail/${unit.bookedBy?.leadUuid || unit.bookedBy?.profileId}`)
+                                                                    const encodedId = encodeProjectId(unit.project_id || bookedProjectId)
+                                                                    const typeQuery = unit.type === 'plot' ? `&plotId=${unit.id}` : `&unitId=${unit.id}`
+                                                                    navigate(`/project_showcase?id=${encodedId}${typeQuery}`)
                                                                 }}
                                                             >
                                                                 <span className="font-semibold text-sm text-foreground group-hover:text-primary group-hover:underline transition-colors truncate">
