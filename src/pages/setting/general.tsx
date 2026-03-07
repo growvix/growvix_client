@@ -38,7 +38,6 @@ export default function GeneralSetting() {
         ])
     }, [setBreadcrumbs])
 
-    // Configuration for settings cards to keep code DRY and clean
     const settingsCards = [
         {
             title: "Manage Users",
