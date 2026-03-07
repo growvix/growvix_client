@@ -67,6 +67,8 @@ import CpTeamManagement from "./pages/setting/cp_team/cp_team_management";
 import CpTeamDetailPage from "./pages/setting/cp_team/cp_team_detail";
 import ImportLeads from "./pages/setting/import_data/import_leads";
 
+import Mail from "./pages/setting/mail";
+
 // Searchable pages index
 type SearchablePage = { label: string; url: string; group: string; icon: React.ElementType }
 const SEARCHABLE_PAGES: SearchablePage[] = [
@@ -276,10 +278,7 @@ function SidebarLayout() {
               </CommandDialog>
 
 
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500"></span>
-              </Button>
+            
               <ModeToggle />
             </div>
           </header>
@@ -327,6 +326,7 @@ export default function App() {
             <Route path="/setting/cp_teams/:id" element={<CpTeamDetailPage />} />
             <Route path="/setting/channel_partner" element={<CPManagement />} />
             <Route path="/setting/import_leads" element={<ImportLeads />} />
+            <Route path="/setting/mail" element={<Mail/>} />
 
           </Route>
         </Routes>

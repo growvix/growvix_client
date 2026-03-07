@@ -7,7 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { UserRoundCog, FileText, CalendarClock, Import, UsersRound, Search, SearchX, Handshake } from "lucide-react"
+import { UserRoundCog, FileText, CalendarClock, Import, UsersRound, Search, SearchX, Handshake, Mail } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -59,26 +59,26 @@ export default function GeneralSetting() {
             hoverGradient: "from-purple-50/50 dark:from-purple-950/20",
             path: "/setting/teams",
         },
-        {
-            title: "Billing",
-            description: "Manage your invoices, payment methods, and dues.",
-            icon: FileText,
-            colorClass: "text-rose-600 dark:text-rose-400",
-            bgClass: "bg-rose-100 dark:bg-rose-900/40",
-            hoverBorder: "hover:border-rose-300 dark:hover:border-rose-800",
-            hoverGradient: "from-rose-50/50 dark:from-rose-950/20",
-            path: "#", // Placeholder
-        },
-        {
-            title: "Attendance",
-            description: "Review and manage user attendance records.",
-            icon: CalendarClock,
-            colorClass: "text-amber-600 dark:text-amber-400",
-            bgClass: "bg-amber-100 dark:bg-amber-900/40",
-            hoverBorder: "hover:border-amber-300 dark:hover:border-amber-800",
-            hoverGradient: "from-amber-50/50 dark:from-amber-950/20",
-            path: "#", // Placeholder
-        },
+        // {
+        //     title: "Billing",
+        //     description: "Manage your invoices, payment methods, and dues.",
+        //     icon: FileText,
+        //     colorClass: "text-rose-600 dark:text-rose-400",
+        //     bgClass: "bg-rose-100 dark:bg-rose-900/40",
+        //     hoverBorder: "hover:border-rose-300 dark:hover:border-rose-800",
+        //     hoverGradient: "from-rose-50/50 dark:from-rose-950/20",
+        //     path: "#", // Placeholder
+        // },
+        // {
+        //     title: "Attendance",
+        //     description: "Review and manage user attendance records.",
+        //     icon: CalendarClock,
+        //     colorClass: "text-amber-600 dark:text-amber-400",
+        //     bgClass: "bg-amber-100 dark:bg-amber-900/40",
+        //     hoverBorder: "hover:border-amber-300 dark:hover:border-amber-800",
+        //     hoverGradient: "from-amber-50/50 dark:from-amber-950/20",
+        //     path: "#", // Placeholder
+        // },
         {
             title: "Import Data",
             description: "Bulk import leads and other data into the system.",
@@ -109,6 +109,18 @@ export default function GeneralSetting() {
             hoverGradient: "from-purple-50/50 dark:from-purple-950/20",
             path: "/setting/cp_teams",
         },
+        {
+            title: "Mail",
+            description: "Fast and reliable email communication for personal and business.",
+            icon: Mail,
+            colorClass: "text-red-600 dark:text-purple-400",
+             bgClass: "bg-orange-100 dark:bg-orange-900/40",
+            hoverBorder: "hover:border-purple-300 dark:hover:border-purple-800",
+            hoverGradient: "from-purple-50/50 dark:from-purple-950/20",
+            path: "/setting/mail",
+        },
+
+      
     ]
 
     const filteredCards = settingsCards.filter(

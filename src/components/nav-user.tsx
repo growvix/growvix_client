@@ -87,7 +87,7 @@ export function NavUser({
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
+            
             <DropdownMenuItem asChild>
               <Link
                 to="/login"

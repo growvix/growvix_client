@@ -1815,7 +1815,7 @@ export default function LeadDetail() {
                     </div>
                     <Card className="border-2 shadow-none py-1 gap-0 dark:bg-input/50">
                         <CardHeader className="pt-2 pb-0 flex flex-row items-center justify-between">
-                            <CardTitle className="text-center text-muted-foreground">Requirements</CardTitle>
+                            <Label className="text-center text-muted-foreground">Requirements</Label>
                             <Sheet open={reqSheetOpen} onOpenChange={(open) => {
                                 setReqSheetOpen(open);
                                 if (open && leadDetail?.propertyRequirement) {
@@ -1838,12 +1838,22 @@ export default function LeadDetail() {
                                 }
                             }}>
                                 <SheetTrigger asChild>
-                                    <Button variant="outline" size="sm" disabled={!canEdit} className="gap-1">
+                                    <Button variant="ghost" size="sm" disabled={!canEdit} className="gap-1">
                                         <Plus className="size-4" />
                                         Add
+                                          
                                     </Button>
-                                </SheetTrigger>
+                                        
+                                     
+                                              
+                                           
+                                    
+                                </SheetTrigger> 
+                                
+                                 
+                                
                                 <SheetContent className="overflow-y-auto">
+                                      
                                     <SheetHeader>
                                         <SheetTitle>Property Requirements</SheetTitle>
                                         <SheetDescription>
@@ -2085,12 +2095,23 @@ export default function LeadDetail() {
                                             >
                                                 {reqLoading ? 'Adding...' : 'Add Requirement'}
                                             </Button>
-                                        </div>
+                                        </div>   
                                     )}
                                 </SheetContent>
+                                 
+                               
                             </Sheet>
+
+                              
+                         
+                           
                         </CardHeader>
-                        <CardContent className="flex justify-center mb-3">
+
+
+                       <Separator className="py-0 my-0   " />
+                               
+                          
+                        <CardContent className="flex justify-center mt-3 mb-3">
                             {(() => {
                                 // Build combined carousel items from structured + manual requirements
                                 const propItems: { key: string; value: string }[] = [];
@@ -2271,9 +2292,9 @@ export default function LeadDetail() {
                     <Card className="border-2 shadow-none dark:bg-input/50 pt-2 gap-0 pb-0">
                         <CardHeader className="mt-0 pt-0 pb-0 mb-2">
                             <div className="flex items-center justify-between border-b pb-1">
-                                <CardTitle className="text-muted-foreground text-lg font-bold">
+                                <Label className="text-muted-foreground  ">
                                     Considered Projects
-                                </CardTitle>
+                                </Label>
                                 {canEdit && (
                                     <Sheet open={addProjectSheetOpen} onOpenChange={setAddProjectSheetOpen}>
                                         <SheetTrigger asChild>
@@ -2571,7 +2592,7 @@ export default function LeadDetail() {
                 <div className="xl:col-span-1 lg:col-span-2 flex flex-col gap-2 shadow-0 tracking-tighter ">
                     <Card className="shadow-none border-2">
                         <CardHeader className="mt-0 py-0">
-                            <CardTitle className="text-center pb-4 border-b text-muted-foreground">Campaign Response</CardTitle>
+                            <Label className="text-center justify-center items-center  pb-4 border-b text-muted-foreground">Campaign Response</Label>
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-6 gap-y-10">
