@@ -1645,9 +1645,9 @@ export default function LeadDetail() {
                                                                         organization,
                                                                         input: {
                                                                             profile_id: leadDetail.profile_id,
-                                                                            updates: 'stage',
+                                                                            updates: 'reassign',
                                                                             lead_id: leadDetail._id,
-                                                                            user_id: userId,
+                                                                            user_id: selectedReassignUserId,
                                                                             stage: selectedStage || '',
                                                                             status: selectedStatus || '',
                                                                             notes: `Lead reassigned to ${selectedUser?.name || 'another user'}`
@@ -2192,38 +2192,80 @@ export default function LeadDetail() {
                     </Card>
                 </div>
                 <div className="xl:col-span-1 lg:col-span-2">
-                    <Card className="border-2 shadow-none dark:bg-input/50 pt-3">
-                        <CardContent>
-                            <div className="grid grid-cols-6">
-                                <div className="col-span-1">
-                                    <Avatar className="size-12 ring-2 ring-primary/20 shadow">
-                                        <AvatarFallback className="text-xl sm:text-2xl font-semibold uppercase">
-                                            {leadDetail?.exe_user_name ? leadDetail.exe_user_name.substring(0, 2) : 'UN'}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                </div>
-                                <div className="col-span-5">
+                    {(() => {
+                        const exesMap = new Map<string, string>();
+                        // Add current executive first
+                        if (leadDetail?.exe_user && leadDetail?.exe_user_name) {
+                            exesMap.set(leadDetail.exe_user, leadDetail.exe_user_name);
+                        }
+                        // Add historical executives from activities
+                        if (leadDetail?.activities) {
+                            leadDetail.activities.forEach((activity: any) => {
+                                if (activity.user_id && activity.user_name && (activity.updates === 'reassign' || activity.notes?.includes('Lead reassigned to'))) {
+                                    exesMap.set(activity.user_id, activity.user_name);
+                                }
+                            });
+                        }
+                        const executives = Array.from(exesMap.entries()).map(([id, name]) => ({ id, name }));
+                        if (executives.length === 0) {
+                            executives.push({ id: 'unassigned', name: 'Unassigned' });
+                        }
 
-                                    <CardTitle className="text-lg sm:text-xl md:text-2xl font-semibold">
-                                        {leadDetail?.exe_user_name || 'Unassigned'}
-                                    </CardTitle>
-                                    <CardDescription className="text-xs sm:text-sm opacity-70 tracking-wide capitalize">
-                                        team pre-sales
-                                    </CardDescription>
-                                </div>
-                            </div>
-                            <ScrollArea className="h-36 mt-5">
-                                <div className="text-sm flex gap-10"><FontAwesomeIcon icon={faWhatsapp} className="text-zinc-700 dark:text-zinc-300 pointer-events-none" style={{ fontSize: "1.2rem" }} /> <span className="ml-10">Whatsapp Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
-                                <Separator className="mt-1 mb-3" />
-                                <div className="text-sm flex gap-10"><Mail className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">mail Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
-                                <Separator className="mt-1 mb-3" />
-                                <div className="text-sm flex gap-10"><PhoneCall className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">Phone call Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
-                                <Separator className="mt-1 mb-3" />
-                                <div className="text-sm flex gap-10"><MessagesSquare className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">Sms Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
-                                <Separator className="mt-1 mb-3" />
-                            </ScrollArea>
-                        </CardContent>
-                    </Card>
+                        const renderCardContent = (exe: { id: string, name: string }) => (
+                            <Card className="border-2 shadow-none dark:bg-input/50 pt-3 h-full">
+                                <CardContent>
+                                    <div className="grid grid-cols-6 pl-2">
+                                        <div className="col-span-1">
+                                            <Avatar className="size-12 ring-2 ring-primary/20 shadow">
+                                                <AvatarFallback className="text-xl sm:text-2xl font-semibold uppercase">
+                                                    {exe.name !== 'Unassigned' ? exe.name.substring(0, 2) : 'UN'}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                        </div>
+                                        <div className="col-span-5 px-3">
+                                            <CardTitle className="text-lg sm:text-xl md:text-2xl font-semibold truncate" title={exe.name}>
+                                                {exe.name}
+                                            </CardTitle>
+                                            <CardDescription className="text-xs sm:text-sm opacity-70 tracking-wide capitalize">
+                                                team pre-sales
+                                            </CardDescription>
+                                        </div>
+                                    </div>
+                                    <ScrollArea className="h-36 mt-5 pl-2">
+                                        <div className="text-sm flex gap-10"><FontAwesomeIcon icon={faWhatsapp} className="text-zinc-700 dark:text-zinc-300 pointer-events-none" style={{ fontSize: "1.2rem" }} /> <span className="ml-10">Whatsapp Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
+                                        <Separator className="mt-1 mb-3" />
+                                        <div className="text-sm flex gap-10"><Mail className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">mail Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
+                                        <Separator className="mt-1 mb-3" />
+                                        <div className="text-sm flex gap-10"><PhoneCall className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">Phone call Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
+                                        <Separator className="mt-1 mb-3" />
+                                        <div className="text-sm flex gap-10"><MessagesSquare className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">Sms Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
+                                        <Separator className="mt-1 mb-3" />
+                                    </ScrollArea>
+                                </CardContent>
+                            </Card>
+                        );
+
+                        if (executives.length === 1) {
+                            return renderCardContent(executives[0]);
+                        }
+
+                        return (
+                            <Carousel
+                                opts={{ align: "start", loop: true }}
+                                className="w-full h-full"
+                            >
+                                <CarouselContent className="h-full">
+                                    {executives.map((exe, idx) => (
+                                        <CarouselItem key={exe.id + idx.toString()} className="h-full">
+                                            {renderCardContent(exe)}
+                                        </CarouselItem>
+                                    ))}
+                                </CarouselContent>
+                                <CarouselPrevious className="left-2" />
+                                <CarouselNext className="right-2" />
+                            </Carousel>
+                        );
+                    })()}
                 </div>
                 <div className="xl:col-span-2 lg:col-span-3">
                     <Card className="border-2 shadow-none dark:bg-input/50 pt-2 gap-0 pb-0">
@@ -2361,7 +2403,7 @@ export default function LeadDetail() {
                                                             <div className="mt-auto pt-4">
                                                                 <Button
                                                                     size="sm"
-                                                                    variant="ghost"
+                                                                    variant="secondary"
                                                                     className="h-8 text-sm px-3 gap-1"
                                                                     onClick={() => {
                                                                         const encodedId = encodeProjectId(ip.project_id)
@@ -2391,7 +2433,7 @@ export default function LeadDetail() {
                                                             <div className="mt-auto pt-4">
                                                                 <Button
                                                                     size="sm"
-                                                                    variant="ghost"
+                                                                    variant="secondary"
                                                                     className="h-8 text-sm px-3 gap-1"
                                                                     onClick={() => {
                                                                         setSiteVisitProject({ id: ip.project_id, name: ip.project_name });
@@ -2414,12 +2456,12 @@ export default function LeadDetail() {
                                                                     <AlertDialog>
                                                                         <AlertDialogTrigger asChild>
                                                                             <Button
-                                                                                variant="destructive"
+                                                                                variant="primary"
                                                                                 size="icon"
-                                                                                className="h-8 w-8 rounded-md"
+                                                                                className="h-8 w-8 rounded-md border border-red-500 dark:bg-red-500/10 bg-red-500/10"
                                                                                 disabled={removingProjectId === ip.project_id}
                                                                             >
-                                                                                <Trash2 className="h-4 w-4" />
+                                                                                <Trash2 className="h-4 w-4 text-red-500" />
                                                                             </Button>
                                                                         </AlertDialogTrigger>
                                                                         <AlertDialogContent>
@@ -2642,7 +2684,7 @@ export default function LeadDetail() {
                                                             : isSiteVisit ? <CalendarClock className="size-5 text-zinc-700 dark:text-zinc-300" />
                                                                 : isNotes ? <NotebookPen className="size-5 text-zinc-700 dark:text-zinc-300" />
                                                                     : isRequirement ? <ClipboardCheck className="size-5 text-zinc-700 dark:text-zinc-300" />
-                                                                        : isMail ? <Mail className="size-5 text-blue-500 dark:text-blue-400" />
+                                                                        : isMail ? <Mail className="size-5 text-zinc-700 dark:text-zinc-300" />
                                                                             : <Mail className="size-5 text-zinc-700 dark:text-zinc-300" />;
 
                                                 const activityContent = (
