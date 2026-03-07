@@ -91,6 +91,8 @@ export default function ProjectShowcase() {
     const [searchParams] = useSearchParams()
     const location = useLocation()
     const projectId = searchParams.get('id')
+    const urlUnitId = searchParams.get('unitId')
+    const urlPlotId = searchParams.get('plotId')
 
     // Lead context from navigation state (passed from lead detail page)
     const bookingLead = (location.state as any)?.bookingLead || null
@@ -184,8 +186,27 @@ export default function ProjectShowcase() {
             const projectData = response.data.data
             setProject(projectData)
 
-            // Auto-select first block if available
-            if (projectData.blocks && projectData.blocks.length > 0) {
+            // Auto-select based on URL parameters or default to first block
+            if (urlPlotId && projectData.property === 'plots' && projectData.plots) {
+                const matchedPlot = projectData.plots.find((p: Plot) => p.plotId === urlPlotId)
+                if (matchedPlot) {
+                    setSelectedPlot(matchedPlot)
+                }
+            } else if (urlUnitId && projectData.property !== 'plots' && projectData.blocks) {
+                let found = false;
+                for (const block of projectData.blocks) {
+                    for (const floor of (block.floors || [])) {
+                        const matchedUnit = floor.units?.find((u: Unit) => u.unitId === urlUnitId)
+                        if (matchedUnit) {
+                            setSelectedBlock(block)
+                            setSelectedFloor(floor)
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) break;
+                }
+            } else if (projectData.blocks && projectData.blocks.length > 0) {
                 setSelectedBlock(projectData.blocks[0])
             }
         } catch (error) {
@@ -566,7 +587,7 @@ export default function ProjectShowcase() {
                                         {selectedFloor.units.map((unit) => (
                                             <div
                                                 key={unit.unitId}
-                                                className={`p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${getStatusColor(unit.status)}`}
+                                                className={`p-3 rounded-lg border-2 transition-all hover:shadow-md ${getStatusColor(unit.status)} ${unit.status === 'available' ? 'cursor-pointer' : ''}`}
                                                 onClick={() => {
                                                     if (unit.status === 'available' && selectedBlock) {
                                                         handleOpenBooking({
@@ -583,10 +604,19 @@ export default function ProjectShowcase() {
                                                     <div className="text-xs">{unit.bhk} BHK</div>
                                                     <div className="text-xs opacity-70">{unit.size} sqft</div>
                                                     <div className="text-xs opacity-70">{unit.facing}</div>
-                                                    {unit.bookedBy && unit.status === 'booked' && (
-                                                        <div className="text-xs mt-1 pt-1 border-t border-current/20 opacity-80 truncate" title={`#${unit.bookedBy.profileId}`}>
+                                                    {unit.bookedBy && (unit.status === 'booked' || unit.status === 'sold') && (
+                                                        <div
+                                                            className="text-xs mt-1 pt-1 border-t border-current/20 opacity-80 truncate cursor-pointer hover:underline flex justify-center items-center"
+                                                            title={`#${unit.bookedBy.profileId}`}
+                                                            onClick={(e) => {
+                                                                if (unit.bookedBy?.leadUuid || unit.bookedBy?.profileId) {
+                                                                    e.stopPropagation();
+                                                                    window.location.href = `/lead_detail/${unit.bookedBy.leadUuid || unit.bookedBy.profileId}`;
+                                                                }
+                                                            }}
+                                                        >
                                                             <User className="h-3 w-3 inline mr-0.5" />
-                                                            #{unit.bookedBy.profileId}
+                                                            #{unit.bookedBy.profileId || 'Lead'}
                                                         </div>
                                                     )}
                                                 </div>
