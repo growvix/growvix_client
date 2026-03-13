@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, Plus, Trash2, AlertTriangle, Info } from "lucide-react"
+import { toast } from "sonner"
 
 interface MemberDetail {
     _id: string
@@ -80,6 +81,10 @@ export default function CpTeamDetailPage() {
     const [warnings, setWarnings] = useState<{ userId: string; userName: string; existingTeam: string }[]>([])
     const [pendingAddition, setPendingAddition] = useState(false)
 
+    // Delete dialog
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [memberToDelete, setMemberToDelete] = useState<{ id: string, name: string } | null>(null)
+
     useEffect(() => {
         setBreadcrumbs([
             { label: "Settings", href: "/settings" },
@@ -129,13 +134,13 @@ export default function CpTeamDetailPage() {
             const org = getCookie("organization")
             // Fetch CP Users instead of Internal Users
             const response = await axios.get(
-                `${API.CP_USERS}?organization=${org}`,
+                `${API.CP_USERS}?organization=${org}&limit=1000`,
                 { headers: { Authorization: `Bearer ${token}` } }
             )
-            const allUsers = response.data.data?.data || []
+            const allUsers = response.data.data?.cpUsers || response.data.data || []
             // Filter out users already in this team
             const memberIds = new Set(team?.members?.map(m => String(m)) || [])
-            const available = allUsers.filter((u: AvailableUser) => !memberIds.has(String(u._id)))
+            const available = (Array.isArray(allUsers) ? allUsers : []).filter((u: AvailableUser) => !memberIds.has(String(u._id)))
             setAvailableUsers(available)
         } catch (err: any) {
             console.error("Failed to fetch CP users:", err)
@@ -171,7 +176,7 @@ export default function CpTeamDetailPage() {
                     setWarnings(
                         usersWithTeams.map(u => ({
                             userId: String(u._id),
-                            userName: `${u.profile.firstName} ${u.profile.lastName}`,
+                            userName: `${u.profile?.firstName || "Unknown"} ${u.profile?.lastName || ""}`,
                             existingTeam: u.team!,
                         }))
                     )
@@ -199,15 +204,16 @@ export default function CpTeamDetailPage() {
     }
 
     const handleRemoveMember = async (userId: string) => {
-        if (!confirm("Are you sure you want to remove this CP member?")) return
+        setDeleteDialogOpen(false)
         try {
             const token = getCookie("token")
             await axios.delete(API.removeCpTeamMember(id!, userId), {
                 headers: { Authorization: `Bearer ${token}` },
             })
             fetchTeam()
+            toast.success("Member removed successfully")
         } catch (err: any) {
-            alert(err.response?.data?.message || "Failed to remove member")
+            toast.error(err.response?.data?.message || "Failed to remove member")
         }
     }
 
@@ -288,7 +294,13 @@ export default function CpTeamDetailPage() {
                                                     variant="ghost"
                                                     size="icon"
                                                     className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    onClick={() => handleRemoveMember(String(member._id))}
+                                                    onClick={() => {
+                                                        setMemberToDelete({
+                                                            id: String(member._id),
+                                                            name: `${member.profile?.firstName || "Unknown"} ${member.profile?.lastName || ""}`.trim()
+                                                        })
+                                                        setDeleteDialogOpen(true)
+                                                    }}
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -338,9 +350,9 @@ export default function CpTeamDetailPage() {
                                         />
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-medium capitalize">
-                                                {user.profile.firstName} {user.profile.lastName}
+                                                {user.profile?.firstName || "Unknown"} {user.profile?.lastName || ""}
                                             </p>
-                                            <p className="text-xs text-muted-foreground">{user.profile.email}</p>
+                                            <p className="text-xs text-muted-foreground">{user.profile?.email || "No email"}</p>
                                         </div>
                                         {hasOtherTeam && (
                                             <div className="flex items-center gap-1">
@@ -379,7 +391,7 @@ export default function CpTeamDetailPage() {
                         </AlertDialogTitle>
                         <AlertDialogDescription asChild>
                             <div>
-                                <p className="mb-3">The following CP users are currently assigned to other teams. Adding them will transfer them to <strong>{team.name}</strong>:</p>
+                                   <p className="mb-3">The following CP users are currently assigned to other teams. Adding them will transfer them to <strong>{team.name}</strong>:</p>
                                 <div className="space-y-2">
                                     {warnings.map((w) => (
                                         <div key={w.userId} className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-2">
@@ -401,6 +413,29 @@ export default function CpTeamDetailPage() {
                             className="bg-amber-600 hover:bg-amber-700"
                         >
                             Reassign Anyway
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Member Confirmation Dialog */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete User</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete <strong className="text-foreground">{memberToDelete?.name}</strong>? This action cannot be undone. The user will be permanently removed from the system.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (memberToDelete) handleRemoveMember(memberToDelete.id)
+                            }}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

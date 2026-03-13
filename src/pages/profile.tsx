@@ -17,11 +17,14 @@ const defaultUser = {
   icon: "👤"
 };
 
+import { useNavigate } from "react-router-dom";
+
 export default function ProfilePage() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(defaultUser);
-  const [name, setName] = useState(user.name);
-  const [icon, setIcon] = useState(user.icon);
-  const [editing, setEditing] = useState(false);
+  const [name] = useState(user.name);
+  const [icon] = useState(user.icon);
+  const [_editing, setEditing] = useState(false);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -53,8 +56,11 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="px-3 flex justify-center mt-10">
-      <Card className="w-3xl">
+    <div 
+      className="px-3 flex justify-center mt-10 min-h-[calc(100vh-100px)] cursor-default" 
+      onClick={() => navigate(-1)}
+    >
+      <Card className="w-3xl h-fit mb-10" onClick={(e) => e.stopPropagation()}>
         <CardHeader>
           <CardTitle>Profile Update</CardTitle>
           <CardDescription className="border-b pb-2">View and edit your profile information.</CardDescription>
