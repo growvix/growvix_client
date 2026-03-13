@@ -14,7 +14,7 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Routes, Route, Navigate, Outlet, useNavigate } from "react-router-dom"
+import { Routes, Route, Navigate, Outlet, useNavigate, useLocation } from "react-router-dom"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Button } from "@/components/ui/button"
@@ -87,6 +87,21 @@ const SEARCHABLE_PAGES: SearchablePage[] = [
   { label: "Calendar", url: "/user_calendar", group: "Tools", icon: Calendar },
   { label: "Profile", url: "/profile", group: "Tools", icon: User },
 ];
+
+function ScrollToTop() {
+  const location = useLocation()
+  
+  React.useEffect(() => {
+    // Scroll the window
+    window.scrollTo(0, 0)
+    
+    // Scroll any scroll areas, like the main layout viewports
+    const scrollports = document.querySelectorAll('[data-radix-scroll-area-viewport]')
+    scrollports.forEach(port => port.scrollTo(0, 0))
+  }, [location.pathname])
+
+  return null
+}
 
 function SidebarLayout() {
   const [open, setOpen] = React.useState(false)
@@ -295,6 +310,7 @@ export default function App() {
   return (
     <ThemeProvider storageKey="vite-ui-theme" defaultTheme="system">
       <BreadcrumbProvider>
+        <ScrollToTop />
         <Toaster position="top-center" />
         <Routes>
           <Route path="/login" element={<Login />} />

@@ -22,7 +22,7 @@ export function NavProjects({
     icon: LucideIcon
   }[]
 }) {
-  const { isMobile } = useSidebar()
+  const { isMobile, setOpen, setOpenMobile } = useSidebar()
   const location = useLocation()
   const pathname = location.pathname
 
@@ -33,7 +33,13 @@ export function NavProjects({
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton asChild isActive={item.url === pathname}>
-              <Link to={item.url}>
+              <Link 
+                to={item.url}
+                onClick={() => {
+                  setOpen(false)
+                  setOpenMobile(false)
+                }}
+              >
                 <item.icon />
                 <span>{item.name}</span>
               </Link>
