@@ -21,6 +21,16 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { DataTable } from "@/components/ui/data-table"
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -179,6 +189,10 @@ export default function CPManagement() {
     const [editFormData, setEditFormData] = useState({ ...emptyForm })
     const [editSubmitting, setEditSubmitting] = useState(false)
 
+    // Delete dialog
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [cpToDelete, setCpToDelete] = useState<CPData | null>(null)
+
     const organization = getCookie("organization") || ""
 
     // ── Fetch all CP users ──
@@ -278,22 +292,31 @@ export default function CPManagement() {
         }
     }
 
+    // ── Open Delete Dialog ──
+    const confirmDelete = (cp: CPData) => {
+        setCpToDelete(cp)
+        setDeleteDialogOpen(true)
+    }
+
     // ── Delete CP ──
-    const handleDelete = async (cp: CPData) => {
-        if (!confirm(`Are you sure you want to delete "${getFullName(cp)}"?`)) return
+    const handleDelete = async () => {
+        if (!cpToDelete) return
+        setDeleteDialogOpen(false)
         try {
             const token = getCookie("token")
-            await axios.delete(`${API.deleteCpUser(cp._id)}?organization=${organization}`, {
+            await axios.delete(`${API.deleteCpUser(cpToDelete._id)}?organization=${organization}`, {
                 headers: { Authorization: `Bearer ${token}` },
             })
-            setCpUsers((prev) => prev.filter((c) => c._id !== cp._id))
+            setCpUsers((prev) => prev.filter((c) => c._id !== cpToDelete._id))
             toast.success("Channel Partner deleted successfully")
+            setCpToDelete(null)
         } catch (err: any) {
             toast.error(err.response?.data?.message || "Failed to delete Channel Partner")
+            setCpToDelete(null)
         }
     }
 
-    const columns = useMemo(() => getColumns(handleEdit, handleDelete), [])
+    const columns = useMemo(() => getColumns(handleEdit, confirmDelete), [])
 
     // ── Render ──
     return (
@@ -431,6 +454,27 @@ export default function CPManagement() {
                     filterPlaceholder="Search by name..."
                 />
             )}
+
+            {/* Delete CP Confirmation Dialog */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete User</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete <strong className="text-foreground">{cpToDelete ? getFullName(cpToDelete) : ""}</strong>? This action cannot be undone. The user will be permanently removed from the system.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

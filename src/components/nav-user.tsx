@@ -38,7 +38,7 @@ export function NavUser({
     avatar: string
   }
 }) {
-  const { isMobile, setLocked } = useSidebar()
+  const { isMobile, setLocked, setOpen, setOpenMobile } = useSidebar()
 
   return (
     <SidebarMenu>
@@ -81,7 +81,14 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link to="/profile" className="flex items-center gap-2">
+                <Link 
+                  to="/profile" 
+                  className="flex items-center gap-2"
+                  onClick={() => {
+                    setOpen(false)
+                    setOpenMobile(false)
+                  }}
+                >
                   <BadgeCheck />
                   <span>Account</span>
                 </Link>
