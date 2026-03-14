@@ -366,8 +366,8 @@ export default function ProjectShowcase() {
                                                                     key={floor.floorNumber}
                                                                     onClick={() => setSelectedFloor(floor)}
                                                                     className={`p-2 text-xs rounded border transition-all ${selectedFloor?.floorNumber === floor.floorNumber
-                                                                        ? 'bg-primary text-white border-primary'
-                                                                        : 'bg-muted/50 hover:bg-muted border-border'
+                                                                        ? 'bg-primary text-white border-primary dark:bg-primary dark:text-black dark:border-primary'
+                                                                        : 'bg-muted/50 hover:bg-muted border-border dark:bg-muted/50 dark:hover:bg-muted dark:border-border'
                                                                         }`}
                                                                 >
                                                                     F{floor.floorNumber}

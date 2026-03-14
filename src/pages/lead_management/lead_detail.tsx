@@ -172,6 +172,8 @@ const UPDATE_LEAD = gql`
             _id
             stage
             status
+            exe_user
+            exe_user_name
         }
     }
 `;
@@ -338,6 +340,7 @@ export default function LeadDetail() {
     const organization = getCookie("organization") || "";
     const userId = getCookie("profile_id") || "";
     const currentUserId = getCookie("user_id") || "";
+    const currentUserName = getCookie("userName") || "";
 
     // Follow-up form state
     const [followUpReason, setFollowUpReason] = useState('')
@@ -485,6 +488,8 @@ export default function LeadDetail() {
                         )
                     },
                 ])
+                setLoading(false)
+                toast.error(error instanceof Error ? error.message : 'Failed to fetch lead details')
             }
         }
         run()
@@ -550,8 +555,16 @@ export default function LeadDetail() {
     // Permission: can the current user edit this lead?
     const canEdit = useMemo(() => {
         if (!leadDetail?.exe_user || !currentUserId) return true; // no assignment = open
-        return leadDetail.exe_user === currentUserId;
-    }, [leadDetail?.exe_user, currentUserId]);
+        if (leadDetail.exe_user === currentUserId) return true;
+        
+        // Fallback for name match (resolves UUID mismatch issues for same user)
+        if (leadDetail.exe_user_name && currentUserName && 
+            leadDetail.exe_user_name.toLowerCase().trim() === currentUserName.toLowerCase().trim()) {
+            return true;
+        }
+        
+        return false;
+    }, [leadDetail?.exe_user, leadDetail?.exe_user_name, currentUserId, currentUserName]);
 
     const handleFollowUps = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -870,6 +883,20 @@ export default function LeadDetail() {
         return combined.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     }, [leadDetail]);
 
+    const activityStats = useMemo(() => {
+        const stats = { whatsapp: 0, mail: 0, call: 0, sms: 0, site_visit: 0 };
+        if (!leadDetail?.activities) return stats;
+        leadDetail.activities.forEach(a => {
+            const up = a.updates?.toLowerCase();
+            if (up === 'whatsapp') stats.whatsapp++;
+            if (up === 'mail') stats.mail++;
+            if (up === 'phonecall' || up === 'call') stats.call++;
+            if (up === 'sms') stats.sms++;
+            if (up === 'site_visit') stats.site_visit++;
+        });
+        return stats;
+    }, [leadDetail?.activities]);
+
     if (loading) {
         return <LoaderScreen />
     }
@@ -1083,11 +1110,11 @@ export default function LeadDetail() {
                                             <Separator />
 
                                             {/* Footer */}
-                                            <div className=" flex gap-4 p-7 m-3 bg-stone-200 rounded-lg">
+                                            <div className=" flex gap-4 p-7 m-3 justify-end rounded-lg">
                                                 <Button
                                                     type="submit"
                                                     form="mail-compose-form"
-                                                    className="flex-1"
+                                                    className="px-2.5"
                                                     disabled={mailLoading}
                                                 >
                                                     {mailLoading ? 'Sending…' : 'Send Email'}
@@ -1096,6 +1123,7 @@ export default function LeadDetail() {
                                                     type="button"
                                                     variant="outline"
                                                     onClick={() => setMailSheetOpen(false)}
+                                                    className="py-2"
                                                 >
                                                     Cancel
                                                 </Button>
@@ -1325,7 +1353,7 @@ export default function LeadDetail() {
                                             <div className="px-4 py-4">
                                                 <div className="flex items-center justify-between mb-4">
                                                     <h4 className="text-sm font-semibold text-muted-foreground">All Site Visits</h4>
-                                                    <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50">
+                                                    <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-white dark:text-black">
                                                         {leadDetail?.site_visits_completed ?? 0} Completed
                                                     </Badge>
                                                 </div>
@@ -1647,7 +1675,7 @@ export default function LeadDetail() {
                                                                             profile_id: leadDetail.profile_id,
                                                                             updates: 'reassign',
                                                                             lead_id: leadDetail._id,
-                                                                            user_id: selectedReassignUserId,
+                                                                            user_id: userId,
                                                                             stage: selectedStage || '',
                                                                             status: selectedStatus || '',
                                                                             notes: `Lead reassigned to ${selectedUser?.name || 'another user'}`
@@ -1758,9 +1786,11 @@ export default function LeadDetail() {
                         </Card>
                         <Card className="overflow-hidden shadow-none py-0 border-2 dark:bg-input/50">
                             <div className="p-3 sm:p-4">
-                                <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Tags</CardTitle>
+                                <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Last Updated</CardTitle>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">Today 3:30 PM</span>
+                                    <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">
+                                        {leadDetail?.updatedAt ? new Date(leadDetail.updatedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}
+                                    </span>
                                     <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
                                         <History className="size-5 sm:size-6 text-zinc-700 dark:text-zinc-300" />
                                     </div>
@@ -1771,7 +1801,7 @@ export default function LeadDetail() {
                             <div className="p-4">
                                 <CardTitle className="text-sm font-light text-muted-foreground">Total Engagements</CardTitle>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">{leadDetail?.acquired?.length.toString()}</span>
+                                    <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">{(leadDetail?.activities?.length || 0).toString()}</span>
                                     <div className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
                                         <History className="size-6 text-zinc-700 dark:text-zinc-300" />
                                     </div>
@@ -1782,7 +1812,7 @@ export default function LeadDetail() {
                             <div className="p-4">
                                 <CardTitle className="text-sm font-light text-muted-foreground">Lead Country</CardTitle>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">3 Days ago</span>
+                                    <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">{leadDetail?.profile?.location || 'India'}</span>
                                     <div className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
                                         <History className="size-6 text-zinc-700 dark:text-zinc-300" />
                                     </div>
@@ -1791,9 +1821,9 @@ export default function LeadDetail() {
                         </Card>
                         <Card className="overflow-hidden shadow-none py-0 border-2 dark:bg-input/50">
                             <div className="p-4">
-                                <CardTitle className="text-sm font-light text-muted-foreground">Total Incoming</CardTitle>
+                                <CardTitle className="text-sm font-light text-muted-foreground">Total Responses</CardTitle>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">3 Days ago</span>
+                                    <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">{leadDetail?.acquired?.length.toString() || '0'}</span>
                                     <div className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
                                         <History className="size-6 text-zinc-700 dark:text-zinc-300" />
                                     </div>
@@ -1814,8 +1844,9 @@ export default function LeadDetail() {
 
                     </div>
                     <Card className="border-2 shadow-none py-1 gap-0 dark:bg-input/50">
-                        <CardHeader className="pt-2 pb-0 flex flex-row items-center justify-between">
-                            <Label className="text-center text-muted-foreground">Requirements</Label>
+                        <CardHeader className="pt-2 pb-0 mb-2">
+                            <div className="flex items-center justify-between border-b pb-1">
+                                <Label className="text-muted-foreground">Requirements</Label>
                             <Sheet open={reqSheetOpen} onOpenChange={(open) => {
                                 setReqSheetOpen(open);
                                 if (open && leadDetail?.propertyRequirement) {
@@ -2098,17 +2129,12 @@ export default function LeadDetail() {
                                         </div>   
                                     )}
                                 </SheetContent>
-                                 
-                               
+                                      
                             </Sheet>
-
-                              
-                         
-                           
+                            </div>
                         </CardHeader>
 
 
-                       <Separator className="py-0 my-0   " />
                                
                           
                         <CardContent className="flex justify-center mt-3 mb-3">
@@ -2252,14 +2278,14 @@ export default function LeadDetail() {
                                             </CardDescription>
                                         </div>
                                     </div>
-                                    <ScrollArea className="h-36 mt-5 pl-2">
-                                        <div className="text-sm flex gap-10"><FontAwesomeIcon icon={faWhatsapp} className="text-zinc-700 dark:text-zinc-300 pointer-events-none" style={{ fontSize: "1.2rem" }} /> <span className="ml-10">Whatsapp Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
+                                    <ScrollArea className="h-44 mt-5 pl-2">
+                                        <div className="text-sm flex gap-10 items-center"><FontAwesomeIcon icon={faWhatsapp} className="text-zinc-700 dark:text-zinc-300 pointer-events-none" style={{ fontSize: "1.2rem" }} /> <span className="ml-10">Whatsapp Engaged</span> <Button className="ml-auto me-10 h-8" variant={"outline"}>{activityStats.whatsapp}</Button> </div>
                                         <Separator className="mt-1 mb-3" />
-                                        <div className="text-sm flex gap-10"><Mail className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">mail Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
+                                        <div className="text-sm flex gap-10 items-center"><Mail className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">Mail Engaged</span> <Button className="ml-auto me-10 h-8" variant={"outline"}>{activityStats.mail}</Button> </div>
                                         <Separator className="mt-1 mb-3" />
-                                        <div className="text-sm flex gap-10"><PhoneCall className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">Phone call Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
+                                        <div className="text-sm flex gap-10 items-center"><PhoneCall className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">Phone Call Engaged</span> <Button className="ml-auto me-10 h-8" variant={"outline"}>{activityStats.call}</Button> </div>
                                         <Separator className="mt-1 mb-3" />
-                                        <div className="text-sm flex gap-10"><MessagesSquare className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">Sms Engaged</span> <Button className="ml-auto me-10" variant={"outline"}>13</Button> </div>
+                                        <div className="text-sm flex gap-10 items-center"><MessagesSquare className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">SMS Engaged</span> <Button className="ml-auto me-10 h-8" variant={"outline"}>{activityStats.sms}</Button> </div>
                                         <Separator className="mt-1 mb-3" />
                                     </ScrollArea>
                                 </CardContent>
@@ -2550,7 +2576,7 @@ export default function LeadDetail() {
                         <CardContent className="bg-transparent">
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
 
-                                {/* Site Visits */}
+                                 {/* Site Visits */}
                                 <StageStatCard
                                     value={leadDetail?.site_visits_completed ?? 0}
                                     label="Site Visits Completed"
@@ -2559,28 +2585,28 @@ export default function LeadDetail() {
 
                                 {/* Ongoing Missed */}
                                 <StageStatCard
-                                    value={888}
+                                    value={leadDetail?.activities?.filter(a => a.updates === 'call' && a.notes?.includes('Missed')).length || 0}
                                     label="Ongoing Missed Calls"
                                     currentStageColor={currentStageObject?.color}
                                 />
 
                                 {/* Ongoing Answered */}
                                 <StageStatCard
-                                    value={88}
+                                    value={leadDetail?.activities?.filter(a => a.updates === 'call' && a.notes?.includes('Answered')).length || 0}
                                     label="Ongoing Answered Calls"
                                     currentStageColor={currentStageObject?.color}
                                 />
 
                                 {/* Incoming Missed */}
                                 <StageStatCard
-                                    value={8888}
+                                    value={leadDetail?.acquired?.filter(a => a.medium === 'Call' && a.source?.includes('Missed')).length || 0}
                                     label="Incoming Missed Calls"
                                     currentStageColor={currentStageObject?.color}
                                 />
 
                                 {/* Incoming Answered */}
                                 <StageStatCard
-                                    value={8888}
+                                    value={leadDetail?.acquired?.filter(a => a.medium === 'Call' && a.source?.includes('Answered')).length || 0}
                                     label="Incoming Answered Calls"
                                     currentStageColor={currentStageObject?.color}
                                 />
