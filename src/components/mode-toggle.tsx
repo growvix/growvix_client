@@ -1,4 +1,3 @@
-import React from "react"
 import { Moon, Sun } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -7,12 +6,20 @@ import { useTheme } from "@/components/theme-provider"
 export function ModeToggle() {
   const { theme, setTheme } = useTheme()
 
-  // Treat anything that's exactly 'dark' as dark. If your provider uses other values adapt accordingly.
-  const isDark = theme === "dark"
-
   function toggleTheme() {
-    setTheme(isDark ? "light" : "dark")
+    // Determine the current effective theme
+    let effectiveTheme = theme
+    if (theme === "system") {
+      effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light"
+    }
+
+    // Toggle to the opposite of the effective theme
+    setTheme(effectiveTheme === "dark" ? "light" : "dark")
   }
+
+  const isDark = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches)
 
   return (
     <Button

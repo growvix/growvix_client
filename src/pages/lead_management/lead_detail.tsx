@@ -883,19 +883,6 @@ export default function LeadDetail() {
         return combined.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     }, [leadDetail]);
 
-    const activityStats = useMemo(() => {
-        const stats = { whatsapp: 0, mail: 0, call: 0, sms: 0, site_visit: 0 };
-        if (!leadDetail?.activities) return stats;
-        leadDetail.activities.forEach(a => {
-            const up = a.updates?.toLowerCase();
-            if (up === 'whatsapp') stats.whatsapp++;
-            if (up === 'mail') stats.mail++;
-            if (up === 'phonecall' || up === 'call') stats.call++;
-            if (up === 'sms') stats.sms++;
-            if (up === 'site_visit') stats.site_visit++;
-        });
-        return stats;
-    }, [leadDetail?.activities]);
 
     if (loading) {
         return <LoaderScreen />
@@ -2258,39 +2245,70 @@ export default function LeadDetail() {
                             executives.push({ id: 'unassigned', name: 'Unassigned' });
                         }
 
-                        const renderCardContent = (exe: { id: string, name: string }) => (
-                            <Card className="border-2 shadow-none dark:bg-input/50 pt-3 h-full">
-                                <CardContent>
-                                    <div className="grid grid-cols-6 pl-2">
-                                        <div className="col-span-1">
-                                            <Avatar className="size-12 ring-2 ring-primary/20 shadow">
-                                                <AvatarFallback className="text-xl sm:text-2xl font-semibold uppercase">
-                                                    {exe.name !== 'Unassigned' ? exe.name.substring(0, 2) : 'UN'}
-                                                </AvatarFallback>
-                                            </Avatar>
+                        const renderCardContent = (exe: { id: string, name: string }) => {
+                            const exeStats = { whatsapp: 0, mail: 0, call: 0, sms: 0 };
+                            if (leadDetail?.activities) {
+                                leadDetail.activities.forEach(a => {
+                                    if (a.user_id === exe.id) {
+                                        const up = a.updates?.toLowerCase();
+                                        if (up === 'whatsapp') exeStats.whatsapp++;
+                                        if (up === 'mail') exeStats.mail++;
+                                        if (up === 'phonecall' || up === 'call') exeStats.call++;
+                                        if (up === 'sms') exeStats.sms++;
+                                    }
+                                });
+                            }
+
+                            return (
+                                <Card className="border-2 shadow-none dark:bg-input/50 pt-3 h-full">
+                                    <CardContent>
+                                        <div className="grid grid-cols-6 pl-2">
+                                            <div className="col-span-1">
+                                                <Avatar className="size-12 ring-2 ring-primary/20 shadow">
+                                                    <AvatarFallback className="text-xl sm:text-2xl font-semibold uppercase">
+                                                        {exe.name !== 'Unassigned' ? exe.name.substring(0, 2) : 'UN'}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            </div>
+                                            <div className="col-span-5 px-3">
+                                                <CardTitle className="text-lg sm:text-xl md:text-2xl font-semibold truncate" title={exe.name}>
+                                                    {exe.name}
+                                                </CardTitle>
+                                                <CardDescription className="text-xs sm:text-sm opacity-70 tracking-wide capitalize">
+                                                    team pre-sales
+                                                </CardDescription>
+                                            </div>
                                         </div>
-                                        <div className="col-span-5 px-3">
-                                            <CardTitle className="text-lg sm:text-xl md:text-2xl font-semibold truncate" title={exe.name}>
-                                                {exe.name}
-                                            </CardTitle>
-                                            <CardDescription className="text-xs sm:text-sm opacity-70 tracking-wide capitalize">
-                                                team pre-sales
-                                            </CardDescription>
-                                        </div>
-                                    </div>
-                                    <ScrollArea className="h-44 mt-5 pl-2">
-                                        <div className="text-sm flex gap-10 items-center"><FontAwesomeIcon icon={faWhatsapp} className="text-zinc-700 dark:text-zinc-300 pointer-events-none" style={{ fontSize: "1.2rem" }} /> <span className="ml-10">Whatsapp Engaged</span> <Button className="ml-auto me-10 h-8" variant={"outline"}>{activityStats.whatsapp}</Button> </div>
-                                        <Separator className="mt-1 mb-3" />
-                                        <div className="text-sm flex gap-10 items-center"><Mail className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">Mail Engaged</span> <Button className="ml-auto me-10 h-8" variant={"outline"}>{activityStats.mail}</Button> </div>
-                                        <Separator className="mt-1 mb-3" />
-                                        <div className="text-sm flex gap-10 items-center"><PhoneCall className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">Phone Call Engaged</span> <Button className="ml-auto me-10 h-8" variant={"outline"}>{activityStats.call}</Button> </div>
-                                        <Separator className="mt-1 mb-3" />
-                                        <div className="text-sm flex gap-10 items-center"><MessagesSquare className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> <span className="ml-10">SMS Engaged</span> <Button className="ml-auto me-10 h-8" variant={"outline"}>{activityStats.sms}</Button> </div>
-                                        <Separator className="mt-1 mb-3" />
-                                    </ScrollArea>
-                                </CardContent>
-                            </Card>
-                        );
+                                        <ScrollArea className="h-44 mt-5 pl-2">
+                                            <div className="text-sm flex gap-10 items-center ps-5">
+                                                <FontAwesomeIcon icon={faWhatsapp} className="text-zinc-700 dark:text-zinc-300 pointer-events-none" style={{ fontSize: "1.2rem" }} /> 
+                                                <span className="ml-10">Whatsapp Engaged</span> 
+                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.whatsapp}</Button> 
+                                            </div>
+                                            <Separator className="ms-4 me-4 mt-1 mb-3" />
+                                            <div className="text-sm flex gap-10 items-center ps-5">
+                                                <Mail className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> 
+                                                <span className="ml-10">Mail Engaged</span> 
+                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.mail}</Button> 
+                                            </div>
+                                            <Separator className="ms-4 me-8 mt-1 mb-3" />
+                                            <div className="text-sm flex gap-10 items-center ps-5">
+                                                <PhoneCall className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> 
+                                                <span className="ml-10">Phone Call Engaged</span> 
+                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.call}</Button> 
+                                            </div>
+                                            <Separator className="ms-4 me-8 mt-1 mb-3" />
+                                            <div className="text-sm flex gap-10 items-center ps-5">
+                                                <MessagesSquare className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> 
+                                                <span className="ml-10">SMS Engaged</span> 
+                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.sms}</Button> 
+                                            </div>
+                                            <Separator className="ms-4 me-8 mt-1 mb-3" />
+                                        </ScrollArea>
+                                    </CardContent>
+                                </Card>
+                            );
+                        };
 
                         if (executives.length === 1) {
                             return renderCardContent(executives[0]);
@@ -2503,7 +2521,7 @@ export default function LeadDetail() {
                                                                     <AlertDialog>
                                                                         <AlertDialogTrigger asChild>
                                                                             <Button
-                                                                                variant="primary"
+                                                                                variant="outline"
                                                                                 size="icon"
                                                                                 className="h-8 w-8 rounded-md border border-red-500 dark:bg-red-500/10 bg-red-500/10"
                                                                                 disabled={removingProjectId === ip.project_id}

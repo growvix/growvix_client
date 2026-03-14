@@ -2,10 +2,6 @@
 
 import * as React from "react"
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -22,8 +18,8 @@ TeamSwitcher({
     plan: string
   }[]
 }) {
-  const { isMobile, setLocked } = useSidebar()
-  const [activeTeam, setActiveTeam] = React.useState(teams[0])
+  const { setOpenMobile, setOpen } = useSidebar()
+  const activeTeam = teams[0]
 
   if (!activeTeam) {
     return null
@@ -32,22 +28,22 @@ TeamSwitcher({
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu onOpenChange={setLocked} modal={false}>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground dark:data-[state=open]:bg-sidebar-accent-foreground dark:data-[state=open]:text-sidebar-accent"
-            >
-              <div className="bg-sidebar-foreground text-background flex aspect-square size-8 items-center justify-center rounded-lg">
-                <activeTeam.logo className="size-4" />
-              </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{activeTeam.name}</span>
-                <span className="truncate text-xs">{activeTeam.plan}</span>
-              </div>
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-        </DropdownMenu>
+        <SidebarMenuButton
+          size="lg"
+          className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground dark:data-[state=open]:bg-sidebar-accent-foreground dark:data-[state=open]:text-sidebar-accent"
+          onClick={() => {
+            setOpenMobile(false)
+            setOpen(false)
+          }}
+        >
+          <div className="bg-sidebar-foreground text-background flex aspect-square size-8 items-center justify-center rounded-lg">
+            <activeTeam.logo className="size-4" />
+          </div>
+          <div className="grid flex-1 text-left text-sm leading-tight">
+            <span className="truncate font-medium">{activeTeam.name}</span>
+            <span className="truncate text-xs">{activeTeam.plan}</span>
+          </div>
+        </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>
   )
