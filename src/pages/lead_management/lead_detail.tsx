@@ -40,6 +40,13 @@ import {
     Trash2,
     Info,
     HousePlus,
+    Activity,
+    Globe,
+    Reply,
+    LayoutGrid,
+    CheckCircle,
+    Clock,
+    Star,
 } from "lucide-react";
 import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables, GetLeadStagesQueryResponse, GetLeadStagesQueryVariables, GetOrganizationUsersQueryResponse, GetOrganizationUsersQueryVariables } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
@@ -60,6 +67,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { TimePicker } from "@/components/ui/time-picker"
 import { format } from "date-fns"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
+import { cn } from "@/lib/utils"
 
 // GraphQL query to get lead details by ID
 const GET_LEAD_BY_ID = gql` 
@@ -142,6 +150,11 @@ const GET_LEAD_BY_ID = gql`
                 createdAt
                 updatedAt
             }
+            important_activities {
+                activity_id
+                marked_at
+                marked_by
+            }
         }
     }
 `;
@@ -174,6 +187,19 @@ const UPDATE_LEAD = gql`
             status
             exe_user
             exe_user_name
+        }
+    }
+`;
+
+const TOGGLE_IMPORTANT_ACTIVITY = gql`
+    mutation ToggleImportantActivity($organization: String!, $leadId: String!, $activityId: String!, $profileId: Int!) {
+        toggleImportantActivity(organization: $organization, leadId: $leadId, activityId: $activityId, profileId: $profileId) {
+            _id
+            important_activities {
+                activity_id
+                marked_at
+                marked_by
+            }
         }
     }
 `;
@@ -415,6 +441,7 @@ export default function LeadDetail() {
     const [updatePropertyRequirementMutation] = useMutation(UPDATE_PROPERTY_REQUIREMENT);
     const [addInterestedProjectMutation] = useMutation(ADD_INTERESTED_PROJECT);
     const [removeInterestedProjectMutation] = useMutation(REMOVE_INTERESTED_PROJECT);
+    const [toggleImportantActivityMutation] = useMutation(TOGGLE_IMPORTANT_ACTIVITY);
     const { setBreadcrumbs } = useBreadcrumb()
     const leadName = leadDetail?.profile?.name;
     const initials = getUserAvatar(leadName);
@@ -556,13 +583,13 @@ export default function LeadDetail() {
     const canEdit = useMemo(() => {
         if (!leadDetail?.exe_user || !currentUserId) return true; // no assignment = open
         if (leadDetail.exe_user === currentUserId) return true;
-        
+
         // Fallback for name match (resolves UUID mismatch issues for same user)
-        if (leadDetail.exe_user_name && currentUserName && 
+        if (leadDetail.exe_user_name && currentUserName &&
             leadDetail.exe_user_name.toLowerCase().trim() === currentUserName.toLowerCase().trim()) {
             return true;
         }
-        
+
         return false;
     }, [leadDetail?.exe_user, leadDetail?.exe_user_name, currentUserId, currentUserName]);
 
@@ -892,7 +919,7 @@ export default function LeadDetail() {
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
                 <div className="xl:col-span-1 lg:col-span-2 md:col-span-2y">
-                    <Card className="overflow-hidden border-2 gap-2 shadow-none rounded-x pt-0 h-full min-h-[160px] flex flex-col dark:bg-primary/10">
+                    <Card className="overflow-hidden border-2 gap-2 shadow-none rounded-x pt-0 h-93 min-h-[160px] flex flex-col dark:bg-primary/10">
                         {/* Header */}
                         <CardHeader
                             className="bg-gradient-to-r from-[var(--stage-color)] to-gray-10 dark:from-[var(--stage-color)] dark:to-gray-200 py-3 sm:py-5 px-3 sm:px-4 transition-colors duration-500 ease-in-out"
@@ -924,10 +951,10 @@ export default function LeadDetail() {
 
                         <CardContent className="">
                             {!canEdit && (
-                                <div className="mb-2">
-                                    <div className="flex items-center justify-center gap-2 mb-2">
-                                        <ShieldAlert className="text-md text-yellow-500 dark:text-amber-400 " />
-                                        <span className="text-md font-medium text-yellow-500 dark:text-amber-400 ">View Only — This lead is assigned to {leadDetail?.exe_user_name || 'another user'}</span>
+                                <div className="mb-1.5">
+                                    <div className="flex items-center justify-center gap-2 mb-1.5">
+                                        <ShieldAlert className="text-xs text-yellow-500 dark:text-amber-400 " />
+                                        <span className="text-xs font-medium text-yellow-500 dark:text-amber-400 ">View Only — This lead is assigned to {leadDetail?.exe_user_name || 'another user'}</span>
                                     </div>
                                     <Separator />
                                 </div>
@@ -1759,371 +1786,371 @@ export default function LeadDetail() {
                 <div className="xl:col-span-2 lg:col-span-3 flex flex-col gap-3 shadow-0">
                     <div className="grid gap-2 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border-none shadow-none">
                         <Card className="overflow-hidden shadow-none py-0 border-2 dark:bg-input/50">
-                            <div className="p-3 sm:p-4">
-                                <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Recived on</CardTitle>
-                                <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between p-3 sm:p-4">
+                                <div className="flex flex-col">
+                                    <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Received on</CardTitle>
                                     <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">
                                         {leadDetail?.createdAt ? new Date(leadDetail.createdAt).toLocaleDateString() : 'N/A'}
                                     </span>
-                                    <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                        <CalendarCheck className="size-5 sm:size-6 text-zinc-700 dark:text-zinc-300" />
-                                    </div>
+                                </div>
+                                <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                    <CalendarCheck className="size-5 sm:size-6 text-zinc-700 dark:text-zinc-300" />
                                 </div>
                             </div>
                         </Card>
                         <Card className="overflow-hidden shadow-none py-0 border-2 dark:bg-input/50">
-                            <div className="p-3 sm:p-4">
-                                <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Last Updated</CardTitle>
-                                <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between p-3 sm:p-4">
+                                <div className="flex flex-col">
+                                    <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Last Updated</CardTitle>
                                     <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">
                                         {leadDetail?.updatedAt ? new Date(leadDetail.updatedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}
                                     </span>
-                                    <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                        <History className="size-5 sm:size-6 text-zinc-700 dark:text-zinc-300" />
-                                    </div>
+                                </div>
+                                <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                    <History className="size-5 sm:size-6 text-zinc-700 dark:text-zinc-300" />
                                 </div>
                             </div>
                         </Card>
                         <Card className="overflow-hidden shadow-none py-0 border-2 dark:bg-input/50">
-                            <div className="p-4">
-                                <CardTitle className="text-sm font-light text-muted-foreground">Total Engagements</CardTitle>
-                                <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between p-3 sm:p-4">
+                                <div className="flex flex-col">
+                                    <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Total Engagements</CardTitle>
                                     <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">{(leadDetail?.activities?.length || 0).toString()}</span>
-                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                        <History className="size-6 text-zinc-700 dark:text-zinc-300" />
-                                    </div>
+                                </div>
+                                <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                    <Activity className="size-5 sm:size-6 text-zinc-700 dark:text-zinc-300" />
                                 </div>
                             </div>
                         </Card>
                         <Card className="overflow-hidden shadow-none py-0 border-2 dark:bg-input/50">
-                            <div className="p-4">
-                                <CardTitle className="text-sm font-light text-muted-foreground">Lead Country</CardTitle>
-                                <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between p-3 sm:p-4">
+                                <div className="flex flex-col">
+                                    <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Lead Country</CardTitle>
                                     <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">{leadDetail?.profile?.location || 'India'}</span>
-                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                        <History className="size-6 text-zinc-700 dark:text-zinc-300" />
-                                    </div>
+                                </div>
+                                <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                    <Globe className="size-5 sm:size-6 text-zinc-700 dark:text-zinc-300" />
                                 </div>
                             </div>
                         </Card>
                         <Card className="overflow-hidden shadow-none py-0 border-2 dark:bg-input/50">
-                            <div className="p-4">
-                                <CardTitle className="text-sm font-light text-muted-foreground">Total Responses</CardTitle>
-                                <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between p-3 sm:p-4">
+                                <div className="flex flex-col">
+                                    <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Total Responses</CardTitle>
                                     <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">{leadDetail?.acquired?.length.toString() || '0'}</span>
-                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                        <History className="size-6 text-zinc-700 dark:text-zinc-300" />
-                                    </div>
+                                </div>
+                                <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                    <Reply className="size-5 sm:size-6 text-zinc-700 dark:text-zinc-300" />
                                 </div>
                             </div>
                         </Card>
                         <Card className="overflow-hidden shadow-none py-0 border-2 dark:bg-input/50">
-                            <div className="p-4">
-                                <CardTitle className="text-sm font-light text-muted-foreground">Project Enquired</CardTitle>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">10</span>
-                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                        <History className="size-6 text-zinc-700 dark:text-zinc-300" />
-                                    </div>
+                            <div className="flex items-center justify-between p-3 sm:p-4">
+                                <div className="flex flex-col">
+                                    <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Project Enquired</CardTitle>
+                                    <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">{leadDetail?.interested_projects?.[0]?.project_name || 'N/A'}</span>
+                                </div>
+                                <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                    <LayoutGrid className="size-5 sm:size-6 text-zinc-700 dark:text-zinc-300" />
                                 </div>
                             </div>
                         </Card>
 
                     </div>
                     <Card className="border-2 shadow-none py-1 gap-0 dark:bg-input/50">
-                        <CardHeader className="pt-2 pb-0 mb-2">
-                            <div className="flex items-center justify-between border-b pb-1">
+                        <CardHeader className="pt-2 pb-0">
+                            <div className="flex items-center justify-between">
                                 <Label className="text-muted-foreground">Requirements</Label>
-                            <Sheet open={reqSheetOpen} onOpenChange={(open) => {
-                                setReqSheetOpen(open);
-                                if (open && leadDetail?.propertyRequirement) {
-                                    setPropReqForm({
-                                        sqft: leadDetail.propertyRequirement.sqft || undefined,
-                                        bhk: leadDetail.propertyRequirement.bhk || [],
-                                        floor: leadDetail.propertyRequirement.floor || [],
-                                        balcony: leadDetail.propertyRequirement.balcony || false,
-                                        bathroom_count: leadDetail.propertyRequirement.bathroom_count || undefined,
-                                        parking_needed: leadDetail.propertyRequirement.parking_needed || false,
-                                        parking_count: leadDetail.propertyRequirement.parking_count || undefined,
-                                        price_min: leadDetail.propertyRequirement.price_min || undefined,
-                                        price_max: leadDetail.propertyRequirement.price_max || undefined,
-                                        furniture: leadDetail.propertyRequirement.furniture || [],
-                                        facing: leadDetail.propertyRequirement.facing || [],
-                                        plot_type: leadDetail.propertyRequirement.plot_type || '',
-                                    });
-                                } else if (open) {
-                                    setPropReqForm(defaultPropReq);
-                                }
-                            }}>
-                                <SheetTrigger asChild>
-                                    <Button variant="ghost" size="sm" disabled={!canEdit} className="gap-1">
-                                        <Plus className="size-4" />
-                                        Add
-                                          
-                                    </Button>
-                                        
-                                     
-                                              
-                                           
-                                    
-                                </SheetTrigger> 
-                                
-                                 
-                                
-                                <SheetContent className="overflow-y-auto">
-                                      
-                                    <SheetHeader>
-                                        <SheetTitle>Property Requirements</SheetTitle>
-                                        <SheetDescription>
-                                            Define structured or custom requirements for this lead.
-                                        </SheetDescription>
-                                    </SheetHeader>
+                                <Sheet open={reqSheetOpen} onOpenChange={(open) => {
+                                    setReqSheetOpen(open);
+                                    if (open && leadDetail?.propertyRequirement) {
+                                        setPropReqForm({
+                                            sqft: leadDetail.propertyRequirement.sqft || undefined,
+                                            bhk: leadDetail.propertyRequirement.bhk || [],
+                                            floor: leadDetail.propertyRequirement.floor || [],
+                                            balcony: leadDetail.propertyRequirement.balcony || false,
+                                            bathroom_count: leadDetail.propertyRequirement.bathroom_count || undefined,
+                                            parking_needed: leadDetail.propertyRequirement.parking_needed || false,
+                                            parking_count: leadDetail.propertyRequirement.parking_count || undefined,
+                                            price_min: leadDetail.propertyRequirement.price_min || undefined,
+                                            price_max: leadDetail.propertyRequirement.price_max || undefined,
+                                            furniture: leadDetail.propertyRequirement.furniture || [],
+                                            facing: leadDetail.propertyRequirement.facing || [],
+                                            plot_type: leadDetail.propertyRequirement.plot_type || '',
+                                        });
+                                    } else if (open) {
+                                        setPropReqForm(defaultPropReq);
+                                    }
+                                }}>
+                                    <SheetTrigger asChild>
+                                        <Button variant="ghost" size="sm" disabled={!canEdit} className="gap-1">
+                                            <Plus className="size-4" />
+                                            Add
 
-                                    {/* Tabs */}
-                                    <div className="flex gap-2 px-4 pt-2">
-                                        <Button size="sm" variant={reqTab === 'prebuilt' ? 'default' : 'outline'} onClick={() => setReqTab('prebuilt')}>Pre-built Fields</Button>
-                                        <Button size="sm" variant={reqTab === 'manual' ? 'default' : 'outline'} onClick={() => setReqTab('manual')}>Manual Input</Button>
-                                    </div>
+                                        </Button>
 
-                                    {reqTab === 'prebuilt' ? (
-                                        <div className="space-y-5 p-4">
-                                            {/* Square Footage */}
-                                            <div>
-                                                <Label>Square Footage (sqft)</Label>
-                                                <Input type="number" placeholder="e.g. 1200" value={propReqForm.sqft ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, sqft: e.target.value ? Number(e.target.value) : undefined }))} />
-                                            </div>
 
-                                            {/* BHK Multi-select */}
-                                            <div>
-                                                <Label>Type (BHK)</Label>
-                                                <div className="flex flex-wrap gap-3 mt-1">
-                                                    {['1BHK', '2BHK', '3BHK', '4BHK', '5BHK+'].map(opt => (
-                                                        <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                                                            <Checkbox checked={propReqForm.bhk?.includes(opt)} onCheckedChange={(checked) => {
-                                                                setPropReqForm(p => ({
-                                                                    ...p,
-                                                                    bhk: checked ? [...(p.bhk || []), opt] : (p.bhk || []).filter(v => v !== opt)
-                                                                }))
-                                                            }} />
-                                                            {opt}
-                                                        </label>
-                                                    ))}
+
+
+
+                                    </SheetTrigger>
+
+
+
+                                    <SheetContent className="overflow-y-auto">
+
+                                        <SheetHeader>
+                                            <SheetTitle>Property Requirements</SheetTitle>
+                                            <SheetDescription>
+                                                Define structured or custom requirements for this lead.
+                                            </SheetDescription>
+                                        </SheetHeader>
+
+                                        {/* Tabs */}
+                                        <div className="flex gap-2 px-4 pt-2">
+                                            <Button size="sm" variant={reqTab === 'prebuilt' ? 'default' : 'outline'} onClick={() => setReqTab('prebuilt')}>Pre-built Fields</Button>
+                                            <Button size="sm" variant={reqTab === 'manual' ? 'default' : 'outline'} onClick={() => setReqTab('manual')}>Manual Input</Button>
+                                        </div>
+
+                                        {reqTab === 'prebuilt' ? (
+                                            <div className="space-y-5 p-4">
+                                                {/* Square Footage */}
+                                                <div>
+                                                    <Label>Square Footage (sqft)</Label>
+                                                    <Input type="number" placeholder="e.g. 1200" value={propReqForm.sqft ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, sqft: e.target.value ? Number(e.target.value) : undefined }))} />
                                                 </div>
-                                            </div>
 
-                                            {/* Floor Multi-input */}
-                                            <div>
-                                                <Label>Floor</Label>
-                                                <div className="flex gap-2 mt-1">
-                                                    <Input placeholder="e.g. 2" value={floorInput} onChange={(e) => setFloorInput(e.target.value)}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter' && floorInput.trim()) {
-                                                                e.preventDefault();
-                                                                if (!propReqForm.floor?.includes(floorInput.trim())) {
-                                                                    setPropReqForm(p => ({ ...p, floor: [...(p.floor || []), floorInput.trim()] }));
+                                                {/* BHK Multi-select */}
+                                                <div>
+                                                    <Label>Type (BHK)</Label>
+                                                    <div className="flex flex-wrap gap-3 mt-1">
+                                                        {['1BHK', '2BHK', '3BHK', '4BHK', '5BHK+'].map(opt => (
+                                                            <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                                                <Checkbox checked={propReqForm.bhk?.includes(opt)} onCheckedChange={(checked) => {
+                                                                    setPropReqForm(p => ({
+                                                                        ...p,
+                                                                        bhk: checked ? [...(p.bhk || []), opt] : (p.bhk || []).filter(v => v !== opt)
+                                                                    }))
+                                                                }} />
+                                                                {opt}
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Floor Multi-input */}
+                                                <div>
+                                                    <Label>Floor</Label>
+                                                    <div className="flex gap-2 mt-1">
+                                                        <Input placeholder="e.g. 2" value={floorInput} onChange={(e) => setFloorInput(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter' && floorInput.trim()) {
+                                                                    e.preventDefault();
+                                                                    if (!propReqForm.floor?.includes(floorInput.trim())) {
+                                                                        setPropReqForm(p => ({ ...p, floor: [...(p.floor || []), floorInput.trim()] }));
+                                                                    }
+                                                                    setFloorInput('');
                                                                 }
+                                                            }}
+                                                        />
+                                                        <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                            if (floorInput.trim() && !propReqForm.floor?.includes(floorInput.trim())) {
+                                                                setPropReqForm(p => ({ ...p, floor: [...(p.floor || []), floorInput.trim()] }));
                                                                 setFloorInput('');
                                                             }
-                                                        }}
-                                                    />
-                                                    <Button type="button" size="sm" variant="outline" onClick={() => {
-                                                        if (floorInput.trim() && !propReqForm.floor?.includes(floorInput.trim())) {
-                                                            setPropReqForm(p => ({ ...p, floor: [...(p.floor || []), floorInput.trim()] }));
-                                                            setFloorInput('');
-                                                        }
-                                                    }}>Add</Button>
-                                                </div>
-                                                <div className="flex flex-wrap gap-1.5 mt-2">
-                                                    {propReqForm.floor?.map((f, i) => (
-                                                        <Badge key={i} variant="secondary" className="gap-1 cursor-pointer" onClick={() => setPropReqForm(p => ({ ...p, floor: (p.floor || []).filter((_, idx) => idx !== i) }))}>
-                                                            Floor {f} ×
-                                                        </Badge>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* Balcony */}
-                                            <div>
-                                                <label className="flex items-center gap-2 cursor-pointer">
-                                                    <Checkbox checked={propReqForm.balcony} onCheckedChange={(checked) => setPropReqForm(p => ({ ...p, balcony: !!checked }))} />
-                                                    <span className="text-sm font-medium">Balcony Required</span>
-                                                </label>
-                                            </div>
-
-                                            {/* Bathroom Count */}
-                                            <div>
-                                                <Label>Bathrooms</Label>
-                                                <Input type="number" placeholder="e.g. 2" value={propReqForm.bathroom_count ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, bathroom_count: e.target.value ? Number(e.target.value) : undefined }))} />
-                                            </div>
-
-                                            {/* Parking */}
-                                            <div>
-                                                <label className="flex items-center gap-2 cursor-pointer">
-                                                    <Checkbox checked={propReqForm.parking_needed} onCheckedChange={(checked) => setPropReqForm(p => ({ ...p, parking_needed: !!checked, parking_count: checked ? p.parking_count : undefined }))} />
-                                                    <span className="text-sm font-medium">Parking Needed</span>
-                                                </label>
-                                                {propReqForm.parking_needed && (
-                                                    <div className="mt-2">
-                                                        <Label>How many?</Label>
-                                                        <Input type="number" placeholder="e.g. 1" value={propReqForm.parking_count ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, parking_count: e.target.value ? Number(e.target.value) : undefined }))} />
+                                                        }}>Add</Button>
                                                     </div>
-                                                )}
-                                            </div>
-
-                                            {/* Price Range */}
-                                            <div>
-                                                <Label>Price Range (₹)</Label>
-                                                <div className="flex gap-2 mt-1">
-                                                    <Input type="number" placeholder="Min" value={propReqForm.price_min ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, price_min: e.target.value ? Number(e.target.value) : undefined }))} />
-                                                    <span className="self-center text-muted-foreground">—</span>
-                                                    <Input type="number" placeholder="Max" value={propReqForm.price_max ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, price_max: e.target.value ? Number(e.target.value) : undefined }))} />
+                                                    <div className="flex flex-wrap gap-1.5 mt-2">
+                                                        {propReqForm.floor?.map((f, i) => (
+                                                            <Badge key={i} variant="secondary" className="gap-1 cursor-pointer" onClick={() => setPropReqForm(p => ({ ...p, floor: (p.floor || []).filter((_, idx) => idx !== i) }))}>
+                                                                Floor {f} ×
+                                                            </Badge>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Furniture */}
-                                            <div>
-                                                <Label>Furniture</Label>
-                                                <div className="flex flex-wrap gap-3 mt-1">
-                                                    {['Semi-furnished', 'Fully furnished', 'Both', 'No furniture'].map(opt => (
-                                                        <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                                                            <Checkbox checked={propReqForm.furniture?.includes(opt)} onCheckedChange={(checked) => {
-                                                                setPropReqForm(p => ({
-                                                                    ...p,
-                                                                    furniture: checked ? [...(p.furniture || []), opt] : (p.furniture || []).filter(v => v !== opt)
-                                                                }))
-                                                            }} />
-                                                            {opt}
-                                                        </label>
-                                                    ))}
+                                                {/* Balcony */}
+                                                <div>
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <Checkbox checked={propReqForm.balcony} onCheckedChange={(checked) => setPropReqForm(p => ({ ...p, balcony: !!checked }))} />
+                                                        <span className="text-sm font-medium">Balcony Required</span>
+                                                    </label>
                                                 </div>
-                                            </div>
 
-                                            {/* Facing */}
-                                            <div>
-                                                <Label>Facing</Label>
-                                                <div className="flex flex-wrap gap-3 mt-1">
-                                                    {['North', 'South', 'East', 'West', 'North-East', 'North-West', 'South-East', 'South-West'].map(opt => (
-                                                        <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                                                            <Checkbox checked={propReqForm.facing?.includes(opt)} onCheckedChange={(checked) => {
-                                                                setPropReqForm(p => ({
-                                                                    ...p,
-                                                                    facing: checked ? [...(p.facing || []), opt] : (p.facing || []).filter(v => v !== opt)
-                                                                }))
-                                                            }} />
-                                                            {opt}
-                                                        </label>
-                                                    ))}
+                                                {/* Bathroom Count */}
+                                                <div>
+                                                    <Label>Bathrooms</Label>
+                                                    <Input type="number" placeholder="e.g. 2" value={propReqForm.bathroom_count ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, bathroom_count: e.target.value ? Number(e.target.value) : undefined }))} />
                                                 </div>
-                                            </div>
 
-                                            {/* Plot Type */}
-                                            <div>
-                                                <Label>Plot Type</Label>
-                                                <Input placeholder="e.g. Residential, Commercial" value={propReqForm.plot_type || ''} onChange={(e) => setPropReqForm(p => ({ ...p, plot_type: e.target.value }))} />
-                                            </div>
+                                                {/* Parking */}
+                                                <div>
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <Checkbox checked={propReqForm.parking_needed} onCheckedChange={(checked) => setPropReqForm(p => ({ ...p, parking_needed: !!checked, parking_count: checked ? p.parking_count : undefined }))} />
+                                                        <span className="text-sm font-medium">Parking Needed</span>
+                                                    </label>
+                                                    {propReqForm.parking_needed && (
+                                                        <div className="mt-2">
+                                                            <Label>How many?</Label>
+                                                            <Input type="number" placeholder="e.g. 1" value={propReqForm.parking_count ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, parking_count: e.target.value ? Number(e.target.value) : undefined }))} />
+                                                        </div>
+                                                    )}
+                                                </div>
 
-                                            {/* Save Button */}
-                                            <Button
-                                                className="w-full"
-                                                disabled={propReqLoading}
-                                                onClick={async () => {
-                                                    if (!leadDetail?._id) return;
-                                                    setPropReqLoading(true);
-                                                    try {
-                                                        await updatePropertyRequirementMutation({
-                                                            variables: {
-                                                                organization,
-                                                                leadId: leadDetail._id,
-                                                                input: {
-                                                                    sqft: propReqForm.sqft || null,
-                                                                    bhk: propReqForm.bhk || [],
-                                                                    floor: propReqForm.floor || [],
-                                                                    balcony: propReqForm.balcony || false,
-                                                                    bathroom_count: propReqForm.bathroom_count || null,
-                                                                    parking_needed: propReqForm.parking_needed || false,
-                                                                    parking_count: propReqForm.parking_count || null,
-                                                                    price_min: propReqForm.price_min || null,
-                                                                    price_max: propReqForm.price_max || null,
-                                                                    furniture: propReqForm.furniture || [],
-                                                                    facing: propReqForm.facing || [],
-                                                                    plot_type: propReqForm.plot_type || '',
+                                                {/* Price Range */}
+                                                <div>
+                                                    <Label>Price Range (₹)</Label>
+                                                    <div className="flex gap-2 mt-1">
+                                                        <Input type="number" placeholder="Min" value={propReqForm.price_min ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, price_min: e.target.value ? Number(e.target.value) : undefined }))} />
+                                                        <span className="self-center text-muted-foreground">—</span>
+                                                        <Input type="number" placeholder="Max" value={propReqForm.price_max ?? ''} onChange={(e) => setPropReqForm(p => ({ ...p, price_max: e.target.value ? Number(e.target.value) : undefined }))} />
+                                                    </div>
+                                                </div>
+
+                                                {/* Furniture */}
+                                                <div>
+                                                    <Label>Furniture</Label>
+                                                    <div className="flex flex-wrap gap-3 mt-1">
+                                                        {['Semi-furnished', 'Fully furnished', 'Both', 'No furniture'].map(opt => (
+                                                            <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                                                <Checkbox checked={propReqForm.furniture?.includes(opt)} onCheckedChange={(checked) => {
+                                                                    setPropReqForm(p => ({
+                                                                        ...p,
+                                                                        furniture: checked ? [...(p.furniture || []), opt] : (p.furniture || []).filter(v => v !== opt)
+                                                                    }))
+                                                                }} />
+                                                                {opt}
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Facing */}
+                                                <div>
+                                                    <Label>Facing</Label>
+                                                    <div className="flex flex-wrap gap-3 mt-1">
+                                                        {['North', 'South', 'East', 'West', 'North-East', 'North-West', 'South-East', 'South-West'].map(opt => (
+                                                            <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                                                <Checkbox checked={propReqForm.facing?.includes(opt)} onCheckedChange={(checked) => {
+                                                                    setPropReqForm(p => ({
+                                                                        ...p,
+                                                                        facing: checked ? [...(p.facing || []), opt] : (p.facing || []).filter(v => v !== opt)
+                                                                    }))
+                                                                }} />
+                                                                {opt}
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Plot Type */}
+                                                <div>
+                                                    <Label>Plot Type</Label>
+                                                    <Input placeholder="e.g. Residential, Commercial" value={propReqForm.plot_type || ''} onChange={(e) => setPropReqForm(p => ({ ...p, plot_type: e.target.value }))} />
+                                                </div>
+
+                                                {/* Save Button */}
+                                                <Button
+                                                    className="w-full"
+                                                    disabled={propReqLoading}
+                                                    onClick={async () => {
+                                                        if (!leadDetail?._id) return;
+                                                        setPropReqLoading(true);
+                                                        try {
+                                                            await updatePropertyRequirementMutation({
+                                                                variables: {
+                                                                    organization,
+                                                                    leadId: leadDetail._id,
+                                                                    input: {
+                                                                        sqft: propReqForm.sqft || null,
+                                                                        bhk: propReqForm.bhk || [],
+                                                                        floor: propReqForm.floor || [],
+                                                                        balcony: propReqForm.balcony || false,
+                                                                        bathroom_count: propReqForm.bathroom_count || null,
+                                                                        parking_needed: propReqForm.parking_needed || false,
+                                                                        parking_count: propReqForm.parking_count || null,
+                                                                        price_min: propReqForm.price_min || null,
+                                                                        price_max: propReqForm.price_max || null,
+                                                                        furniture: propReqForm.furniture || [],
+                                                                        facing: propReqForm.facing || [],
+                                                                        plot_type: propReqForm.plot_type || '',
+                                                                    },
                                                                 },
-                                                            },
-                                                        });
-                                                        toast.success('Property requirements saved');
-                                                        setReqSheetOpen(false);
-                                                        refetchLead();
-                                                    } catch (err) {
-                                                        console.error(err);
-                                                        toast.error('Failed to save property requirements');
-                                                    } finally {
-                                                        setPropReqLoading(false);
-                                                    }
-                                                }}
-                                            >
-                                                {propReqLoading ? 'Saving...' : 'Save Requirements'}
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4 p-4">
-                                            <div>
-                                                <Label htmlFor="req-key">Key</Label>
-                                                <Input
-                                                    id="req-key"
-                                                    placeholder="e.g. Custom Field Name"
-                                                    value={reqKey}
-                                                    onChange={(e) => setReqKey(e.target.value)}
-                                                />
+                                                            });
+                                                            toast.success('Property requirements saved');
+                                                            setReqSheetOpen(false);
+                                                            refetchLead();
+                                                        } catch (err) {
+                                                            console.error(err);
+                                                            toast.error('Failed to save property requirements');
+                                                        } finally {
+                                                            setPropReqLoading(false);
+                                                        }
+                                                    }}
+                                                >
+                                                    {propReqLoading ? 'Saving...' : 'Save Requirements'}
+                                                </Button>
                                             </div>
-                                            <div>
-                                                <Label htmlFor="req-value">Value</Label>
-                                                <Input
-                                                    id="req-value"
-                                                    placeholder="e.g. Custom Value"
-                                                    value={reqValue}
-                                                    onChange={(e) => setReqValue(e.target.value)}
-                                                />
+                                        ) : (
+                                            <div className="space-y-4 p-4">
+                                                <div>
+                                                    <Label htmlFor="req-key">Key</Label>
+                                                    <Input
+                                                        id="req-key"
+                                                        placeholder="e.g. Custom Field Name"
+                                                        value={reqKey}
+                                                        onChange={(e) => setReqKey(e.target.value)}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label htmlFor="req-value">Value</Label>
+                                                    <Input
+                                                        id="req-value"
+                                                        placeholder="e.g. Custom Value"
+                                                        value={reqValue}
+                                                        onChange={(e) => setReqValue(e.target.value)}
+                                                    />
+                                                </div>
+                                                <Button
+                                                    className="w-full"
+                                                    disabled={!reqKey.trim() || !reqValue.trim() || reqLoading}
+                                                    onClick={async () => {
+                                                        if (!reqKey.trim() || !reqValue.trim() || !leadDetail?._id) return;
+                                                        setReqLoading(true);
+                                                        try {
+                                                            await addRequirementMutation({
+                                                                variables: {
+                                                                    organization,
+                                                                    leadId: leadDetail._id,
+                                                                    key: reqKey.trim(),
+                                                                    value: reqValue.trim(),
+                                                                },
+                                                            });
+                                                            toast.success('Requirement added');
+                                                            setReqKey('');
+                                                            setReqValue('');
+                                                            refetchLead();
+                                                        } catch (err) {
+                                                            console.error(err);
+                                                            toast.error('Failed to add requirement');
+                                                        } finally {
+                                                            setReqLoading(false);
+                                                        }
+                                                    }}
+                                                >
+                                                    {reqLoading ? 'Adding...' : 'Add Requirement'}
+                                                </Button>
                                             </div>
-                                            <Button
-                                                className="w-full"
-                                                disabled={!reqKey.trim() || !reqValue.trim() || reqLoading}
-                                                onClick={async () => {
-                                                    if (!reqKey.trim() || !reqValue.trim() || !leadDetail?._id) return;
-                                                    setReqLoading(true);
-                                                    try {
-                                                        await addRequirementMutation({
-                                                            variables: {
-                                                                organization,
-                                                                leadId: leadDetail._id,
-                                                                key: reqKey.trim(),
-                                                                value: reqValue.trim(),
-                                                            },
-                                                        });
-                                                        toast.success('Requirement added');
-                                                        setReqKey('');
-                                                        setReqValue('');
-                                                        refetchLead();
-                                                    } catch (err) {
-                                                        console.error(err);
-                                                        toast.error('Failed to add requirement');
-                                                    } finally {
-                                                        setReqLoading(false);
-                                                    }
-                                                }}
-                                            >
-                                                {reqLoading ? 'Adding...' : 'Add Requirement'}
-                                            </Button>
-                                        </div>   
-                                    )}
-                                </SheetContent>
-                                      
-                            </Sheet>
+                                        )}
+                                    </SheetContent>
+
+                                </Sheet>
                             </div>
                         </CardHeader>
 
 
-                               
-                          
+
+
                         <CardContent className="flex justify-center mt-3 mb-3">
                             {(() => {
                                 // Build combined carousel items from structured + manual requirements
@@ -2281,27 +2308,27 @@ export default function LeadDetail() {
                                         </div>
                                         <ScrollArea className="h-44 mt-5 pl-2">
                                             <div className="text-sm flex gap-10 items-center ps-5">
-                                                <FontAwesomeIcon icon={faWhatsapp} className="text-zinc-700 dark:text-zinc-300 pointer-events-none" style={{ fontSize: "1.2rem" }} /> 
-                                                <span className="ml-10">Whatsapp Engaged</span> 
-                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.whatsapp}</Button> 
+                                                <FontAwesomeIcon icon={faWhatsapp} className="text-zinc-700 dark:text-zinc-300 pointer-events-none" style={{ fontSize: "1.2rem" }} />
+                                                <span className="ml-10">Whatsapp Engaged</span>
+                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.whatsapp}</Button>
                                             </div>
                                             <Separator className="ms-4 me-4 mt-1 mb-3" />
                                             <div className="text-sm flex gap-10 items-center ps-5">
-                                                <Mail className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> 
-                                                <span className="ml-10">Mail Engaged</span> 
-                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.mail}</Button> 
+                                                <Mail className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" />
+                                                <span className="ml-10">Mail Engaged</span>
+                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.mail}</Button>
                                             </div>
                                             <Separator className="ms-4 me-8 mt-1 mb-3" />
                                             <div className="text-sm flex gap-10 items-center ps-5">
-                                                <PhoneCall className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> 
-                                                <span className="ml-10">Phone Call Engaged</span> 
-                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.call}</Button> 
+                                                <PhoneCall className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" />
+                                                <span className="ml-10">Phone Call Engaged</span>
+                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.call}</Button>
                                             </div>
                                             <Separator className="ms-4 me-8 mt-1 mb-3" />
                                             <div className="text-sm flex gap-10 items-center ps-5">
-                                                <MessagesSquare className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" /> 
-                                                <span className="ml-10">SMS Engaged</span> 
-                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.sms}</Button> 
+                                                <MessagesSquare className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" />
+                                                <span className="ml-10">SMS Engaged</span>
+                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.sms}</Button>
                                             </div>
                                             <Separator className="ms-4 me-8 mt-1 mb-3" />
                                         </ScrollArea>
@@ -2334,8 +2361,8 @@ export default function LeadDetail() {
                 </div>
                 <div className="xl:col-span-2 lg:col-span-3">
                     <Card className="border-2 shadow-none dark:bg-input/50 pt-2 gap-0 pb-0">
-                        <CardHeader className="mt-0 pt-0 pb-0 mb-2">
-                            <div className="flex items-center justify-between border-b pb-1">
+                        <CardHeader className="mt-0 pt-0 pb-0">
+                            <div className="flex items-center justify-between">
                                 <Label className="text-muted-foreground  ">
                                     Considered Projects
                                 </Label>
@@ -2594,7 +2621,7 @@ export default function LeadDetail() {
                         <CardContent className="bg-transparent">
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
 
-                                 {/* Site Visits */}
+                                {/* Site Visits */}
                                 <StageStatCard
                                     value={leadDetail?.site_visits_completed ?? 0}
                                     label="Site Visits Completed"
@@ -2719,6 +2746,7 @@ export default function LeadDetail() {
                                     <TabsTrigger value="Mail">Mail</TabsTrigger>
                                     <TabsTrigger value="site_visit">Site visit</TabsTrigger>
                                     <TabsTrigger value="follow_up">Follow up</TabsTrigger>
+                                    <TabsTrigger value="important">Important</TabsTrigger>
                                 </TabsList>
 
                                 <ScrollArea className="h-[75vh] pr-4">
@@ -2749,8 +2777,9 @@ export default function LeadDetail() {
                                                             : isSiteVisit ? <CalendarClock className="size-5 text-zinc-700 dark:text-zinc-300" />
                                                                 : isNotes ? <NotebookPen className="size-5 text-zinc-700 dark:text-zinc-300" />
                                                                     : isRequirement ? <ClipboardCheck className="size-5 text-zinc-700 dark:text-zinc-300" />
-                                                                        : isMail ? <Mail className="size-5 text-zinc-700 dark:text-zinc-300" />
-                                                                            : <Mail className="size-5 text-zinc-700 dark:text-zinc-300" />;
+                                                                        : <Mail className="size-5 text-zinc-700 dark:text-zinc-300" />;
+
+                                                const isImportant = leadDetail?.important_activities?.some(ia => ia.activity_id === (activity.id || `req-${activity._id}`));
 
                                                 const activityContent = (
                                                     <li className="mb-6 ms-6">
@@ -2760,20 +2789,87 @@ export default function LeadDetail() {
                                                         <div className="relative overflow-hidden rounded-xl border bg-gray-100/20 dark:bg-neutral-950 shadow-sm transition-all duration-200 border-l-[3px] border-l-zinc-400 dark:border-l-zinc-600">
                                                             {/* Header row */}
                                                             <div className="flex items-center justify-between px-4 pt-3 pb-2">
-                                                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                                                                    {isStageUpdate && 'Stage Update'}
-                                                                    {isStatusUpdate && 'Status Update'}
-                                                                    {isFollowUp && 'Follow Up'}
-                                                                    {isSiteVisit && (activity.site_visit_completed ? 'Site Visit ✓' : 'Site Visit')}
-                                                                    {isNotes && 'Note'}
-                                                                    {isRequirement && 'Requirement'}
-                                                                    {isMail && 'Email Sent'}
-                                                                    {(!isStageUpdate && !isStatusUpdate && !isFollowUp && !isSiteVisit && !isNotes && !isRequirement && !isMail) && 'Update'}
-                                                                </span>
-                                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                                    <span className="hidden sm:inline">{activity.user_name || 'Unknown'}</span>
-                                                                    <span className="hidden sm:inline">·</span>
-                                                                    <time className="font-medium">{formattedDate}</time>
+                                                                <div className="flex items-center gap-2">
+                                                                    {isSiteVisit ? (
+                                                                        <span
+                                                                            className={cn(
+                                                                                "inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full",
+                                                                                activity.site_visit_completed
+                                                                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
+                                                                                    : "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
+                                                                            )}
+                                                                        >
+                                                                            {activity.site_visit_completed ? (
+                                                                                <>
+                                                                                    <CheckCircle className="w-3.5 h-3.5" />
+                                                                                    Site Visit
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <Clock className="w-3.5 h-3.5" />
+                                                                                    Site Visit
+                                                                                </>
+                                                                            )}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                                                                            {isStageUpdate && 'Stage Update'}
+                                                                            {isStatusUpdate && 'Status Update'}
+                                                                            {isFollowUp && 'Follow Up'}
+                                                                            {isNotes && 'Note'}
+                                                                            {isRequirement && 'Requirement'}
+                                                                            {isMail && 'Email Sent'}
+                                                                            {(!isStageUpdate && !isStatusUpdate && !isFollowUp && !isSiteVisit && !isNotes && !isRequirement && !isMail) && 'Update'}
+                                                                        </span>
+                                                                    )}
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className={cn(
+                                                                            "size-7 h-7 w-7 p-0 rounded-full transition-colors",
+                                                                            isImportant ? "text-yellow-500 hover:text-yellow-600" : "text-zinc-400 hover:text-yellow-500",
+                                                                            !canEdit && "opacity-50 cursor-not-allowed"
+                                                                        )}
+                                                                        disabled={!canEdit}
+                                                                        onClick={async () => {
+                                                                            if (!canEdit) return;
+                                                                            try {
+                                                                                await toggleImportantActivityMutation({
+                                                                                    variables: {
+                                                                                        organization,
+                                                                                        leadId: leadDetail?._id,
+                                                                                        activityId: activity.id || `req-${activity._id}`,
+                                                                                        profileId: parseInt(userId, 10)
+                                                                                    }
+                                                                                });
+                                                                                toast.success(isImportant ? 'Removed from important' : 'Marked as important');
+                                                                                refetchLead();
+                                                                            } catch (error) {
+                                                                                console.error('Failed to toggle important status:', error);
+                                                                                toast.error('Failed to update important status');
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <Star className={cn("size-4", isImportant && "fill-current")} />
+                                                                    </Button>
+                                                                </div>
+                                                                <div className="flex flex-col items-end gap-1">
+                                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                        <span className="hidden sm:inline">{activity.user_name || 'Unknown'}</span>
+                                                                        <span className="hidden sm:inline">·</span>
+                                                                        <time className="font-medium">{formattedDate}</time>
+                                                                    </div>
+                                                                    {isSiteVisit && (
+                                                                        activity.site_visit_completed ? (
+                                                                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 text-[10px] hover:bg-emerald-100 dark:hover:bg-emerald-500/10 rounded-full px-2 py-0 h-5 w-fit">
+                                                                                ✓ Visit Completed
+                                                                            </Badge>
+                                                                        ) : (
+                                                                            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20 text-[10px] px-2 py-0 h-5 rounded-full">
+                                                                                Pending
+                                                                            </Badge>
+                                                                        )
+                                                                    )}
                                                                 </div>
                                                             </div>
 
@@ -2813,33 +2909,51 @@ export default function LeadDetail() {
                                                                     </div>
                                                                 )}
                                                                 {isSiteVisit && (
-                                                                    <div className="space-y-2">
-                                                                        <p className="text-md">
-                                                                            Scheduled for
-                                                                            <span className="text-zinc-900 dark:text-zinc-100 ml-1">{activity.site_visit_date ? new Date(activity.site_visit_date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}</span>
-                                                                        </p>
-                                                                        {activity.site_visit_completed ? (
-                                                                            <div className="space-y-1.5">
-                                                                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 text-xs hover:bg-emerald-100 dark:hover:bg-emerald-500/10">
-                                                                                    ✓ Visit Completed
-                                                                                </Badge>
-                                                                                <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-1">
-                                                                                    {activity.site_visit_completed_at && (
-                                                                                        <span>
-                                                                                            Completed on: <span className="font-medium text-zinc-700 dark:text-zinc-300">{new Date(activity.site_visit_completed_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                                                                                        </span>
-                                                                                    )}
-                                                                                    {activity.site_visit_completed_by_name && (
-                                                                                        <span>
-                                                                                            Marked by: <span className="font-medium text-zinc-700 dark:text-zinc-300">{activity.site_visit_completed_by_name}</span>
-                                                                                        </span>
-                                                                                    )}
+                                                                    <div className="flex items-center gap-6 mt-2 ml-1">
+                                                                        {/* Scheduled Info */}
+                                                                        <div className="flex flex-col gap-0.5">
+                                                                            <span className="text-[13px] font-medium text-muted-foreground">Scheduled for</span>
+                                                                            <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
+                                                                                {activity.site_visit_date ? new Date(activity.site_visit_date).toLocaleString([], { 
+                                                                                    month: 'numeric', 
+                                                                                    day: 'numeric', 
+                                                                                    year: '2-digit', 
+                                                                                    hour: '2-digit', 
+                                                                                    minute: '2-digit',
+                                                                                    hour12: true 
+                                                                                }) : 'N/A'}
+                                                                            </span>
+                                                                        </div>
+
+                                                                        {activity.site_visit_completed && (
+                                                                            <>
+                                                                                <div className="h-12 w-px bg-gray-200 dark:bg-zinc-800 self-center" />
+                                                                                
+                                                                                {/* Completed Info */}
+                                                                                <div className="flex flex-col gap-0.5">
+                                                                                    <span className="text-[13px] font-medium text-muted-foreground">Completed on</span>
+                                                                                    <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
+                                                                                        {activity.site_visit_completed_at ? new Date(activity.site_visit_completed_at).toLocaleString([], { 
+                                                                                            month: 'numeric', 
+                                                                                            day: 'numeric', 
+                                                                                            year: '2-digit', 
+                                                                                            hour: '2-digit', 
+                                                                                            minute: '2-digit',
+                                                                                            hour12: true 
+                                                                                        }) : 'N/A'}
+                                                                                    </span>
                                                                                 </div>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20 text-xs">
-                                                                                Pending
-                                                                            </Badge>
+
+                                                                                <div className="h-12 w-px bg-gray-200 dark:bg-zinc-800 self-center" />
+
+                                                                                {/* Marked By Info */}
+                                                                                <div className="flex flex-col gap-0.5">
+                                                                                    <span className="text-[13px] font-medium text-muted-foreground">Marked by</span>
+                                                                                    <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
+                                                                                        {activity.site_visit_completed_by_name || 'N/A'}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </>
                                                                         )}
                                                                     </div>
                                                                 )}
@@ -2881,6 +2995,11 @@ export default function LeadDetail() {
                                                         )}
                                                         {isMail && (
                                                             <TabsContent value="Mail">
+                                                                {activityContent}
+                                                            </TabsContent>
+                                                        )}
+                                                        {isImportant && (
+                                                            <TabsContent value="important">
                                                                 {activityContent}
                                                             </TabsContent>
                                                         )}

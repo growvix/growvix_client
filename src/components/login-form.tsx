@@ -25,6 +25,7 @@ export function LoginForm({
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
 
   // Clear all cookies when login page loads and redirect if already authenticated
   useEffect(() => {
@@ -34,40 +35,72 @@ export function LoginForm({
       deleteAllAuthCookies();
     }
   }, [navigate]);
+  const validateForm = (emailVal: string, passwordVal: string) => {
+    let newErrors: any = {}
+
+    if (!emailVal) {
+      newErrors.email = "Email is required"
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      newErrors.email = "Invalid email"
+    }
+
+    if (!passwordVal) {
+      newErrors.password = "Password is required"
+    } else if (passwordVal.length < 6) {
+      newErrors.password = "Minimum 6 characters"
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    let data;
-    try {
-      const response = await axios.post(API.AUTH.LOGIN, {
-        email,
-        password
-      })
 
-      data = response.data.data
-      console.log(response.data.data);
+    const trimmedEmail = email.trim()
+    const trimmedPassword = password.trim()
 
+    // Update state with trimmed values so form reflects submitted data
+    setEmail(trimmedEmail)
+    setPassword(trimmedPassword)
 
-      // Set cookies using utility
-      setCookie('user_id', data.user_id);
-      setCookie('profile_id', data.profile_id);
-      setCookie('organization', data.organization);
-      setCookie('userName', `${data.firstName} ${data.lastName}`);
-      setCookie('email', data.email);
-      setCookie('token', data.token);
-      setCookie('role', data.role);
-      setCookie('permissions', JSON.stringify(data.permissions || []));
-      toast("Login successful.")
-      console.log("Login successful:", data.profile_id)
-      navigate("/dashboard") // Redirect to dashboard
-    } catch (error: any) {
-      console.error("Login failed:", error)
-      const errorMessage = error.response?.data?.message || error.message || "Unable to connect to the server."
-      toast.error(errorMessage)
-      setIsLoading(false)
+    // Validate form using trimmed variables
+    if (!validateForm(trimmedEmail, trimmedPassword)) {
+      return
     }
+
+    setIsLoading(true)
+
+  try {
+    const response = await axios.post(API.AUTH.LOGIN, {
+      email: trimmedEmail,
+      password: trimmedPassword
+    })
+
+    const data = response.data.data
+
+    setCookie('user_id', data.user_id);
+    setCookie('profile_id', data.profile_id);
+    setCookie('organization', data.organization);
+    setCookie('userName', `${data.firstName} ${data.lastName}`);
+    setCookie('email', data.email);
+    setCookie('token', data.token);
+    setCookie('role', data.role);
+    setCookie('permissions', JSON.stringify(data.permissions || []));
+
+    toast.success("Login successful")
+    navigate("/dashboard")
+
+  } catch (error: any) {
+    const errorMessage =
+      error.response?.data?.message ||
+      error.message ||
+      "Unable to connect to the server."
+
+    toast.error(errorMessage)
+    setIsLoading(false)
   }
+}
 
   return (
     <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} {...props}>
@@ -86,8 +119,13 @@ export function LoginForm({
             placeholder="m@example.com"
             required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setEmail(val.trimStart()); // actively remove leading spaces
+            }}
+            onBlur={() => setEmail(email.trim())}
           />
+          {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
         </Field>
         <Field>
           <div className="flex items-center">
@@ -105,8 +143,12 @@ export function LoginForm({
               type={showPassword ? "text" : "password"}
               required
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="pr-10"
+              onChange={(e) => {
+                  const val = e.target.value;
+                  setPassword(val.trimStart()); // actively remove leading spaces
+              }}
+              className="pr-10 [::-ms-reveal]:hidden [::-ms-clear]:hidden [::-webkit-contacts-auto-fill-button]:hidden"
+              onBlur={() => setPassword(password.trim())}
             />
             <button
               type="button"
@@ -120,6 +162,7 @@ export function LoginForm({
               )}
             </button>
           </div>
+          {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
         </Field>
         <FieldSeparator>EL-ROI</FieldSeparator>
         <Field>

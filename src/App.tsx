@@ -86,6 +86,7 @@ const SEARCHABLE_PAGES: SearchablePage[] = [
   { label: "Teams", url: "/setting/teams", group: "Settings", icon: Users },
   { label: "Calendar", url: "/user_calendar", group: "Tools", icon: Calendar },
   { label: "Profile", url: "/profile", group: "Tools", icon: User },
+  { label: "CP Teams", url: "/setting/cp_teams", group: "Settings", icon: Users },
 ];
 
 function ScrollToTop() {
