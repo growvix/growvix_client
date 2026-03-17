@@ -59,6 +59,7 @@ import {
   ChevronsUpDown,
   Check,
 } from "lucide-react"
+import LoaderScreen from "@/components/ui/loader-screen"
 
 // ─── GraphQL Query ───────────────────────────────────────
 const GET_SITE_VISIT_ACTIVITIES = gql`
@@ -479,10 +480,7 @@ export default function UserCalendar() {
 
       {/* ── Calendar ── */}
       {(loading && !data) || bookedLoading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-10 w-full rounded-lg" />
-          <Skeleton className="h-[500px] w-full rounded-lg" />
-        </div>
+        <LoaderScreen />
       ) : error ? (
         <div className="text-center py-12 text-red-500">
           Failed to load site visit data. Please try again.

@@ -27,6 +27,13 @@ import {
   PhoneOff,
   Info,
 } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Calendar } from "@/components/ui/calendar"
 import {
   Popover,
@@ -133,7 +140,21 @@ export default function UserDashboard() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-2 px-3">
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 mx-auto w-full">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Executive Dashboard</h1>
+        <Select value="/executive_dashboard" onValueChange={(val) => navigate(val)}>
+          <SelectTrigger className="w-[220px] bg-background">
+            <SelectValue placeholder="Select Dashboard View" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="/executive_dashboard">Executive View</SelectItem>
+            <SelectItem value="/master_dashboard">Master View</SelectItem>
+            <SelectItem value="/management_dashboard">Management View</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <Card className="py-3 gap-3 shadow-none dark:bg-input/20 border-none">
         <CardContent className="p-0 pt-0">
           <div className="grid auto-rows-min gap-4 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6">
@@ -142,8 +163,8 @@ export default function UserDashboard() {
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-start justify-between gap-4 w-full">
                     <div className="flex items-center gap-3">
-                      <div className="inline-flex items-center justify-center rounded-lg p-2 bg-red-50 dark:bg-red-900/20">
-                        <PhoneOff className="text-red-600 dark:text-red-400" size={20} />
+                      <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
+                        <PhoneOff className="text-primary" size={20} />
                       </div>
                       <div>
                         <CardTitle className="text-sm text-foreground">Missed Calls</CardTitle>
@@ -165,8 +186,8 @@ export default function UserDashboard() {
               <Card className=" rounded-xl cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
-                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-blue-50 dark:bg-blue-900/20">
-                      <PlusCircle className="text-blue-600 dark:text-blue-400" size={20} />
+                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
+                      <PlusCircle className="text-primary" size={20} />
                     </div>
 
                     <div>
@@ -189,8 +210,8 @@ export default function UserDashboard() {
               <Card className=" rounded-xl cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
-                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-yellow-50 dark:bg-yellow-900/20">
-                      <MailPlus className="text-yellow-600 dark:text-yellow-400" size={20} />
+                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
+                      <MailPlus className="text-primary" size={20} />
                     </div>
 
                     <div>
@@ -213,8 +234,8 @@ export default function UserDashboard() {
               <Card className=" rounded-xl cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
-                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-green-50 dark:bg-green-900/20">
-                      <FontAwesomeIcon icon={faWhatsapp} className="text-green-600 dark:text-green-400" style={{ fontSize: "1.2rem" }} />
+                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
+                      <FontAwesomeIcon icon={faWhatsapp} className="text-primary" style={{ fontSize: "1.2rem" }} />
                     </div>
 
                     <div>
@@ -237,8 +258,8 @@ export default function UserDashboard() {
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-start justify-between gap-4 w-full">
                     <div className="flex items-center gap-3">
-                      <div className="inline-flex items-center justify-center rounded-lg p-2 bg-purple-50 dark:bg-purple-900/20">
-                        <Users className="text-purple-600 dark:text-purple-400" size={20} />
+                      <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
+                        <Users className="text-primary" size={20} />
                       </div>
 
                       <div>
@@ -261,8 +282,8 @@ export default function UserDashboard() {
               <Card className=" rounded-xl cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
-                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-indigo-50 dark:bg-indigo-900/20">
-                      <PlusCircle className="text-indigo-600 dark:text-indigo-400" size={20} />
+                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
+                      <PlusCircle className="text-primary" size={20} />
                     </div>
 
                     <div>
@@ -287,8 +308,8 @@ export default function UserDashboard() {
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-start justify-between gap-4 w-full">
                     <div className="flex items-center gap-3">
-                      <div className="inline-flex items-center justify-center rounded-lg p-2 bg-pink-50 dark:bg-pink-900/20">
-                        <UserRoundX className="text-pink-600 dark:text-pink-400" size={20} />
+                      <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
+                        <UserRoundX className="text-primary" size={20} />
                       </div>
 
                       <div>
@@ -311,8 +332,8 @@ export default function UserDashboard() {
               <Card className=" rounded-xl cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
-                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-orange-50 dark:bg-orange-900/20">
-                      <MapPinX className="text-orange-600 dark:text-orange-400" size={20} />
+                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
+                      <MapPinX className="text-primary" size={20} />
                     </div>
 
                     <div>
@@ -334,8 +355,8 @@ export default function UserDashboard() {
               <Card className=" rounded-xl cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
-                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-teal-50 dark:bg-teal-900/20">
-                      <DollarSign className="text-teal-600 dark:text-teal-400" size={20} />
+                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
+                      <DollarSign className="text-primary" size={20} />
                     </div>
 
                     <div>
@@ -358,8 +379,8 @@ export default function UserDashboard() {
               <Card className=" rounded-xl cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
-                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-cyan-50 dark:bg-cyan-900/20">
-                      <Briefcase className="text-cyan-600 dark:text-cyan-400" size={20} />
+                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
+                      <Briefcase className="text-primary" size={20} />
                     </div>
 
                     <div>
@@ -400,8 +421,8 @@ export default function UserDashboard() {
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-start justify-between gap-4 w-full">
                     <div className="flex items-center gap-3">
-                      <div className="inline-flex items-center justify-center rounded-lg p-2 bg-lime-50 dark:bg-lime-900/20">
-                        <Users className="text-lime-600 dark:text-lime-400" size={20} />
+                      <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
+                        <Users className="text-primary" size={20} />
                       </div>
 
                       <div>
@@ -424,8 +445,8 @@ export default function UserDashboard() {
               <Card className=" rounded-xl cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
-                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-rose-50 dark:bg-rose-900/20">
-                      <PlusCircle className="text-rose-600 dark:text-rose-400" size={20} />
+                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
+                      <PlusCircle className="text-primary" size={20} />
                     </div>
 
                     <div>
