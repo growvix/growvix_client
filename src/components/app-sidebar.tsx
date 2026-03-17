@@ -41,10 +41,17 @@ const data = {
       isActive: true,
       items: [
         {
-          title: "Master View",
-          url: "/dashboard",
+          title: "Executive View",
+          url: "/executive_dashboard",
         },
-
+        {
+          title: "Master View",
+          url: "/master_dashboard",
+        },
+        {
+          title: "Management View",
+          url: "/management_dashboard",
+        },
       ],
     },
     {
