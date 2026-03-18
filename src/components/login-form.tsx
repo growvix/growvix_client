@@ -30,7 +30,7 @@ export function LoginForm({
   // Clear all cookies when login page loads and redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated()) {
-      navigate("/dashboard");
+      navigate("/executive_dashboard");
     } else {
       deleteAllAuthCookies();
     }
@@ -89,7 +89,7 @@ export function LoginForm({
     setCookie('permissions', JSON.stringify(data.permissions || []));
 
     toast.success("Login successful")
-    navigate("/dashboard")
+    navigate("/executive_dashboard")
 
   } catch (error: any) {
     const errorMessage =
