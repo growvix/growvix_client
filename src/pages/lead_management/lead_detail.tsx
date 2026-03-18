@@ -192,8 +192,8 @@ const UPDATE_LEAD = gql`
 `;
 
 const TOGGLE_IMPORTANT_ACTIVITY = gql`
-    mutation ToggleImportantActivity($organization: String!, $leadId: String!, $activityId: String!, $profileId: Int!) {
-        toggleImportantActivity(organization: $organization, leadId: $leadId, activityId: $activityId, profileId: $profileId) {
+    mutation ToggleImportantActivity($organization: String!, $leadId: String!, $activityId: String!, $userId: String!) {
+        toggleImportantActivity(organization: $organization, leadId: $leadId, activityId: $activityId, userId: $userId) {
             _id
             important_activities {
                 activity_id
@@ -2839,7 +2839,7 @@ export default function LeadDetail() {
                                                                                         organization,
                                                                                         leadId: leadDetail?._id,
                                                                                         activityId: activity.id || `req-${activity._id}`,
-                                                                                        profileId: parseInt(userId, 10)
+                                                                                        userId: currentUserId
                                                                                     }
                                                                                 });
                                                                                 toast.success(isImportant ? 'Removed from important' : 'Marked as important');

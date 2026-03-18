@@ -85,7 +85,7 @@ export interface PropertyRequirement {
 export interface ImportantActivity {
   activity_id: string;
   marked_at?: string;
-  marked_by?: number;
+  marked_by?: string;
 }
 
 export interface Lead {
