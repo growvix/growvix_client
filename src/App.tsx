@@ -60,7 +60,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
 
           <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to="/executive_dashboard" replace />} />
             <Route path="/executive_dashboard" element={<Dashboard />} />
             <Route path="/master_dashboard" element={<MasterDashboard />} />
             <Route path="/management_dashboard" element={<ManagementDashboard />} />
