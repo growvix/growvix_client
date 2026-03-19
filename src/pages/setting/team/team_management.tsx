@@ -54,11 +54,17 @@ const getColumns = (
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             ),
+            meta: {
+                label: "Team Name",
+            },
             cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
         },
         {
             accessorKey: "description",
             header: "Description",
+            meta: {
+                label: "Description",
+            },
             cell: ({ row }) => (
                 <div className="text-muted-foreground max-w-[300px] truncate">
                     {row.getValue("description") || "—"}
@@ -68,6 +74,9 @@ const getColumns = (
         {
             id: "memberCount",
             header: "Members",
+            meta: {
+                label: "Members",
+            },
             accessorFn: (row) => row.members?.length || 0,
             cell: ({ row }) => (
                 <div className="flex items-center gap-1.5">
@@ -79,6 +88,9 @@ const getColumns = (
         {
             accessorKey: "createdAt",
             header: "Created",
+            meta: {
+                label: "Created",
+            },
             cell: ({ row }) => {
                 const date = row.getValue("createdAt") as string
                 return <div>{date ? new Date(date).toLocaleDateString() : "—"}</div>
@@ -87,6 +99,9 @@ const getColumns = (
         {
             id: "actions",
             enableHiding: false,
+            meta: {
+                label: "Actions",
+            },
             cell: ({ row }) => {
                 const team = row.original
                 return (

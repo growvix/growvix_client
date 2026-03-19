@@ -200,11 +200,17 @@ export default function ProjectListing() {
                     </Button>
                 )
             },
+            meta: {
+                label: "ID",
+            },
             cell: ({ row }) => <div className="capitalize">{row.getValue("product_id")}</div>,
         },
         {
             accessorKey: "name",
             header: "Name",
+            meta: {
+                label: "Name",
+            },
             cell: ({ row }) => <div className="capitalize">{row.getValue("name")}</div>,
         },
         {
@@ -220,16 +226,25 @@ export default function ProjectListing() {
                     </Button>
                 )
             },
+            meta: {
+                label: "Location",
+            },
             cell: ({ row }) => <div className="capitalize">{row.getValue("location")}</div>,
         },
         {
             accessorKey: "property",
             header: "Property",
+            meta: {
+                label: "Property",
+            },
             cell: ({ row }) => <div className="capitalize">{row.getValue("property")}</div>,
         },
         {
             accessorKey: "blockCount",
             header: "Blocks",
+            meta: {
+                label: "Blocks",
+            },
             cell: ({ row }) => <div className="text-center">{row.getValue("blockCount") ?? 0}</div>,
         },
         {
@@ -245,6 +260,9 @@ export default function ProjectListing() {
                     </Button>
                 )
             },
+            meta: {
+                label: "Total Units",
+            },
             cell: ({ row }) => <div className="text-center font-medium">{row.getValue("totalUnits") ?? 0}</div>,
         },
         {
@@ -259,6 +277,9 @@ export default function ProjectListing() {
                         <ArrowUpDown />
                     </Button>
                 )
+            },
+            meta: {
+                label: "Booked Units",
             },
             cell: ({ row }) => {
                 const count = row.getValue("bookedCount") as number ?? 0
@@ -283,6 +304,9 @@ export default function ProjectListing() {
         {
             accessorKey: "createdAt",
             header: "Created At",
+            meta: {
+                label: "Created At",
+            },
             cell: ({ row }) => {
                 const date = row.getValue("createdAt") as string
                 return <div>{date ? new Date(date).toLocaleDateString() : '-'}</div>
@@ -291,6 +315,9 @@ export default function ProjectListing() {
         {
             id: "actions",
             enableHiding: false,
+            meta: {
+                label: "Actions",
+            },
             cell: ({ row }) => {
                 const project = row.original
                 return (

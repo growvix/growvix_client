@@ -14,6 +14,9 @@ import { DataTable } from "@/components/ui/data-table"
 export const columns: ColumnDef<TeamMember>[] = [
   {
     accessorKey: "id",
+    meta: {
+      label: "ID",
+    },
     header: ({ column }) => {
       return (
         <Button
@@ -29,6 +32,9 @@ export const columns: ColumnDef<TeamMember>[] = [
   },
   {
     accessorKey: "name",
+    meta: {
+      label: "Team Member",
+    },
     header: ({ column }) => {
       return (
         <Button
@@ -44,6 +50,9 @@ export const columns: ColumnDef<TeamMember>[] = [
   },
   {
     accessorKey: "callsMade",
+    meta: {
+      label: "Calls Made",
+    },
     header: ({ column }) => {
       return (
         <Button
@@ -59,6 +68,9 @@ export const columns: ColumnDef<TeamMember>[] = [
   },
   {
     accessorKey: "leadsConverted",
+    meta: {
+      label: "Leads Converted",
+    },
     header: ({ column }) => {
       return (
         <Button
@@ -74,11 +86,17 @@ export const columns: ColumnDef<TeamMember>[] = [
   },
   {
     accessorKey: "avgCallDuration",
+    meta: {
+      label: "Avg. Call Duration",
+    },
     header: "Avg. Call Duration",
     cell: ({ row }) => <div>{row.getValue("avgCallDuration")}</div>,
   },
   {
     accessorKey: "performanceScore",
+    meta: {
+      label: "Performance Score",
+    },
     header: ({ column }) => {
       return (
         <Button

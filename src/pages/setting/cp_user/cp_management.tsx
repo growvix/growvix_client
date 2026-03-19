@@ -94,6 +94,9 @@ const getColumns = (
         {
             id: "cpName",
             header: "CP Name",
+            meta: {
+                label: "CP Name",
+            },
             accessorFn: (row) => getFullName(row),
             cell: ({ row }) => (
                 <div className="font-medium capitalize">{getFullName(row.original) || "—"}</div>
@@ -116,18 +119,27 @@ const getColumns = (
         {
             id: "phone",
             header: "Phone",
+            meta: {
+                label: "Phone",
+            },
             accessorFn: (row) => row.profile?.phone ?? "",
             cell: ({ row }) => <div>{row.original.profile?.phone || "—"}</div>,
         },
         {
             id: "address",
             header: "Address",
+            meta: {
+                label: "Address",
+            },
             accessorFn: (row) => row.profile?.address ?? "",
             cell: ({ row }) => <div>{row.original.profile?.address || "—"}</div>,
         },
         {
             accessorKey: "team",
             header: "Team",
+            meta: {
+                label: "Team",
+            },
             cell: ({ row }) => (
                 <div className="capitalize">{row.getValue("team") || <span className="text-muted-foreground">—</span>}</div>
             ),
@@ -135,6 +147,9 @@ const getColumns = (
         {
             id: "projectCount",
             header: "Projects",
+            meta: {
+                label: "Projects",
+            },
             cell: ({ row }) => {
                 const count = row.original.allowed_projects?.length ?? 0
                 return (
@@ -149,6 +164,9 @@ const getColumns = (
         {
             id: "actions",
             enableHiding: false,
+            meta: {
+                label: "Actions",
+            },
             cell: ({ row }) => {
                 const cp = row.original
                 return (
