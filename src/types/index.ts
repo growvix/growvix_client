@@ -82,25 +82,31 @@ export interface PropertyRequirement {
   plot_type?: string;
 }
 
+export interface ImportantActivity {
+  activity_id: string;
+  marked_at?: string;
+  marked_by?: string;
+}
+
 export interface Lead {
   _id: string;
   profile_id: string;
   organization: string;
   profile: {
     name: string;
-    email: string;
+    email?: string;
     phone: string;
-    location: string;
+    location?: string;
   };
   prefered?: {
-    location: string;
-    budget: string;
+    location?: string;
+    budget?: string;
   };
   pretype?: {
-    type: string;
+    type?: string;
   };
   propertyRequirement?: PropertyRequirement;
-  project?: string;
+  project?: string[];
   merge_id?: string;
   acquired?: {
     campaign: string;
@@ -146,6 +152,7 @@ export interface Lead {
     key: string;
     value: string;
   }[];
+  important_activities?: ImportantActivity[];
   createdAt: string;
   updatedAt: string;
 }
