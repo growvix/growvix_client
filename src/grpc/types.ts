@@ -3,6 +3,7 @@ export interface Lead {
     lead_id: BinaryType;
     profile_id: number;
     name: string;
+    phone: string;
     stage: string;
     status: string;
     campaign: string;
