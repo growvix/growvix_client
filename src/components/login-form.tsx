@@ -97,18 +97,18 @@ export function LoginForm({
       setCookie('role', data.role);
       setCookie('permissions', JSON.stringify(data.permissions || []));
 
-    toast.success("Login successful")
-    
-    // Redirect based on role
-    if (data.role === 'admin') {
-      navigate("/master_dashboard")
-    } else if (data.role === 'manager') {
-      navigate("/management_dashboard")
-    } else {
-      navigate("/executive_dashboard") // default for user
-    }
       toast.success("Login successful")
-      navigate("/executive_dashboard")
+      
+      // Redirect based on role
+      if (data.role === 'admin') {
+        navigate("/master_dashboard")
+      } else if (data.role === 'manager') {
+        navigate("/management_dashboard")
+      } else if (data.role === 'cp_user') {
+        navigate("/cp/dashboard")
+      } else {
+        navigate("/executive_dashboard") // default for user
+      }
 
     } catch (error: any) {
       const errorMessage =

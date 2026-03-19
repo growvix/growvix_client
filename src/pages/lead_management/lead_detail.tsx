@@ -193,8 +193,8 @@ const UPDATE_LEAD = gql`
 `;
 
 const TOGGLE_IMPORTANT_ACTIVITY = gql`
-    mutation ToggleImportantActivity($organization: String!, $leadId: String!, $activityId: String!, $profileId: Int!) {
-        toggleImportantActivity(organization: $organization, leadId: $leadId, activityId: $activityId, profileId: $profileId) {
+    mutation ToggleImportantActivity($organization: String!, $leadId: String!, $activityId: String!, $userId: String!) {
+        toggleImportantActivity(organization: $organization, leadId: $leadId, activityId: $activityId, userId: $userId) {
             _id
             important_activities {
                 activity_id
