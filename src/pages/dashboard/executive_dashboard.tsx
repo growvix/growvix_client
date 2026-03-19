@@ -164,7 +164,7 @@ export default function UserDashboard() {
                   <div className="flex items-start justify-between gap-4 w-full">
                     <div className="flex items-center gap-3">
                       <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
-                        <PhoneOff className="text-primary" size={20} />
+                        <PhoneOff className="text-red-500" size={20} />
                       </div>
                       <div>
                         <CardTitle className="text-sm text-foreground">Missed Calls</CardTitle>
@@ -187,7 +187,7 @@ export default function UserDashboard() {
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
                     <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
-                      <PlusCircle className="text-primary" size={20} />
+                      <PlusCircle className="text-blue-500" size={20} />
                     </div>
 
                     <div>
@@ -211,7 +211,7 @@ export default function UserDashboard() {
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
                     <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
-                      <MailPlus className="text-primary" size={20} />
+                      <MailPlus className="text-amber-500" size={20} />
                     </div>
 
                     <div>
@@ -235,7 +235,7 @@ export default function UserDashboard() {
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
                     <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
-                      <FontAwesomeIcon icon={faWhatsapp} className="text-primary" style={{ fontSize: "1.2rem" }} />
+                      <FontAwesomeIcon icon={faWhatsapp} className="text-emerald-500" style={{ fontSize: "1.2rem" }} />
                     </div>
 
                     <div>
@@ -259,7 +259,7 @@ export default function UserDashboard() {
                   <div className="flex items-start justify-between gap-4 w-full">
                     <div className="flex items-center gap-3">
                       <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
-                        <Users className="text-primary" size={20} />
+                        <Users className="text-purple-500" size={20} />
                       </div>
 
                       <div>
@@ -283,7 +283,7 @@ export default function UserDashboard() {
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
                     <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
-                      <PlusCircle className="text-primary" size={20} />
+                      <PlusCircle className="text-teal-500" size={20} />
                     </div>
 
                     <div>
@@ -309,7 +309,7 @@ export default function UserDashboard() {
                   <div className="flex items-start justify-between gap-4 w-full">
                     <div className="flex items-center gap-3">
                       <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
-                        <UserRoundX className="text-primary" size={20} />
+                        <UserRoundX className="text-orange-500" size={20} />
                       </div>
 
                       <div>
@@ -333,7 +333,7 @@ export default function UserDashboard() {
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
                     <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
-                      <MapPinX className="text-primary" size={20} />
+                      <MapPinX className="text-rose-500" size={20} />
                     </div>
 
                     <div>
@@ -356,7 +356,7 @@ export default function UserDashboard() {
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
                     <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
-                      <DollarSign className="text-primary" size={20} />
+                      <DollarSign className="text-slate-500" size={20} />
                     </div>
 
                     <div>
@@ -380,7 +380,7 @@ export default function UserDashboard() {
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
                     <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
-                      <Briefcase className="text-primary" size={20} />
+                      <Briefcase className="text-sky-500" size={20} />
                     </div>
 
                     <div>
@@ -422,7 +422,7 @@ export default function UserDashboard() {
                   <div className="flex items-start justify-between gap-4 w-full">
                     <div className="flex items-center gap-3">
                       <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
-                        <Users className="text-primary" size={20} />
+                        <Users className="text-indigo-500" size={20} />
                       </div>
 
                       <div>
@@ -446,7 +446,7 @@ export default function UserDashboard() {
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
                     <div className="inline-flex items-center justify-center rounded-lg p-2 bg-muted/50 dark:bg-muted">
-                      <PlusCircle className="text-primary" size={20} />
+                      <PlusCircle className="text-lime-500" size={20} />
                     </div>
 
                     <div>
@@ -469,7 +469,7 @@ export default function UserDashboard() {
       <Card className="shadow-none gap-3">
         <CardHeader className="px-3 py-0 flex justify-between">
           <div className="pl-1">
-            <Label htmlFor="stage" className="text-md font-bold text-primary"><ChartCandlestick className="inline-block mr-1" />Lead Overview</Label>
+            <Label htmlFor="stage" className="text-md font-bold text-primary"><ChartCandlestick className="inline-block mr-1 text-orange-500" />Lead Overview</Label>
           </div>
           <Tabs defaultValue="today" className="py-0">
             <TabsList className="">
@@ -542,7 +542,7 @@ export default function UserDashboard() {
       <Card className="shadow-none">
         <CardHeader className="px-3 py-0 flex justify-between">
           <div className="pl-1">
-            <Label htmlFor="stage" className="text-md font-bold text-primary"><ChartNoAxesCombined className="inline-block mr-1" /> Daily Summary</Label>
+            <Label htmlFor="stage" className="text-md font-bold text-primary"><ChartNoAxesCombined className="inline-block mr-1 text-emerald-500" /> Daily Summary</Label>
           </div>
         </CardHeader>
         <CardContent>
@@ -633,7 +633,7 @@ export default function UserDashboard() {
         <CardHeader className="px-3 py-0 flex justify-between">
           <div className="pl-1">
             <Label htmlFor="stage" className="text-md font-bold text-primary">
-              <Users className="inline-block mr-1" /> Team Productivity</Label>
+              <Users className="inline-block mr-1 text-purple-500" /> Team Productivity</Label>
           </div>
         </CardHeader>
         <CardContent>

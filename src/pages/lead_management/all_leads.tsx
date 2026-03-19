@@ -45,6 +45,7 @@ export type Lead = {
   lead_id: string
   profile_id: number
   name: string
+  phone: string
   stage: string
   status: string
   campaign: string
@@ -109,6 +110,11 @@ export const getColumns = (navigate: ReturnType<typeof useNavigate>): ColumnDef<
       )
     },
     cell: ({ row }) => <div className="capitalize">{row.getValue("name") || "-"}</div>,
+  },
+  {
+    accessorKey: "phone",
+    header: "Phone Number",
+    cell: ({ row }) => <div>{row.getValue("phone") || "-"}</div>,
   },
   {
     accessorKey: "stage",
@@ -331,6 +337,7 @@ export default function AllLeads() {
           status: lead.status,
           profile_id: lead.profile_id,
           name: lead.name,
+          phone: lead.phone,
           campaign: lead.campaign,
           source: lead.source,
           sub_source: lead.sub_source,

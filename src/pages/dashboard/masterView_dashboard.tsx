@@ -264,7 +264,7 @@ export default function MasterDashboard() {
                                     <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                                         Total Leads
                                     </CardTitle>
-                                    <Users className="h-4 w-4 text-primary" />
+                                    <Users className="h-4 w-4 text-blue-500" />
                                 </div>
                                 <div className="flex items-baseline gap-2 mt-2">
                                     <div className="text-4xl font-bold tracking-tight">1,248</div>
@@ -281,7 +281,7 @@ export default function MasterDashboard() {
                                     <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                                         Site Visits
                                     </CardTitle>
-                                    <MapPin className="h-4 w-4 text-primary" />
+                                    <MapPin className="h-4 w-4 text-orange-500" />
                                 </div>
                                 <div className="flex items-baseline gap-2 mt-2">
                                     <div className="text-4xl font-bold tracking-tight">142</div>
@@ -298,7 +298,7 @@ export default function MasterDashboard() {
                                     <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                                         Bookings
                                     </CardTitle>
-                                    <Bookmark className="h-4 w-4 text-primary" />
+                                    <Bookmark className="h-4 w-4 text-emerald-500" />
                                 </div>
                                 <div className="flex items-baseline gap-2 mt-2">
                                     <div className="text-4xl font-bold tracking-tight">36</div>
@@ -315,7 +315,7 @@ export default function MasterDashboard() {
                                     <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                                         Agreement Value
                                     </CardTitle>
-                                    <Wallet className="h-4 w-4 text-primary" />
+                                    <Wallet className="h-4 w-4 text-amber-500" />
                                 </div>
                                 <div className="flex items-baseline gap-2 mt-2">
                                     <div className="text-3xl font-bold tracking-tight text-foreground">₹12.4 Cr</div>
@@ -334,7 +334,7 @@ export default function MasterDashboard() {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <CardTitle className="flex items-center gap-2">
-                                        <Activity className="h-5 w-5 text-primary" />
+                                        <Activity className="h-5 w-5 text-green-500" />
                                         Performance Trend
                                     </CardTitle>
                                     <CardDescription>Metrics spanning across selected dates</CardDescription>
@@ -401,7 +401,7 @@ export default function MasterDashboard() {
                         <Card>
                             <CardHeader className="bg-muted/20 border-b pb-4">
                                 <CardTitle className="text-base flex items-center gap-2">
-                                    <TrendingUp className="h-4 w-4 text-primary" />
+                                    <TrendingUp className="h-4 w-4 text-indigo-500" />
                                     Lead by Sales
                                 </CardTitle>
                             </CardHeader>
@@ -442,7 +442,7 @@ export default function MasterDashboard() {
                         <Card>
                             <CardHeader className="bg-muted/20 border-b pb-4">
                                 <CardTitle className="text-base flex items-center gap-2">
-                                    <ChartCandlestick className="h-4 w-4 text-primary" />
+                                    <ChartCandlestick className="h-4 w-4 text-violet-500" />
                                     Lead by Stage
                                 </CardTitle>
                             </CardHeader>

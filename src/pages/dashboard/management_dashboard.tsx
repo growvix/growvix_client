@@ -204,21 +204,21 @@ export default function ManagementDashboard() {
             <Card className="shadow-none">
                 <CardHeader className="px-3 py-0 flex justify-between">
                     <div className="pl-1 pt-3">
-                        <Label className="text-md font-bold text-primary"><ChartNoAxesCombined className="inline-block mr-1" /> Daily Summary</Label>
+                        <Label className="text-md font-bold text-primary"><ChartNoAxesCombined className="inline-block mr-1 text-emerald-500" /> Daily Summary</Label>
                     </div>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4">
                         {/* Total Calls */}
                         <div className="flex flex-col items-center justify-center p-6 bg-muted/50 rounded-lg border hover:bg-muted/70 transition-colors">
-                            <PhoneCall className="h-5 w-5 text-primary mb-2 opacity-75" />
+                            <PhoneCall className="h-5 w-5 text-blue-500 mb-2 opacity-75" />
                             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Total Calls</p>
                             <p className="text-5xl font-bold text-foreground">1,402</p>
                         </div>
 
                         {/* Total Talktime */}
                         <div className="flex flex-col items-center justify-center p-6 bg-muted/50 rounded-lg border hover:bg-muted/70 transition-colors">
-                            <Activity className="h-5 w-5 text-primary mb-2 opacity-75" />
+                            <Activity className="h-5 w-5 text-green-500 mb-2 opacity-75" />
                             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Total Talktime</p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-5xl font-bold text-foreground">42</span>
@@ -230,7 +230,7 @@ export default function ManagementDashboard() {
 
                         {/* Average Call Duration */}
                         <div className="flex flex-col items-center justify-center p-6 bg-muted/50 rounded-lg border hover:bg-muted/70 transition-colors">
-                            <Clock className="h-5 w-5 text-primary mb-2 opacity-75" />
+                            <Clock className="h-5 w-5 text-amber-500 mb-2 opacity-75" />
                             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Avg Call Duration</p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-5xl font-bold text-foreground">1</span>
@@ -242,14 +242,14 @@ export default function ManagementDashboard() {
 
                         {/* Site Visits Conducted */}
                         <div className="flex flex-col items-center justify-center p-6 bg-muted/50 rounded-lg border hover:bg-muted/70 transition-colors">
-                            <UserCheck className="h-5 w-5 text-primary mb-2 opacity-75" />
+                            <UserCheck className="h-5 w-5 text-teal-500 mb-2 opacity-75" />
                             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Site Visits Conducted</p>
                             <p className="text-5xl font-bold text-foreground">24</p>
                         </div>
 
                         {/* Followups Missed */}
                         <div className="flex flex-col items-center justify-center p-6 bg-muted/50 dark:bg-muted rounded-lg border transition-colors">
-                            <UserX className="h-5 w-5 text-primary mb-2 opacity-75" />
+                            <UserX className="h-5 w-5 text-red-500 mb-2 opacity-75" />
                             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Missed Follow-ups</p>
                             <p className="text-5xl font-bold text-foreground">8</p>
                         </div>
@@ -262,7 +262,7 @@ export default function ManagementDashboard() {
                 <CardHeader className="px-3 py-0 flex justify-between">
                     <div className="pl-1 pt-3">
                         <Label className="text-md font-bold text-primary">
-                            <Users className="inline-block mr-1" /> Team Productivity Logs
+                            <Users className="inline-block mr-1 text-purple-500" /> Team Productivity Logs
                         </Label>
                     </div>
                 </CardHeader>
