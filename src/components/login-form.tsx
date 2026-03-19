@@ -35,6 +35,8 @@ export function LoginForm({
         navigate("/master_dashboard");
       } else if (role === 'manager') {
         navigate("/management_dashboard");
+      } else if (role === 'cp_user') {
+        navigate("/cp/dashboard");
       } else {
         navigate("/executive_dashboard");
       }
@@ -78,22 +80,22 @@ export function LoginForm({
 
     setIsLoading(true)
 
-  try {
-    const response = await axios.post(API.AUTH.LOGIN, {
-      email: trimmedEmail,
-      password: trimmedPassword
-    })
+    try {
+      const response = await axios.post(API.AUTH.LOGIN, {
+        email: trimmedEmail,
+        password: trimmedPassword
+      })
 
-    const data = response.data.data
+      const data = response.data.data
 
-    setCookie('user_id', data.user_id);
-    setCookie('profile_id', data.profile_id);
-    setCookie('organization', data.organization);
-    setCookie('userName', `${data.firstName} ${data.lastName}`);
-    setCookie('email', data.email);
-    setCookie('token', data.token);
-    setCookie('role', data.role);
-    setCookie('permissions', JSON.stringify(data.permissions || []));
+      setCookie('user_id', data.user_id);
+      setCookie('profile_id', data.profile_id);
+      setCookie('organization', data.organization);
+      setCookie('userName', `${data.firstName} ${data.lastName}`);
+      setCookie('email', data.email);
+      setCookie('token', data.token);
+      setCookie('role', data.role);
+      setCookie('permissions', JSON.stringify(data.permissions || []));
 
     toast.success("Login successful")
     
@@ -105,17 +107,19 @@ export function LoginForm({
     } else {
       navigate("/executive_dashboard") // default for user
     }
+      toast.success("Login successful")
+      navigate("/executive_dashboard")
 
-  } catch (error: any) {
-    const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
-      "Unable to connect to the server."
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Unable to connect to the server."
 
-    toast.error(errorMessage)
-    setIsLoading(false)
+      toast.error(errorMessage)
+      setIsLoading(false)
+    }
   }
-}
 
   return (
     <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} {...props}>
@@ -159,8 +163,8 @@ export function LoginForm({
               required
               value={password}
               onChange={(e) => {
-                  const val = e.target.value;
-                  setPassword(val.trimStart()); // actively remove leading spaces
+                const val = e.target.value;
+                setPassword(val.trimStart()); // actively remove leading spaces
               }}
               className="pr-10 [::-ms-reveal]:hidden [::-ms-clear]:hidden [::-webkit-contacts-auto-fill-button]:hidden"
               onBlur={() => setPassword(password.trim())}

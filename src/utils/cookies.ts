@@ -25,6 +25,8 @@ export const deleteAllAuthCookies = () => {
     deleteCookie('token');
     deleteCookie('role');
     deleteCookie('permissions');
+    deleteCookie('user_type');
+    deleteCookie('allowed_projects');
 };
 
 export const isAuthenticated = (): boolean => {
