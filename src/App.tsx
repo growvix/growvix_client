@@ -31,6 +31,9 @@ import TeamDetailPage from "./pages/setting/team/team_detail";
 import CpTeamManagement from "./pages/setting/cp_team/cp_team_management";
 import CpTeamDetailPage from "./pages/setting/cp_team/cp_team_detail";
 import ImportLeads from "./pages/setting/import_data/import_leads";
+import CpLoginPage from "./pages/cp/cp_login";
+import CpLayout from "./pages/cp/cp_layout";
+import CpDashboard from "./pages/cp/cp_dashboard";
 
 import Mail from "./pages/setting/mail";
 
@@ -58,7 +61,13 @@ export default function App() {
         <Toaster position="top-center" />
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/cp/login" element={<CpLoginPage />} />
 
+          {/* CP Routes — no sidebar */}
+          <Route element={<ProtectedRoute><CpLayout /></ProtectedRoute>}>
+            <Route path="/cp/dashboard" element={<CpDashboard />} />
+            <Route path="/cp/project" element={<ProjectShowcase />} />
+          </Route>
           <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>
             <Route path="/" element={<Navigate to="/executive_dashboard" replace />} />
             <Route path="/executive_dashboard" element={<Dashboard />} />

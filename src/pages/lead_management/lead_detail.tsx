@@ -192,8 +192,8 @@ const UPDATE_LEAD = gql`
 `;
 
 const TOGGLE_IMPORTANT_ACTIVITY = gql`
-    mutation ToggleImportantActivity($organization: String!, $leadId: String!, $activityId: String!, $userId: String!) {
-        toggleImportantActivity(organization: $organization, leadId: $leadId, activityId: $activityId, userId: $userId) {
+    mutation ToggleImportantActivity($organization: String!, $leadId: String!, $activityId: String!, $profileId: Int!) {
+        toggleImportantActivity(organization: $organization, leadId: $leadId, activityId: $activityId, profileId: $profileId) {
             _id
             important_activities {
                 activity_id
@@ -2839,7 +2839,7 @@ export default function LeadDetail() {
                                                                                         organization,
                                                                                         leadId: leadDetail?._id,
                                                                                         activityId: activity.id || `req-${activity._id}`,
-                                                                                        userId: currentUserId
+                                                                                        profileId: parseInt(userId || '0', 10)
                                                                                     }
                                                                                 });
                                                                                 toast.success(isImportant ? 'Removed from important' : 'Marked as important');
@@ -2914,13 +2914,13 @@ export default function LeadDetail() {
                                                                         <div className="flex flex-col gap-0.5">
                                                                             <span className="text-[13px] font-medium text-muted-foreground">Scheduled for</span>
                                                                             <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
-                                                                                {activity.site_visit_date ? new Date(activity.site_visit_date).toLocaleString([], { 
-                                                                                    month: 'numeric', 
-                                                                                    day: 'numeric', 
-                                                                                    year: '2-digit', 
-                                                                                    hour: '2-digit', 
+                                                                                {activity.site_visit_date ? new Date(activity.site_visit_date).toLocaleString([], {
+                                                                                    month: 'numeric',
+                                                                                    day: 'numeric',
+                                                                                    year: '2-digit',
+                                                                                    hour: '2-digit',
                                                                                     minute: '2-digit',
-                                                                                    hour12: true 
+                                                                                    hour12: true
                                                                                 }) : 'N/A'}
                                                                             </span>
                                                                         </div>
@@ -2928,18 +2928,18 @@ export default function LeadDetail() {
                                                                         {activity.site_visit_completed && (
                                                                             <>
                                                                                 <div className="h-12 w-px bg-gray-200 dark:bg-zinc-800 self-center" />
-                                                                                
+
                                                                                 {/* Completed Info */}
                                                                                 <div className="flex flex-col gap-0.5">
                                                                                     <span className="text-[13px] font-medium text-muted-foreground">Completed on</span>
                                                                                     <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
-                                                                                        {activity.site_visit_completed_at ? new Date(activity.site_visit_completed_at).toLocaleString([], { 
-                                                                                            month: 'numeric', 
-                                                                                            day: 'numeric', 
-                                                                                            year: '2-digit', 
-                                                                                            hour: '2-digit', 
+                                                                                        {activity.site_visit_completed_at ? new Date(activity.site_visit_completed_at).toLocaleString([], {
+                                                                                            month: 'numeric',
+                                                                                            day: 'numeric',
+                                                                                            year: '2-digit',
+                                                                                            hour: '2-digit',
                                                                                             minute: '2-digit',
-                                                                                            hour12: true 
+                                                                                            hour12: true
                                                                                         }) : 'N/A'}
                                                                                     </span>
                                                                                 </div>
