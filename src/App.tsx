@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from "react"
 import { BreadcrumbProvider } from "@/context/breadcrumb-context"
+import { getCookie } from '@/utils/cookies';
 import { Toaster } from "@/components/ui/sonner"
 import { Routes, Route, Navigate, useLocation } from "react-router-dom"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -50,6 +51,13 @@ function ScrollToTop() {
   return null
 }
 
+const RoleBasedRedirect = () => {
+  const role = getCookie('role');
+  if (role === 'admin') return <Navigate to="/master_dashboard" replace />;
+  if (role === 'manager') return <Navigate to="/management_dashboard" replace />;
+  return <Navigate to="/executive_dashboard" replace />;
+};
+
 export default function App() {
   return (
     <ThemeProvider storageKey="vite-ui-theme" defaultTheme="system">
@@ -60,7 +68,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
 
           <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>
-            <Route path="/" element={<Navigate to="/executive_dashboard" replace />} />
+            <Route path="/" element={<RoleBasedRedirect />} />
             <Route path="/executive_dashboard" element={<Dashboard />} />
             <Route path="/master_dashboard" element={<MasterDashboard />} />
             <Route path="/management_dashboard" element={<ManagementDashboard />} />

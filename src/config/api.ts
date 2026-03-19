@@ -12,6 +12,7 @@ export const API = {
         LOGIN: `${API_URL}/api/auth/login`,
         REGISTER: `${API_URL}/api/auth/register`,
         LOGOUT: `${API_URL}/api/auth/logout`,
+        IMPERSONATE: `${API_URL}/api/auth/impersonate`,
     },
     USERS: `${API_URL}/api/users`,
     PROJECTS: `${API_URL}/api/projects`,

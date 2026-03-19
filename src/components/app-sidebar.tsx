@@ -43,14 +43,17 @@ const data = {
         {
           title: "Executive View",
           url: "/executive_dashboard",
+          roles: ['user']
         },
         {
           title: "Master View",
           url: "/master_dashboard",
+          roles: ['admin']
         },
         {
           title: "Management View",
           url: "/management_dashboard",
+          roles: ['manager']
         },
       ],
     },
@@ -130,13 +133,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     avatar: "/user_icon.png",
   }
 
+  const rawRole = getCookie('role') || 'user';
+  const role = rawRole.toLowerCase();
+
+  // Filter navigation items based on role
+  const filteredNavMain = data.navMain.map(section => {
+    if (section.title === "Dashboard") {
+      return {
+        ...section,
+        // @ts-ignore
+        items: section.items?.filter(item => item.roles?.includes(role))
+      }
+    }
+    return section;
+  });
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={filteredNavMain} />
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>

@@ -6,7 +6,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { API } from "@/config/api"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { setCookie, deleteAllAuthCookies, isAuthenticated } from "@/utils/cookies"
+import { setCookie, getCookie, deleteAllAuthCookies, isAuthenticated } from "@/utils/cookies"
 import {
   Field,
   FieldDescription,
@@ -30,7 +30,14 @@ export function LoginForm({
   // Clear all cookies when login page loads and redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated()) {
-      navigate("/executive_dashboard");
+      const role = getCookie('role');
+      if (role === 'admin') {
+        navigate("/master_dashboard");
+      } else if (role === 'manager') {
+        navigate("/management_dashboard");
+      } else {
+        navigate("/executive_dashboard");
+      }
     } else {
       deleteAllAuthCookies();
     }
@@ -89,7 +96,15 @@ export function LoginForm({
     setCookie('permissions', JSON.stringify(data.permissions || []));
 
     toast.success("Login successful")
-    navigate("/executive_dashboard")
+    
+    // Redirect based on role
+    if (data.role === 'admin') {
+      navigate("/master_dashboard")
+    } else if (data.role === 'manager') {
+      navigate("/management_dashboard")
+    } else {
+      navigate("/executive_dashboard") // default for user
+    }
 
   } catch (error: any) {
     const errorMessage =

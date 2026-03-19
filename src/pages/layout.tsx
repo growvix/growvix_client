@@ -22,9 +22,11 @@ import { getCookie } from "@/utils/cookies"
 import { API_URL } from "@/config/api"
 
 // Searchable pages index
-type SearchablePage = { label: string; url: string; group: string; icon: React.ElementType }
+type SearchablePage = { label: string; url: string; group: string; icon: React.ElementType; roles?: string[] }
 const SEARCHABLE_PAGES: SearchablePage[] = [
-    { label: "Master View", url: "/dashboard", group: "Dashboard", icon: LayoutDashboard },
+    { label: "Executive View", url: "/executive_dashboard", group: "Dashboard", icon: LayoutDashboard, roles: ['user'] },
+    { label: "Master View", url: "/master_dashboard", group: "Dashboard", icon: LayoutDashboard, roles: ['admin'] },
+    { label: "Management View", url: "/management_dashboard", group: "Dashboard", icon: LayoutDashboard, roles: ['manager'] },
     { label: "Total Leads", url: "/all_leads", group: "Lead Directory", icon: ClipboardList },
     { label: "Add New Lead", url: "/NewLead", group: "Lead Directory", icon: PlusCircle },
     { label: "Projects", url: "/project_listing", group: "Inventory", icon: Package },
@@ -132,7 +134,13 @@ export default function SidebarLayout() {
     // Group pages by section
     const pageGroups = React.useMemo(() => {
         const groups: Record<string, SearchablePage[]> = {}
+        const userRole = getCookie('role') || 'user';
+        
         for (const page of SEARCHABLE_PAGES) {
+            // Filter by role if specified
+            if (page.roles && !page.roles.includes(userRole)) {
+                continue;
+            }
             if (!groups[page.group]) groups[page.group] = []
             groups[page.group].push(page)
         }
