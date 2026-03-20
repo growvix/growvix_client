@@ -487,8 +487,8 @@ export default function CPManagement() {
                                     <Input id="firstName" placeholder="John" value={formData.firstName} onChange={handleInputChange} required />
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="lastName">Last Name</Label>
-                                    <Input id="lastName" placeholder="Doe" value={formData.lastName} onChange={handleInputChange} required />
+                                    <Label htmlFor="lastName">Last Name <span className="text-muted-foreground">(Optional)</span></Label>
+                                    <Input id="lastName" placeholder="Doe" value={formData.lastName} onChange={handleInputChange}/>
                                 </div>
                             </div>
                             <div className="grid gap-2">

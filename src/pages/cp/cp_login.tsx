@@ -14,6 +14,7 @@ import {
     FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function CpLoginPage() {
     const [email, setEmail] = useState("")
@@ -78,8 +79,8 @@ export default function CpLoginPage() {
             setCookie("token", data.token)
             setCookie("role", data.role || "cp_user")
             setCookie("user_type", "cp")
-            setCookie("permissions", JSON.stringify(data.permissions || []))
-            setCookie("allowed_projects", JSON.stringify(data.allowed_projects || []))
+            setCookie("permissions", encodeURIComponent(JSON.stringify(data.permissions || [])))
+            setCookie("allowed_projects", encodeURIComponent(JSON.stringify(data.allowed_projects || [])))
 
             toast.success("Login successful")
             navigate("/cp/dashboard")
@@ -109,12 +110,15 @@ export default function CpLoginPage() {
                         <form className={cn("flex flex-col gap-6")} onSubmit={handleSubmit}>
                             <FieldGroup>
                                 <div className="flex flex-col items-center gap-1 text-center">
-                                    <h1 className="text-2xl font-bold">Channel Partner Login</h1>
-                                    <p className="text-muted-foreground text-sm text-balance">
+                                   {/* <h1 className="text-2xl font-bold">Channel Partner Login</h1> */}
+                                   <Tabs defaultValue="cp_user">
+                                   <TabsList className="dark:bg-"><TabsTrigger value="login" className="px-4" onClick={() => navigate("/login")}>Login</TabsTrigger><TabsTrigger value="cp_user" onClick={() => navigate("/cp/login")}>CP Login</TabsTrigger></TabsList>
+                                   </Tabs>
+                                    <p className="text-muted-foreground text-sm text-balance mt-2">
                                         Enter your credentials to access your dashboard
                                     </p>
                                 </div>
-                                <Field>
+                                <Field >
                                     <FieldLabel htmlFor="email">Email</FieldLabel>
                                     <Input
                                         id="email"

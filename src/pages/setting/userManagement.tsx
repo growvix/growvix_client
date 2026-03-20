@@ -620,8 +620,8 @@ export default function UserManagement() {
                                         <Input id="first-name" placeholder="John" value={formData.firstName} onChange={handleInputChange} required />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="last-name">Last Name</Label>
-                                        <Input id="last-name" placeholder="Doe" value={formData.lastName} onChange={handleInputChange} required />
+                                        <Label htmlFor="last-name">Last Name <span className="text-muted-foreground">(Optional)</span></Label>
+                                        <Input id="last-name" placeholder="Doe" value={formData.lastName} onChange={handleInputChange}/>
                                     </div>
                                 </div>
                                 <div className="grid gap-2">

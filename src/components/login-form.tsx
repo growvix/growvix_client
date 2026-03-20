@@ -15,6 +15,7 @@ import {
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent,TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export function LoginForm({
   className,
@@ -125,8 +126,11 @@ export function LoginForm({
     <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} {...props}>
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">Login to your account</h1>
-          <p className="text-muted-foreground text-sm text-balance">
+          {/*<h1 className="text-2xl font-bold">Login </h1> */}
+          <Tabs defaultValue="login">
+          <TabsList><TabsTrigger value="login" className="px-4" onClick={() => navigate("/login")}>Login</TabsTrigger><TabsTrigger value="cp_user" onClick={() => navigate("/cp/login")}>CP Login</TabsTrigger></TabsList>
+          </Tabs>
+          <p className="text-muted-foreground text-sm text-balance mt-2">
             Enter your email below to login to your account
           </p>
         </div>
@@ -149,12 +153,12 @@ export function LoginForm({
         <Field>
           <div className="flex items-center">
             <FieldLabel htmlFor="password">Password</FieldLabel>
-            <a
+          {/*  <a
               href="#"
               className="ml-auto text-sm underline-offset-4 hover:underline"
             >
               Forgot your password?
-            </a>
+            </a>*/}
           </div>
           <div className="relative">
             <Input
