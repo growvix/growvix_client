@@ -12,6 +12,8 @@ export const API = {
         LOGIN: `${API_URL}/api/auth/login`,
         REGISTER: `${API_URL}/api/auth/register`,
         LOGOUT: `${API_URL}/api/auth/logout`,
+        IMPERSONATE: `${API_URL}/api/auth/impersonate`,
+        CP_LOGIN: `${API_URL}/api/auth/Cplogin`,
     },
     USERS: `${API_URL}/api/users`,
     PROJECTS: `${API_URL}/api/projects`,
@@ -43,6 +45,7 @@ export const API = {
     getCpUser: (id: string) => `${API_URL}/api/cp-users/${id}`,
     updateCpUser: (id: string) => `${API_URL}/api/cp-users/${id}`,
     deleteCpUser: (id: string) => `${API_URL}/api/cp-users/${id}`,
+    updateCpUserProjects: (id: string) => `${API_URL}/api/cp-users/${id}/projects`,
 
     // CP Team endpoints
     CP_TEAMS: `${API_URL}/api/cp-teams`,

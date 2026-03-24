@@ -45,6 +45,7 @@ export type Lead = {
   lead_id: string
   profile_id: number
   name: string
+  phone: string
   stage: string
   status: string
   campaign: string
@@ -93,6 +94,9 @@ export const getColumns = (navigate: ReturnType<typeof useNavigate>): ColumnDef<
         </Button>
       )
     },
+    meta: {
+      label: "Profile ID",
+    },
     cell: ({ row }) => <div className="font-medium pl-10 cursor-pointer hover:underline" onClick={() => navigate(`/lead_detail/${row.original.lead_id.toString()}`)}>#{row.getValue("profile_id")}</div>,
   },
   {
@@ -108,31 +112,57 @@ export const getColumns = (navigate: ReturnType<typeof useNavigate>): ColumnDef<
         </Button>
       )
     },
+    meta: {
+      label: "Name",
+    },
     cell: ({ row }) => <div className="capitalize">{row.getValue("name") || "-"}</div>,
+  },
+  {
+    accessorKey: "phone",
+    header: "Phone Number",
+    meta: {
+      label: "Phone Number",
+    },
+    cell: ({ row }) => <div>{row.getValue("phone") || "-"}</div>,
   },
   {
     accessorKey: "stage",
     header: "Stage",
+    meta: {
+      label: "Stage",
+    },
     cell: ({ row }) => <div className="capitalize">{row.getValue("stage") || "-"}</div>,
   },
   {
     accessorKey: "status",
     header: "Status",
+    meta: {
+      label: "Status",
+    },
     cell: ({ row }) => <div className="capitalize">{row.getValue("status") || "-"}</div>,
   },
   {
     accessorKey: "campaign",
     header: "Campaign",
+    meta: {
+      label: "Campaign",
+    },
     cell: ({ row }) => <div className="capitalize">{row.getValue("campaign") || "-"}</div>,
   },
   {
     accessorKey: "source",
     header: "Source",
+    meta: {
+      label: "Source",
+    },
     cell: ({ row }) => <div className="capitalize">{row.getValue("source") || "-"}</div>,
   },
   {
     accessorKey: "sub_source",
     header: "Sub Source",
+    meta: {
+      label: "Sub Source",
+    },
     cell: ({ row }) => <div className="capitalize">{row.getValue("sub_source") || "-"}</div>,
   },
   {
@@ -148,11 +178,17 @@ export const getColumns = (navigate: ReturnType<typeof useNavigate>): ColumnDef<
         </Button>
       )
     },
+    meta: {
+      label: "Received On",
+    },
     cell: ({ row }) => <div>{formatDate(row.getValue("received"))}</div>,
   },
   {
     accessorKey: "exe_user_name",
     header: "Assigned To",
+    meta: {
+      label: "Assigned To",
+    },
     cell: ({ row }) => {
       const name = row.getValue("exe_user_name") as string
       return name ? (
@@ -331,6 +367,7 @@ export default function AllLeads() {
           status: lead.status,
           profile_id: lead.profile_id,
           name: lead.name,
+          phone: lead.phone,
           campaign: lead.campaign,
           source: lead.source,
           sub_source: lead.sub_source,

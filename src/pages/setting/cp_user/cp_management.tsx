@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
 import { type ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal, Pencil, Trash2, Info } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, Pencil, Trash2, Info, FolderOpen, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     Sheet,
@@ -31,6 +31,16 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { DataTable } from "@/components/ui/data-table"
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -39,7 +49,11 @@ import { API } from "@/config/api"
 import { getCookie } from "@/utils/cookies"
 
 // ─── Types ──────────────────────────────────────────────
-// Matches the backend profile sub-object structure
+interface AllowedProject {
+    project_id: number
+    project_name: string
+}
+
 interface CPData {
     _id: string
     profile: {
@@ -51,6 +65,14 @@ interface CPData {
     }
     company: string
     team: string
+    allowed_projects?: AllowedProject[]
+}
+
+interface ProjectSummary {
+    product_id: number
+    name: string
+    location: string
+    property: string
 }
 
 // Helper to build "First Last" display name
@@ -64,14 +86,17 @@ const emptyForm = {
 }
 
 // ─── Column factory ──────────────────────────────────────
-// Table headers/UI kept identical — "CP Name", "Email", "Phone", "Address", "Team"
 const getColumns = (
     onEdit: (cp: CPData) => void,
-    onDelete: (cp: CPData) => void
+    onDelete: (cp: CPData) => void,
+    onManageProjects: (cp: CPData) => void
 ): ColumnDef<CPData>[] => [
         {
             id: "cpName",
             header: "CP Name",
+            meta: {
+                label: "CP Name",
+            },
             accessorFn: (row) => getFullName(row),
             cell: ({ row }) => (
                 <div className="font-medium capitalize">{getFullName(row.original) || "—"}</div>
@@ -94,25 +119,54 @@ const getColumns = (
         {
             id: "phone",
             header: "Phone",
+            meta: {
+                label: "Phone",
+            },
             accessorFn: (row) => row.profile?.phone ?? "",
             cell: ({ row }) => <div>{row.original.profile?.phone || "—"}</div>,
         },
         {
             id: "address",
             header: "Address",
+            meta: {
+                label: "Address",
+            },
             accessorFn: (row) => row.profile?.address ?? "",
             cell: ({ row }) => <div>{row.original.profile?.address || "—"}</div>,
         },
         {
             accessorKey: "team",
             header: "Team",
+            meta: {
+                label: "Team",
+            },
             cell: ({ row }) => (
                 <div className="capitalize">{row.getValue("team") || <span className="text-muted-foreground">—</span>}</div>
             ),
         },
         {
+            id: "projectCount",
+            header: "Projects",
+            meta: {
+                label: "Projects",
+            },
+            cell: ({ row }) => {
+                const count = row.original.allowed_projects?.length ?? 0
+                return (
+                    <div className="text-center">
+                        <span className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium ${count > 0 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
+                            {count}
+                        </span>
+                    </div>
+                )
+            },
+        },
+        {
             id: "actions",
             enableHiding: false,
+            meta: {
+                label: "Actions",
+            },
             cell: ({ row }) => {
                 const cp = row.original
                 return (
@@ -131,6 +185,10 @@ const getColumns = (
                                 Copy CP ID
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => onManageProjects(cp)}>
+                                <FolderOpen className="mr-2 h-4 w-4" />
+                                Manage Projects
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onEdit(cp)}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit CP
@@ -193,6 +251,15 @@ export default function CPManagement() {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [cpToDelete, setCpToDelete] = useState<CPData | null>(null)
 
+    // Project access dialog
+    const [projectDialogOpen, setProjectDialogOpen] = useState(false)
+    const [selectedCp, setSelectedCp] = useState<CPData | null>(null)
+    const [allProjects, setAllProjects] = useState<ProjectSummary[]>([])
+    const [selectedProjectIds, setSelectedProjectIds] = useState<Set<number>>(new Set())
+    const [projectsLoading, setProjectsLoading] = useState(false)
+    const [projectsSaving, setProjectsSaving] = useState(false)
+    const [projectSearch, setProjectSearch] = useState("")
+
     const organization = getCookie("organization") || ""
 
     // ── Fetch all CP users ──
@@ -215,6 +282,22 @@ export default function CPManagement() {
         if (organization) fetchCpUsers()
     }, [fetchCpUsers, organization])
 
+    // ── Fetch all projects (for dialog) ──
+    const fetchProjects = useCallback(async () => {
+        try {
+            setProjectsLoading(true)
+            const token = getCookie("token")
+            const res = await axios.get(`${API.PROJECTS}?organization=${organization}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            })
+            setAllProjects(res.data.data?.projects || res.data.data || [])
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to load projects")
+        } finally {
+            setProjectsLoading(false)
+        }
+    }, [organization])
+
     // ── Form input handler (shared for add form) ──
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { id, value } = e.target
@@ -224,7 +307,6 @@ export default function CPManagement() {
     // ── Edit form input handler ──
     const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { id, value } = e.target
-        // ids are prefixed with "edit-" — strip prefix to get field name
         const key = id.startsWith("edit-") ? id.replace("edit-", "") : id
         setEditFormData((prev) => ({ ...prev, [key]: value }))
     }
@@ -251,7 +333,7 @@ export default function CPManagement() {
         }
     }
 
-    // ── Open Edit Sheet (pre-fill from existing record) ──
+    // ── Open Edit Sheet ──
     const handleEdit = (cp: CPData) => {
         setEditingCp(cp)
         setEditFormData({
@@ -260,7 +342,7 @@ export default function CPManagement() {
             email: cp.profile?.email ?? "",
             phone: cp.profile?.phone ?? "",
             address: cp.profile?.address ?? "",
-            password: "", // never pre-fill password
+            password: "",
             company: cp.company ?? "",
             team: cp.team ?? "",
         })
@@ -316,7 +398,69 @@ export default function CPManagement() {
         }
     }
 
-    const columns = useMemo(() => getColumns(handleEdit, confirmDelete), [])
+    // ── Open Project Access Dialog ──
+    const handleManageProjects = (cp: CPData) => {
+        setSelectedCp(cp)
+        setProjectSearch("")
+        // Pre-select the CP's allowed projects
+        const existingIds = new Set((cp.allowed_projects || []).map(p => p.project_id))
+        setSelectedProjectIds(existingIds)
+        setProjectDialogOpen(true)
+        fetchProjects()
+    }
+
+    // ── Toggle project selection ──
+    const toggleProjectSelection = (projectId: number) => {
+        setSelectedProjectIds(prev => {
+            const next = new Set(prev)
+            if (next.has(projectId)) {
+                next.delete(projectId)
+            } else {
+                next.add(projectId)
+            }
+            return next
+        })
+    }
+
+    // ── Save Project Access ──
+    const handleSaveProjects = async () => {
+        if (!selectedCp) return
+        setProjectsSaving(true)
+        try {
+            const token = getCookie("token")
+            const projectsPayload = allProjects
+                .filter(p => selectedProjectIds.has(p.product_id))
+                .map(p => ({ project_id: p.product_id, project_name: p.name }))
+
+            const res = await axios.patch(
+                API.updateCpUserProjects(selectedCp._id),
+                { organization, projects: projectsPayload },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+
+            // Update local state
+            setCpUsers(prev =>
+                prev.map(cp => cp._id === selectedCp._id
+                    ? { ...cp, allowed_projects: res.data.data?.allowed_projects || projectsPayload }
+                    : cp
+                )
+            )
+            toast.success("Project access updated successfully")
+            setProjectDialogOpen(false)
+            setSelectedCp(null)
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to update project access")
+        } finally {
+            setProjectsSaving(false)
+        }
+    }
+
+    const filteredProjects = allProjects.filter(p =>
+        p.name.toLowerCase().includes(projectSearch.toLowerCase()) ||
+        (p.location || "").toLowerCase().includes(projectSearch.toLowerCase())
+    )
+
+    const columns = useMemo(() => getColumns(handleEdit, confirmDelete, handleManageProjects), [])
 
     // ── Render ──
     return (
@@ -343,8 +487,8 @@ export default function CPManagement() {
                                     <Input id="firstName" placeholder="John" value={formData.firstName} onChange={handleInputChange} required />
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="lastName">Last Name</Label>
-                                    <Input id="lastName" placeholder="Doe" value={formData.lastName} onChange={handleInputChange} required />
+                                    <Label htmlFor="lastName">Last Name <span className="text-muted-foreground">(Optional)</span></Label>
+                                    <Input id="lastName" placeholder="Doe" value={formData.lastName} onChange={handleInputChange}/>
                                 </div>
                             </div>
                             <div className="grid gap-2">
@@ -455,7 +599,7 @@ export default function CPManagement() {
                 />
             )}
 
-            {/* Delete CP Confirmation Dialog */}
+            {/* ── Delete CP Confirmation Dialog ── */}
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -475,6 +619,87 @@ export default function CPManagement() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* ── Project Access Dialog ── */}
+            <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Manage Project Access</DialogTitle>
+                        <DialogDescription>
+                            Select inventory projects that <strong>{selectedCp ? getFullName(selectedCp) : ""}</strong> can access.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {/* Search */}
+                    <div className="px-1">
+                        <Input
+                            placeholder="Search projects..."
+                            value={projectSearch}
+                            onChange={(e) => setProjectSearch(e.target.value)}
+                            className="bg-muted/50"
+                        />
+                    </div>
+
+                    {/* Project List */}
+                    <ScrollArea className="h-[320px] pr-3">
+                        {projectsLoading ? (
+                            <div className="flex items-center justify-center py-16">
+                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                            </div>
+                        ) : filteredProjects.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                                <FolderOpen className="h-8 w-8 mb-2" />
+                                <p className="text-sm">No projects found</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-1">
+                                {filteredProjects.map((project) => {
+                                    const isSelected = selectedProjectIds.has(project.product_id)
+                                    return (
+                                        <div
+                                            key={project.product_id}
+                                            onClick={() => toggleProjectSelection(project.product_id)}
+                                            className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-all ${isSelected
+                                                ? "border-primary/50 bg-primary/5 dark:bg-primary/10"
+                                                : "border-transparent hover:bg-muted/50"
+                                                }`}
+                                        >
+                                            <Checkbox
+                                                checked={isSelected}
+                                                onCheckedChange={() => toggleProjectSelection(project.product_id)}
+                                                className="pointer-events-none"
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium truncate">{project.name}</p>
+                                                <p className="text-xs text-muted-foreground truncate">
+                                                    {project.location || "No location"} · {project.property || "—"}
+                                                </p>
+                                            </div>
+                                            {isSelected && (
+                                                <Check className="h-4 w-4 text-primary shrink-0" />
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </ScrollArea>
+
+                    <DialogFooter className="flex items-center justify-between sm:justify-between">
+                        <p className="text-xs text-muted-foreground">
+                            {selectedProjectIds.size} project{selectedProjectIds.size !== 1 ? "s" : ""} selected
+                        </p>
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => setProjectDialogOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleSaveProjects} disabled={projectsSaving}>
+                                {projectsSaving ? "Saving..." : "Save Access"}
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

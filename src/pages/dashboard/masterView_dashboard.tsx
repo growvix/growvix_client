@@ -130,19 +130,6 @@ export default function MasterDashboard() {
 
     return (
         <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 mx-auto w-full">
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold tracking-tight">Master Dashboard</h1>
-                <Select value="/master_dashboard" onValueChange={(val) => navigate(val)}>
-                    <SelectTrigger className="w-[220px] bg-background">
-                        <SelectValue placeholder="Select Dashboard View" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="/executive_dashboard">Executive View</SelectItem>
-                        <SelectItem value="/master_dashboard">Master View</SelectItem>
-                        <SelectItem value="/management_dashboard">Management View</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
 
             {/* Header / Filter Section */}
             <div className="flex flex-col gap-4 bg-card dark:bg-card/50 p-4 rounded-xl border shadow-sm backdrop-blur-sm">
@@ -264,7 +251,7 @@ export default function MasterDashboard() {
                                     <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                                         Total Leads
                                     </CardTitle>
-                                    <Users className="h-4 w-4 text-primary" />
+                                    <Users className="h-4 w-4 text-blue-500" />
                                 </div>
                                 <div className="flex items-baseline gap-2 mt-2">
                                     <div className="text-4xl font-bold tracking-tight">1,248</div>
@@ -281,7 +268,7 @@ export default function MasterDashboard() {
                                     <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                                         Site Visits
                                     </CardTitle>
-                                    <MapPin className="h-4 w-4 text-primary" />
+                                    <MapPin className="h-4 w-4 text-orange-500" />
                                 </div>
                                 <div className="flex items-baseline gap-2 mt-2">
                                     <div className="text-4xl font-bold tracking-tight">142</div>
@@ -298,7 +285,7 @@ export default function MasterDashboard() {
                                     <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                                         Bookings
                                     </CardTitle>
-                                    <Bookmark className="h-4 w-4 text-primary" />
+                                    <Bookmark className="h-4 w-4 text-emerald-500" />
                                 </div>
                                 <div className="flex items-baseline gap-2 mt-2">
                                     <div className="text-4xl font-bold tracking-tight">36</div>
@@ -315,7 +302,7 @@ export default function MasterDashboard() {
                                     <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                                         Agreement Value
                                     </CardTitle>
-                                    <Wallet className="h-4 w-4 text-primary" />
+                                    <Wallet className="h-4 w-4 text-amber-500" />
                                 </div>
                                 <div className="flex items-baseline gap-2 mt-2">
                                     <div className="text-3xl font-bold tracking-tight text-foreground">₹12.4 Cr</div>
@@ -334,7 +321,7 @@ export default function MasterDashboard() {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <CardTitle className="flex items-center gap-2">
-                                        <Activity className="h-5 w-5 text-primary" />
+                                        <Activity className="h-5 w-5 text-green-500" />
                                         Performance Trend
                                     </CardTitle>
                                     <CardDescription>Metrics spanning across selected dates</CardDescription>
@@ -401,7 +388,7 @@ export default function MasterDashboard() {
                         <Card>
                             <CardHeader className="bg-muted/20 border-b pb-4">
                                 <CardTitle className="text-base flex items-center gap-2">
-                                    <TrendingUp className="h-4 w-4 text-primary" />
+                                    <TrendingUp className="h-4 w-4 text-indigo-500" />
                                     Lead by Sales
                                 </CardTitle>
                             </CardHeader>
@@ -442,7 +429,7 @@ export default function MasterDashboard() {
                         <Card>
                             <CardHeader className="bg-muted/20 border-b pb-4">
                                 <CardTitle className="text-base flex items-center gap-2">
-                                    <ChartCandlestick className="h-4 w-4 text-primary" />
+                                    <ChartCandlestick className="h-4 w-4 text-violet-500" />
                                     Lead by Stage
                                 </CardTitle>
                             </CardHeader>
@@ -517,16 +504,16 @@ export default function MasterDashboard() {
                         </CardHeader>
                         <CardContent className="flex-1 flex flex-col p-0">
                             <Tabs defaultValue="site_visits" className="w-full flex-1 flex flex-col">
-                                <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-auto">
+                                <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-auto pb-1.5">
                                     <TabsTrigger
                                         value="site_visits"
-                                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-4 py-3"
+                                        className="rounded-lg border-b-2 ms-1.5 border-transparent data-[state=active]:border-primary data-[state=active]:bg-black px-4 py-3"
                                     >
                                         Site Visits (5)
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="follow_ups"
-                                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-4 py-3"
+                                        className="rounded-lg border-b-2 me-1.5 border-transparent data-[state=active]:border-primary data-[state=active]:bg-black px-4 py-3"
                                     >
                                         Follow Ups (12)
                                     </TabsTrigger>

@@ -25,21 +25,33 @@ const getColumns = (
         {
             accessorKey: "_id",
             header: "ID",
+            meta: {
+                label: "ID",
+            },
             cell: ({ row }) => <div className="font-medium capitalize">{row.getValue("_id")}</div>,
         },
         {
             accessorKey: "leadName",
             header: "Lead name",
+            meta: {
+                label: "Lead name",
+            },
             cell: ({ row }) => <div className="font-medium capitalize">{row.getValue("leadName")}</div>,
         },
         {
             id: "uploadBy",
             header: "Upload by",
+            meta: {
+                label: "Upload by",
+            },
             cell: ({ row }) => <div className="font-medium capitalize">{row.getValue("uploadBy")}</div>,
         },
         {
             accessorKey: "allow",
             header: "Re-engaging",
+            meta: {
+                label: "Re-engaging",
+            },
             cell: ({ row }) => <div>{row.getValue("allow") || "-"}</div>,
         },
     ]

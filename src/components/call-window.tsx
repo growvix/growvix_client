@@ -46,7 +46,6 @@ export default function CallWindow() {
         const response = await axios.post(`${API_URL}/api/call`, {
           customerNumber: CUSTOMER_NUMBER
         });
-
         if (response.data.success) {
           setCallStatus("connected");
           setCallActive(true);

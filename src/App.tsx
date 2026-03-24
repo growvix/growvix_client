@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from "react"
 import { BreadcrumbProvider } from "@/context/breadcrumb-context"
+import { getCookie } from '@/utils/cookies';
 import { Toaster } from "@/components/ui/sonner"
 import { Routes, Route, Navigate, useLocation } from "react-router-dom"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -31,6 +32,11 @@ import TeamDetailPage from "./pages/setting/team/team_detail";
 import CpTeamManagement from "./pages/setting/cp_team/cp_team_management";
 import CpTeamDetailPage from "./pages/setting/cp_team/cp_team_detail";
 import ImportLeads from "./pages/setting/import_data/import_leads";
+import CpLoginPage from "./pages/cp/cp_login";
+import CpLayout from "./pages/cp/cp_layout";
+import CpDashboard from "./pages/cp/cp_dashboard";
+import CpProjectShowcase from "./pages/cp/cp_project_showcase";
+import EditProject from "./pages/inventory/edit_project";
 
 import Mail from "./pages/setting/mail";
 
@@ -50,6 +56,13 @@ function ScrollToTop() {
   return null
 }
 
+const RoleBasedRedirect = () => {
+  const role = getCookie('role');
+  if (role === 'admin') return <Navigate to="/master_dashboard" replace />;
+  if (role === 'manager') return <Navigate to="/management_dashboard" replace />;
+  return <Navigate to="/executive_dashboard" replace />;
+};
+
 export default function App() {
   return (
     <ThemeProvider storageKey="vite-ui-theme" defaultTheme="system">
@@ -58,9 +71,15 @@ export default function App() {
         <Toaster position="top-center" />
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/cp/login" element={<CpLoginPage />} />
 
+          {/* CP Routes — no sidebar */}
+          <Route element={<ProtectedRoute><CpLayout /></ProtectedRoute>}>
+            <Route path="/cp/dashboard" element={<CpDashboard />} />
+            <Route path="/cp/project" element={<CpProjectShowcase />} />
+          </Route>
           <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>
-            <Route path="/" element={<Navigate to="/executive_dashboard" replace />} />
+            <Route path="/" element={<RoleBasedRedirect />} />
             <Route path="/executive_dashboard" element={<Dashboard />} />
             <Route path="/master_dashboard" element={<MasterDashboard />} />
             <Route path="/management_dashboard" element={<ManagementDashboard />} />
@@ -75,6 +94,7 @@ export default function App() {
             <Route path="/project_listing" element={<ProjectListing />} />
             <Route path="/project_showcase" element={<ProjectShowcase />} />
             <Route path="/new_project" element={<NewProject />} />
+            <Route path="/edit_project/:id" element={<EditProject />} />
             <Route path="/settings" element={<GeneralSetting />} />
             <Route path="/setting/user_management" element={<UserManagement />} />
             <Route path="/setting/lead_stage_setting" element={<LeadStageSetting />} />

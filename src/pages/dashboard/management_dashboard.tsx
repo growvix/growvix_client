@@ -77,19 +77,7 @@ export default function ManagementDashboard() {
 
     return (
         <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 mx-auto w-full">
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold tracking-tight">Management Dashboard</h1>
-                <Select value="/management_dashboard" onValueChange={(val) => navigate(val)}>
-                    <SelectTrigger className="w-[220px] bg-background">
-                        <SelectValue placeholder="Select Dashboard View" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="/executive_dashboard">Executive View</SelectItem>
-                        <SelectItem value="/master_dashboard">Master View</SelectItem>
-                        <SelectItem value="/management_dashboard">Management View</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
+
 
             {/* Header / Filter Section */}
             <div className="flex flex-col gap-4 bg-card dark:bg-card/50 p-4 rounded-xl border shadow-sm backdrop-blur-sm">
@@ -204,22 +192,26 @@ export default function ManagementDashboard() {
             <Card className="shadow-none">
                 <CardHeader className="px-3 py-0 flex justify-between">
                     <div className="pl-1 pt-3">
-                        <Label className="text-md font-bold text-primary"><ChartNoAxesCombined className="inline-block mr-1" /> Daily Summary</Label>
+                        <Label className="text-md font-bold text-primary"><ChartNoAxesCombined className="inline-block mr-1 text-emerald-500" /> Daily Summary</Label>
                     </div>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4">
                         {/* Total Calls */}
-                        <div className="flex flex-col items-center justify-center p-6 bg-muted/50 rounded-lg border hover:bg-muted/70 transition-colors">
-                            <PhoneCall className="h-5 w-5 text-primary mb-2 opacity-75" />
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Total Calls</p>
+                        <div className="flex flex-col items-center justify-center p-6 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors group">
+                            <div className="p-2.5 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 mb-3 group-hover:bg-blue-200 dark:group-hover:bg-blue-800/60 transition-colors">
+                                <PhoneCall className="h-5 w-5" />
+                            </div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Total Calls</p>
                             <p className="text-5xl font-bold text-foreground">1,402</p>
                         </div>
 
                         {/* Total Talktime */}
-                        <div className="flex flex-col items-center justify-center p-6 bg-muted/50 rounded-lg border hover:bg-muted/70 transition-colors">
-                            <Activity className="h-5 w-5 text-primary mb-2 opacity-75" />
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Total Talktime</p>
+                        <div className="flex flex-col items-center justify-center p-6 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors group">
+                            <div className="p-2.5 rounded-lg bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 mb-3 group-hover:bg-green-200 dark:group-hover:bg-green-800/60 transition-colors">
+                                <Activity className="h-5 w-5" />
+                            </div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Total Talktime</p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-5xl font-bold text-foreground">42</span>
                                 <span className="text-xl text-muted-foreground">h</span>
@@ -229,9 +221,11 @@ export default function ManagementDashboard() {
                         </div>
 
                         {/* Average Call Duration */}
-                        <div className="flex flex-col items-center justify-center p-6 bg-muted/50 rounded-lg border hover:bg-muted/70 transition-colors">
-                            <Clock className="h-5 w-5 text-primary mb-2 opacity-75" />
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Avg Call Duration</p>
+                        <div className="flex flex-col items-center justify-center p-6 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors group">
+                            <div className="p-2.5 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 mb-3 group-hover:bg-amber-200 dark:group-hover:bg-amber-800/60 transition-colors">
+                                <Clock className="h-5 w-5" />
+                            </div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Avg Call Duration</p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-5xl font-bold text-foreground">1</span>
                                 <span className="text-xl text-muted-foreground">m</span>
@@ -241,16 +235,20 @@ export default function ManagementDashboard() {
                         </div>
 
                         {/* Site Visits Conducted */}
-                        <div className="flex flex-col items-center justify-center p-6 bg-muted/50 rounded-lg border hover:bg-muted/70 transition-colors">
-                            <UserCheck className="h-5 w-5 text-primary mb-2 opacity-75" />
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Site Visits Conducted</p>
+                        <div className="flex flex-col items-center justify-center p-6 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors group">
+                            <div className="p-2.5 rounded-lg bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400 mb-3 group-hover:bg-teal-200 dark:group-hover:bg-teal-800/60 transition-colors">
+                                <UserCheck className="h-5 w-5" />
+                            </div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Site Visits Conducted</p>
                             <p className="text-5xl font-bold text-foreground">24</p>
                         </div>
 
                         {/* Followups Missed */}
-                        <div className="flex flex-col items-center justify-center p-6 bg-muted/50 dark:bg-muted rounded-lg border transition-colors">
-                            <UserX className="h-5 w-5 text-primary mb-2 opacity-75" />
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Missed Follow-ups</p>
+                        <div className="flex flex-col items-center justify-center p-6 bg-muted/30 dark:bg-muted/20 rounded-lg border hover:bg-muted/50 transition-colors group">
+                            <div className="p-2.5 rounded-lg bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 mb-3 group-hover:bg-red-200 dark:group-hover:bg-red-800/60 transition-colors">
+                                <UserX className="h-5 w-5" />
+                            </div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Missed Follow-ups</p>
                             <p className="text-5xl font-bold text-foreground">8</p>
                         </div>
                     </div>
@@ -262,7 +260,7 @@ export default function ManagementDashboard() {
                 <CardHeader className="px-3 py-0 flex justify-between">
                     <div className="pl-1 pt-3">
                         <Label className="text-md font-bold text-primary">
-                            <Users className="inline-block mr-1" /> Team Productivity Logs
+                            <Users className="inline-block mr-1 text-purple-500" /> Team Productivity Logs
                         </Label>
                     </div>
                 </CardHeader>

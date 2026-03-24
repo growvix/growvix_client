@@ -324,11 +324,17 @@ export default function UserManagement() {
         {
             accessorKey: "profile_id",
             header: "ID",
+            meta: {
+                label: "ID",
+            },
             cell: ({ row }) => <div className="font-medium">{row.getValue("profile_id")}</div>,
         },
         {
             id: "name",
             header: "Name",
+            meta: {
+                label: "Name",
+            },
             accessorFn: (row) => `${row.profile.firstName} ${row.profile.lastName}`,
             cell: ({ row }) => <div className="capitalize">{row.getValue("name")}</div>,
         },
@@ -344,17 +350,26 @@ export default function UserManagement() {
                 </Button>
             ),
             accessorFn: (row) => row.profile.email,
+            meta: {
+                label: "Email",
+            },
             cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
         },
         {
             id: "phone",
             header: "Phone",
+            meta: {
+                label: "Phone",
+            },
             accessorFn: (row) => row.profile.phone || "-",
             cell: ({ row }) => <div>{row.getValue("phone")}</div>,
         },
         {
             accessorKey: "role",
             header: "Role",
+            meta: {
+                label: "Role",
+            },
             cell: ({ row }) => (
                 <div className="capitalize">{row.getValue("role")}</div>
             ),
@@ -362,6 +377,9 @@ export default function UserManagement() {
         {
             accessorKey: "department",
             header: "Department",
+            meta: {
+                label: "Department",
+            },
             cell: ({ row }) => (
                 <div className="capitalize">{row.getValue("department") || <span className="text-muted-foreground">—</span>}</div>
             ),
@@ -369,6 +387,9 @@ export default function UserManagement() {
         {
             accessorKey: "isActive",
             header: "Status",
+            meta: {
+                label: "Status",
+            },
             cell: ({ row }) => (
                 <div className={row.getValue("isActive") ? "text-green-600" : "text-red-600"}>
                     {row.getValue("isActive") ? "Active" : "Inactive"}
@@ -378,6 +399,9 @@ export default function UserManagement() {
         {
             id: "teams",
             header: "Teams",
+            meta: {
+                label: "Teams",
+            },
             accessorFn: (row) => (row.teams || []).map(t => t.teamName).join(", "),
             cell: ({ row }) => {
                 const teams = row.original.teams || []
@@ -396,6 +420,9 @@ export default function UserManagement() {
         {
             id: "actions",
             enableHiding: false,
+            meta: {
+                label: "Actions",
+            },
             cell: ({ row }) => {
                 const user = row.original
                 return (
@@ -593,8 +620,8 @@ export default function UserManagement() {
                                         <Input id="first-name" placeholder="John" value={formData.firstName} onChange={handleInputChange} required />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="last-name">Last Name</Label>
-                                        <Input id="last-name" placeholder="Doe" value={formData.lastName} onChange={handleInputChange} required />
+                                        <Label htmlFor="last-name">Last Name <span className="text-muted-foreground">(Optional)</span></Label>
+                                        <Input id="last-name" placeholder="Doe" value={formData.lastName} onChange={handleInputChange}/>
                                     </div>
                                 </div>
                                 <div className="grid gap-2">
