@@ -80,7 +80,7 @@ const data = {
       isActive: true,
       items: [
         {
-          title: "Projects",
+          title: "Project Listing",
           url: "/project_listing",
         },
         {

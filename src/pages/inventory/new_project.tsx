@@ -698,6 +698,7 @@ export default function NewProject() {
                                                     type="number"
                                                     min="1"
                                                     max="1000"
+                                                    className="bg-background"
                                                     value={plotsConfig.totalPlots}
                                                     onChange={e => setPlotsConfig(prev => ({ ...prev, totalPlots: Math.min(1000, parseInt(e.target.value) || 1) }))}
                                                 />
@@ -722,6 +723,7 @@ export default function NewProject() {
                                                 <Input
                                                     type="number"
                                                     min="1"
+                                                    className="bg-background"
                                                     value={plotsConfig.defaultSize}
                                                     onChange={e => setPlotsConfig(prev => ({ ...prev, defaultSize: parseInt(e.target.value) || 1000 }))}
                                                 />
@@ -893,6 +895,7 @@ export default function NewProject() {
                                                                                 value={block.blockName}
                                                                                 onChange={e => updateBlock(block.blockId, 'blockName', e.target.value)}
                                                                                 placeholder="e.g., Block A, Tower 1"
+                                                                                className=" text-xs bg-background dark:bg-[#09090b]"
                                                                             />
                                                                         </div>
                                                                         <div className="space-y-2 col-span-2">
@@ -903,7 +906,7 @@ export default function NewProject() {
   accept=".svg,image/svg+xml"
   multiple
   onChange={e => handleImageUpload(block.blockId, e.target.files)}
-  className="flex-1"
+  className="flex-1  text-xs bg-background dark:bg-[#09090b]"
 />
                                                                             </div>
                                                                             {block.floorPlanImages.length > 0 && (
@@ -1039,14 +1042,14 @@ export default function NewProject() {
                                                                                         </Select>
                                                                                         <Input
                                                                                             type="number"
-                                                                                            className="h-8 text-xs"
+                                                                                            className="h-8 text-xs bg-background dark:bg-[#09090b]"
                                                                                             placeholder="sqft"
                                                                                             value={unitType.size}
                                                                                             onChange={e => updateUnitType(block.blockId, idx, { size: parseInt(e.target.value) || 1000 })}
                                                                                         />
                                                                                         <Input
                                                                                             type="number"
-                                                                                            className="h-8 text-xs"
+                                                                                            className="h-8 text-xs bg-background dark:bg-[#09090b]"
                                                                                             placeholder="Count"
                                                                                             min="1"
                                                                                             value={unitType.count}
@@ -1137,6 +1140,7 @@ export default function NewProject() {
                                             <Label htmlFor="name">Project Name *</Label>
                                             <Input
                                                 id="name"
+                                                className="bg-background dark:bg-[#09090b]"
                                                 placeholder="Enter project name"
                                                 value={formData.name}
                                                 onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
@@ -1146,7 +1150,7 @@ export default function NewProject() {
                                         <div className="space-y-2">
                                             <Label htmlFor="property">Property Type</Label>
                                             <Select value={formData.property} onValueChange={v => setFormData(prev => ({ ...prev, property: v }))}>
-                                                <SelectTrigger className="w-full">
+                                                <SelectTrigger className="w-full dark:bg-[#09090b]">
                                                     <SelectValue placeholder="Select type" />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -1161,6 +1165,7 @@ export default function NewProject() {
                                             <Label htmlFor="location">Location</Label>
                                             <Input
                                                 id="location"
+                                                className="bg-background dark:bg-[#09090b]"
                                                 placeholder="Enter project location"
                                                 value={formData.location}
                                                 onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}

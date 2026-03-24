@@ -11,9 +11,7 @@ import { DataTable } from "@/components/ui/data-table"
 import { type ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 interface AllowedProject {
     project_id: number
@@ -157,9 +155,6 @@ export default function CpDashboard() {
             },
             cell: ({ row }) => (
                 <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded bg-primary/10 text-primary">
-                        {getPropertyIcon(row.original.property)}
-                    </div>
                     <div className="font-semibold text-sm">{row.getValue("name")}</div>
                 </div>
             ),
@@ -252,26 +247,39 @@ export default function CpDashboard() {
             )}
 
             {/* View Mode Toggle */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-               <div className="flex items-center gap-2"><h2 className="font-semibold">Projects ({projects.length})</h2>
-                <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
-                    <Button
-                        variant={viewMode === "grid" ? "secondary" : "ghost"}
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => setViewMode("grid")}
+               <div className="flex items-center gap-4">
+                   {viewMode === "grid" && (
+                       <div className="relative">
+                           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                           <Input
+                               type="text"
+                               placeholder="Search projects by name..."
+                               className="w-full sm:w-[250px] pl-9 bg-background h-9 text-sm"
+                               value={searchTerm}
+                               onChange={(e) => setSearchTerm(e.target.value)}
+                           />
+                       </div>
+                   )}
+                   <div className="flex items-center gap-2">
+                       <h2 className="font-semibold">Projects ({filteredProjects.length})</h2>
+                       <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
+                    <ToggleGroup
+                        type="single"
+                        value={viewMode}
+                        onValueChange={(value) => {
+                            if (value) setViewMode(value as "grid" | "table")
+                        }}
                     >
-                        <LayoutGrid className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant={viewMode === "table" ? "secondary" : "ghost"}
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => setViewMode("table")}
-                    >
-                        <List className="h-4 w-4" />
-                    </Button>
+                        <ToggleGroupItem value="grid" className="h-8 w-8 p-0">
+                            <LayoutGrid className="h-4 w-4" />
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="table" className="h-8 w-8 p-0">
+                            <List className="h-4 w-4" />
+                        </ToggleGroupItem>
+                    </ToggleGroup>
+                </div>
                 </div>
                 </div>
             </div>
@@ -293,7 +301,7 @@ export default function CpDashboard() {
                 </div>
             ) : viewMode === "grid" ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {projects.map((project) => (
+                    {filteredProjects.length > 0 ? filteredProjects.map((project) => (
                         <Card
                             key={project.product_id}
                             className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30"
@@ -340,7 +348,11 @@ export default function CpDashboard() {
                                 </div>
                             </CardContent>
                         </Card>
-                    ))}
+                    )) : (
+                        <div className="col-span-full py-12 text-center text-muted-foreground">
+                            No projects match your search "{searchTerm}".
+                        </div>
+                    )}
                 </div>
             ) : (
                 <Card className="border-muted-foreground/10 overflow-hidden">
@@ -355,64 +367,6 @@ export default function CpDashboard() {
                     </CardContent>
                 </Card>
             )}
-
-            {/* Total Units Detail Sheet */}
-            <Sheet open={unitDetailsOpen} onOpenChange={setUnitDetailsOpen}>
-                <SheetContent side="right" className="w-[400px] sm:w-[540px] px-0 flex flex-col h-full max-h-screen">
-                    <SheetHeader className="px-6 pb-2 flex-shrink-0">
-                        <SheetTitle>Unit Summary Across All Projects</SheetTitle>
-                        <SheetDescription>
-                            Detailed breakdown of units for your accessible projects.
-                        </SheetDescription>
-                    </SheetHeader>
-
-                    {/* Search inside Sheet */}
-                    <div className="px-6 py-4 flex-shrink-0">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Search projects by name or location..."
-                                className="pl-9 bg-muted/30 focus-visible:ring-primary shadow-sm"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                    <ScrollArea className="flex-1 min-h-0 px-6">
-                        <div className="space-y-4 py-4">
-                            {filteredProjects.map((project) => (
-                                <div key={project.product_id} className="p-4 rounded-lg border bg-card hover:shadow-sm transition-shadow">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h4 className="font-semibold text-base">{project.name}</h4>
-                                        <Badge variant="outline" className="capitalize">{project.property}</Badge>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1">
-                                            <p className="text-xs text-muted-foreground">Total Units</p>
-                                            <p className="text-lg font-bold">{project.totalUnits}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-xs text-muted-foreground">Booked Units</p>
-                                            <p className="text-lg font-bold text-orange-600">{project.bookedCount}</p>
-                                        </div>
-                                    </div>
-                                    <Separator className="my-3" />
-                                    <Button 
-                                        variant="link" 
-                                        className="h-auto p-0 text-xs" 
-                                        onClick={() => {
-                                            setUnitDetailsOpen(false);
-                                            handleProjectClick(project);
-                                        }}
-                                    >
-                                        View Inventory Details →
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-                    </ScrollArea>
-                </SheetContent>
-            </Sheet>
         </div>
     )
 }

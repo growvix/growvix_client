@@ -36,6 +36,7 @@ import CpLoginPage from "./pages/cp/cp_login";
 import CpLayout from "./pages/cp/cp_layout";
 import CpDashboard from "./pages/cp/cp_dashboard";
 import CpProjectShowcase from "./pages/cp/cp_project_showcase";
+import EditProject from "./pages/inventory/edit_project";
 
 import Mail from "./pages/setting/mail";
 
@@ -93,6 +94,7 @@ export default function App() {
             <Route path="/project_listing" element={<ProjectListing />} />
             <Route path="/project_showcase" element={<ProjectShowcase />} />
             <Route path="/new_project" element={<NewProject />} />
+            <Route path="/edit_project/:id" element={<EditProject />} />
             <Route path="/settings" element={<GeneralSetting />} />
             <Route path="/setting/user_management" element={<UserManagement />} />
             <Route path="/setting/lead_stage_setting" element={<LeadStageSetting />} />
