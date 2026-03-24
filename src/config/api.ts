@@ -59,6 +59,7 @@ export const API = {
     UPLOAD: {
         FLOOR_PLANS: `${API_URL}/api/upload/floor-plans`,
     },
+    MAIL: `${API_URL}/api/mail`,
 };
 
 export default API;
