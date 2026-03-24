@@ -251,58 +251,10 @@ export default function CpDashboard() {
                 </Card>
             )}
 
-            {/* Header */}
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-                <p className="text-muted-foreground text-sm mt-1">
-                    Your accessible inventory projects
-                </p>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setViewMode("table")}>
-                    <CardContent className="flex items-center gap-3 py-4">
-                        <div className="p-2.5 rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300">
-                            <Package className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold">{projects.length}</p>
-                            <p className="text-xs text-muted-foreground">Total Projects</p>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setUnitDetailsOpen(true)}>
-                    <CardContent className="flex items-center gap-3 py-4">
-                        <div className="p-2.5 rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300">
-                            <Building2 className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold">
-                                {projects.reduce((sum, p) => sum + (p.totalUnits || 0), 0)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Total Units</p>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="flex items-center gap-3 py-4">
-                        <div className="p-2.5 rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-300">
-                            <Layers className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold">
-                                {projects.reduce((sum, p) => sum + (p.bookedCount || 0), 0)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Booked Units</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
             {/* View Mode Toggle */}
             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Project List</h2>
+               <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+               <div className="flex items-center gap-2"><h2 className="font-semibold">Projects ({projects.length})</h2>
                 <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
                     <Button
                         variant={viewMode === "grid" ? "secondary" : "ghost"}
@@ -320,6 +272,7 @@ export default function CpDashboard() {
                     >
                         <List className="h-4 w-4" />
                     </Button>
+                </div>
                 </div>
             </div>
 

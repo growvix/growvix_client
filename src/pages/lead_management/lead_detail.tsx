@@ -2938,7 +2938,6 @@ export default function LeadDetail() {
                                                                         {activity.site_visit_completed && (
                                                                             <>
                                                                                 <div className="h-12 w-px bg-gray-200 dark:bg-zinc-800 self-center" />
-
                                                                                 {/* Completed Info */}
                                                                                 <div className="flex flex-col gap-0.5">
                                                                                     <span className="text-[13px] font-medium text-muted-foreground">Completed on</span>

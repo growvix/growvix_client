@@ -112,7 +112,7 @@ export default function ProjectShowcase() {
         setUserRole(getCookie("role"))
     }, [])
 
-
+    const isCpUser = userRole === "cp_user"
 
     // Booking dialog state
     const [bookingOpen, setBookingOpen] = useState(false)
@@ -577,7 +577,7 @@ export default function ProjectShowcase() {
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <div className="h-2 w-2 rounded-full shrink-0 bg-emerald-500" />
                                                         <span className="font-semibold text-[15px] text-foreground truncate">
-                                                            {`#${selectedPlot.bookedBy.profileId}`}
+                                                            {isCpUser ? "Booked" : `#${selectedPlot.bookedBy.profileId}`}
                                                         </span>
                                                     </div>
                                                     <Badge className="bg-background hover:bg-muted text-foreground font-medium text-[10px] px-2 py-0.5 rounded-md shrink-0 border">
@@ -600,7 +600,7 @@ export default function ProjectShowcase() {
                                                     )}
                                                 </div>
 
-                                               
+                                                {!isCpUser && (
                                                     <div className="pl-2 pt-1">
                                                         <a
                                                             href={`/lead_detail/${selectedPlot.bookedBy.leadUuid || selectedPlot.bookedBy.profileId}`}
@@ -609,7 +609,7 @@ export default function ProjectShowcase() {
                                                             View Lead <ExternalLink className="h-3.5 w-3.5" />
                                                         </a>
                                                     </div>
-                                                
+                                                )}
 
                                             </div>
                                         )}
@@ -664,17 +664,17 @@ export default function ProjectShowcase() {
                                                     <div className="text-xs opacity-70">{unit.facing}</div>
                                                     {unit.bookedBy && (unit.status === 'booked' || unit.status === 'sold') && (
                                                         <div
-                                                            className={`text-xs mt-1 pt-1 border-t border-current/20 opacity-80 truncate flex justify-center items-center cursor-pointer hover:underline`}
-                                                            title={`#${unit.bookedBy.profileId}`}
+                                                            className={`text-xs mt-1 pt-1 border-t border-current/20 opacity-80 truncate flex justify-center items-center ${!isCpUser ? 'cursor-pointer hover:underline' : ''}`}
+                                                            title={isCpUser ? "Booked" : `#${unit.bookedBy.profileId}`}
                                                             onClick={(e) => {
-                                                                if (unit.bookedBy?.leadUuid || unit.bookedBy?.profileId) {
+                                                                if (!isCpUser && (unit.bookedBy?.leadUuid || unit.bookedBy?.profileId)) {
                                                                     e.stopPropagation();
                                                                     window.location.href = `/lead_detail/${unit.bookedBy.leadUuid || unit.bookedBy.profileId}`;
                                                                 }
                                                             }}
                                                         >
                                                             <User className="h-3 w-3 inline mr-0.5" />
-                                                            {`#${unit.bookedBy.profileId || 'Lead'}`}
+                                                            {isCpUser ? "Booked" : `#${unit.bookedBy.profileId || 'Lead'}`}
                                                         </div>
                                                     )}
                                                 </div>
@@ -764,7 +764,7 @@ export default function ProjectShowcase() {
 
                             {/* Thumbnail strip */}
                             {galleryImages.length > 1 && (
-                                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 bg-black/50 p-2 rounded-lg">
+                                <div className="absolute bottom-6 right-6 z-50 flex gap-2 bg-black/50 p-2 rounded-lg">
                                     {galleryImages.map((url, idx) => (
                                         <button
                                             key={idx}
