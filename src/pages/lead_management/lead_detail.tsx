@@ -1859,7 +1859,7 @@ export default function LeadDetail() {
                         </Card>
 
                     </div>
-                    <Card className="border-2 shadow-none py-1 gap-0 dark:bg-input/50">
+                    <Card className="border-2 shadow-none py-1 gap-0 dark:bg-input/50 h-full">
                         <CardHeader className="pt-2 pb-0">
                             <div className="flex items-center justify-between">
                                 <Label className="text-muted-foreground">Requirements</Label>
@@ -2362,7 +2362,7 @@ export default function LeadDetail() {
                     })()}
                 </div>
                 <div className="xl:col-span-2 lg:col-span-3">
-                    <Card className="border-2 shadow-none dark:bg-input/50 pt-2 gap-0 pb-0">
+                    <Card className="border-2 shadow-none dark:bg-input/50 pt-2 gap-0 pb-0 h-full">
                         <CardHeader className="mt-0 pt-0 pb-0">
                             <div className="flex items-center justify-between">
                                 <Label className="text-muted-foreground  ">

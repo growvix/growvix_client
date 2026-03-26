@@ -31,6 +31,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import type { projects } from "@/types"
 import { DataTable } from "@/components/ui/data-table"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Tabs, TabsContent,TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 
 export default function ProjectListing() {
     const { setBreadcrumbs } = useBreadcrumb()
@@ -354,20 +356,25 @@ export default function ProjectListing() {
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5 bg-muted p-1 rounded-lg">
-                        <ToggleGroup
-                            type="single"
+                        <Tabs
+                            defaultValue="grid"
                             value={viewMode}
                             onValueChange={(value) => {
                                 if (value) setViewMode(value as "grid" | "table")
                             }}
                         >
-                            <ToggleGroupItem value="grid" className="h-8 w-8 p-0">
+                            <TabsList>
+                                <TabsTrigger value="grid" className="h-8 w-8 p-0">
                                 <LayoutGrid className="h-4 w-4" />
-                            </ToggleGroupItem>
-                            <ToggleGroupItem value="table" className="h-8 w-8 p-0">
+                                </TabsTrigger>
+                            
+                            
+                                <TabsTrigger value="table" className="h-8 w-8 p-0">
                                 <List className="h-4 w-4" />
-                            </ToggleGroupItem>
-                        </ToggleGroup>
+                                </TabsTrigger>
+                            
+                        </TabsList>
+                        </Tabs>
                     </div>
                 </div>
             </div>
