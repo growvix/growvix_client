@@ -6,7 +6,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { API } from "@/config/api"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { setCookie, deleteAllAuthCookies, isAuthenticated, getCookie } from "@/utils/cookies"
+import { setCookie, getCookie, deleteAllAuthCookies, isAuthenticated } from "@/utils/cookies"
 import {
   Field,
   FieldDescription,
@@ -15,6 +15,7 @@ import {
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent,TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export function LoginForm({
   className,
@@ -30,7 +31,16 @@ export function LoginForm({
   // Clear all cookies when login page loads and redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated()) {
-      navigate("/executive_dashboard");
+      const role = getCookie('role');
+      if (role === 'admin') {
+        navigate("/master_dashboard");
+      } else if (role === 'manager') {
+        navigate("/management_dashboard");
+      } else if (role === 'cp_user') {
+        navigate("/cp/dashboard");
+      } else {
+        navigate("/executive_dashboard");
+      }
     } else {
       deleteAllAuthCookies();
     }
@@ -71,43 +81,56 @@ export function LoginForm({
 
     setIsLoading(true)
 
-  try {
-    const response = await axios.post(API.AUTH.LOGIN, {
-      email: trimmedEmail,
-      password: trimmedPassword
-    })
+    try {
+      const response = await axios.post(API.AUTH.LOGIN, {
+        email: trimmedEmail,
+        password: trimmedPassword
+      })
 
-    const data = response.data.data
+      const data = response.data.data
 
-    setCookie('user_id', data.user_id);
-    setCookie('profile_id', data.profile_id);
-    setCookie('organization', data.organization);
-    setCookie('userName', `${data.firstName} ${data.lastName}`);
-    setCookie('email', data.email);
-    setCookie('token', data.token);
-    setCookie('role', data.role);
-    setCookie('permissions', JSON.stringify(data.permissions || []));
+      setCookie('user_id', data.user_id);
+      setCookie('profile_id', data.profile_id);
+      setCookie('organization', data.organization);
+      setCookie('userName', `${data.firstName} ${data.lastName}`);
+      setCookie('email', data.email);
+      setCookie('token', data.token);
+      setCookie('role', data.role);
+      setCookie('permissions', JSON.stringify(data.permissions || []));
 
-    toast.success("Login successful")
-    navigate("/executive_dashboard")
+      toast.success("Login successful")
+      
+      // Redirect based on role
+      if (data.role === 'admin') {
+        navigate("/master_dashboard")
+      } else if (data.role === 'manager') {
+        navigate("/management_dashboard")
+      } else if (data.role === 'cp_user') {
+        navigate("/cp/dashboard")
+      } else {
+        navigate("/executive_dashboard") // default for user
+      }
 
-  } catch (error: any) {
-    const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
-      "Unable to connect to the server."
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Unable to connect to the server."
 
-    toast.error(errorMessage)
-    setIsLoading(false)
+      toast.error(errorMessage)
+      setIsLoading(false)
+    }
   }
-}
 
   return (
     <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} {...props}>
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">Login to your account</h1>
-          <p className="text-muted-foreground text-sm text-balance">
+          {/*<h1 className="text-2xl font-bold">Login </h1> */}
+          <Tabs defaultValue="login">
+          <TabsList><TabsTrigger value="login" className="px-4" onClick={() => navigate("/login")}>Login</TabsTrigger><TabsTrigger value="cp_user" onClick={() => navigate("/cp/login")}>CP Login</TabsTrigger></TabsList>
+          </Tabs>
+          <p className="text-muted-foreground text-sm text-balance mt-2">
             Enter your email below to login to your account
           </p>
         </div>
@@ -130,12 +153,12 @@ export function LoginForm({
         <Field>
           <div className="flex items-center">
             <FieldLabel htmlFor="password">Password</FieldLabel>
-            <a
+          {/*  <a
               href="#"
               className="ml-auto text-sm underline-offset-4 hover:underline"
             >
               Forgot your password?
-            </a>
+            </a>*/}
           </div>
           <div className="relative">
             <Input
@@ -144,8 +167,8 @@ export function LoginForm({
               required
               value={password}
               onChange={(e) => {
-                  const val = e.target.value;
-                  setPassword(val.trimStart()); // actively remove leading spaces
+                const val = e.target.value;
+                setPassword(val.trimStart()); // actively remove leading spaces
               }}
               className="pr-10 [::-ms-reveal]:hidden [::-ms-clear]:hidden [::-webkit-contacts-auto-fill-button]:hidden"
               onBlur={() => setPassword(password.trim())}

@@ -12,6 +12,7 @@ export const API = {
         LOGIN: `${API_URL}/api/auth/login`,
         REGISTER: `${API_URL}/api/auth/register`,
         LOGOUT: `${API_URL}/api/auth/logout`,
+        IMPERSONATE: `${API_URL}/api/auth/impersonate`,
         CP_LOGIN: `${API_URL}/api/auth/Cplogin`,
     },
     USERS: `${API_URL}/api/users`,
@@ -58,6 +59,7 @@ export const API = {
     UPLOAD: {
         FLOOR_PLANS: `${API_URL}/api/upload/floor-plans`,
     },
+    MAIL: `${API_URL}/api/mail`,
 };
 
 export default API;

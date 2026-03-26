@@ -6,7 +6,12 @@ import { API } from "@/config/api"
 import { encodeProjectId } from "@/utils/idEncoder"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Building2, MapPin, Layers, Package } from "lucide-react"
+import { Building2, MapPin, Layers, Package, List, LayoutGrid, ArrowUpDown, Search } from "lucide-react"
+import { DataTable } from "@/components/ui/data-table"
+import { type ColumnDef } from "@tanstack/react-table"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 interface AllowedProject {
     project_id: number
@@ -18,15 +23,25 @@ interface ProjectDetail {
     name: string
     location: string
     property: string
-    totalUnits?: number
-    bookedCount?: number
-    blockCount?: number
+    totalUnits: number
+    bookedCount: number
+    blockCount: number
+    createdAt: string
 }
 
 export default function CpDashboard() {
     const navigate = useNavigate()
     const [projects, setProjects] = useState<ProjectDetail[]>([])
     const [loading, setLoading] = useState(true)
+    const [searchTerm, setSearchTerm] = useState("")
+    const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
+    const [unitDetailsOpen, setUnitDetailsOpen] = useState(false)
+    const isDebug = new URLSearchParams(window.location.search).get('debug') === 'true'
+
+    const filteredProjects = projects.filter(project => 
+        project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (project.location && project.location.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
 
     const fetchProjectDetails = useCallback(async () => {
         try {
@@ -35,7 +50,7 @@ export default function CpDashboard() {
             const organization = getCookie("organization")
             const token = getCookie("token")
 
-            if (!raw || !organization) {
+            if (!organization || !token) {
                 setProjects([])
                 setLoading(false)
                 return
@@ -43,27 +58,44 @@ export default function CpDashboard() {
 
             let allowedProjects: AllowedProject[] = []
             try {
-                allowedProjects = JSON.parse(decodeURIComponent(raw))
-            } catch {
-                setProjects([])
-                setLoading(false)
-                return
+                allowedProjects = raw ? JSON.parse(decodeURIComponent(raw)) : []
+            } catch (err) {
+                console.warn("CP Dashboard: Failed to parse allowed_projects cookie. Falling back to all projects.", err)
+                allowedProjects = []
             }
-
-            if (allowedProjects.length === 0) {
-                setProjects([])
-                setLoading(false)
-                return
-            }
-
+    // Removed the early return to allow all projects to be fetched if no specific restrictions exist
             // Fetch full project list and filter by allowed IDs
-            const res = await axios.get(`${API.PROJECTS}?organization=${organization}`, {
+            const res = await axios.get(`${API.PROJECTS}?organization=${encodeURIComponent(organization)}`, {
                 headers: { Authorization: `Bearer ${token}` },
             })
             const allProjects: ProjectDetail[] = res.data.data || []
-            const allowedIds = new Set(allowedProjects.map(p => p.project_id))
-            const filtered = allProjects.filter(p => allowedIds.has(p.product_id))
-            setProjects(filtered)
+            console.log("CP Dashboard Debug:", {
+                organization,
+                allowedProjectsFromCookie: allowedProjects,
+                allProjectsFromBackendCount: allProjects.length,
+                allProjectsFromBackend: allProjects.map(p => ({ id: p.product_id, name: p.name }))
+            })
+            
+            // If the user has assigned projects, filter by them.
+            // Otherwise, show NO projects for the CP user.
+            if (allowedProjects.length > 0) {
+                const allowedIds = new Set(allowedProjects.map(p => p.project_id))
+                const filtered = allProjects.filter(p => {
+                    // Using loose equality check (==) in case of string vs number mismatch
+                    return Array.from(allowedIds).some(id => id == p.product_id)
+                })
+                
+                setProjects(filtered)
+                
+                if (filtered.length === 0 && allProjects.length > 0) {
+                    console.warn("CP Dashboard: Assigned projects (ids) don't match any projects in organization.", {
+                        allowedIds: Array.from(allowedIds),
+                        backendIds: allProjects.map(p => p.product_id)
+                    })
+                }
+            } else {
+                setProjects([])
+            }
         } catch (err) {
             console.error("Failed to fetch projects:", err)
             setProjects([])
@@ -90,55 +122,166 @@ export default function CpDashboard() {
         }
     }
 
+    const columns: ColumnDef<ProjectDetail>[] = [
+        {
+            accessorKey: "product_id",
+            header: ({ column }) => (
+                <Button 
+                    variant="ghost" 
+                    className="p-0 hover:bg-transparent font-semibold text-xs uppercase tracking-wider"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                >
+                    ID <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+            ),
+            meta:{
+                label:"ID"
+            },
+            cell: ({ row }) => <div className="text-xs font-medium text-muted-foreground">{row.getValue("product_id")}</div>,
+        },
+        {
+            accessorKey: "name",
+            header: ({ column }) => (
+                <Button 
+                    variant="ghost" 
+                    className="p-0 hover:bg-transparent font-semibold text-xs uppercase tracking-wider"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                >
+                    Project Name <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+            ),
+            meta:{
+                label:"Project Name"
+            },
+            cell: ({ row }) => (
+                <div className="flex items-center gap-2">
+                    <div className="font-semibold text-sm">{row.getValue("name")}</div>
+                </div>
+            ),
+        },
+        {
+            accessorKey: "location",
+            header: () => <div className="font-semibold text-xs uppercase tracking-wider">Location</div>,
+            meta:{
+                label:"Location"
+            },
+            cell: ({ row }) => (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <MapPin className="h-3 w-3" />
+                    {row.getValue("location")}
+                </div>
+            ),
+        },
+        {
+            accessorKey: "property",
+            header: () => <div className="font-semibold text-xs uppercase tracking-wider">Property</div>,
+            meta:{
+                label:"Property"
+            },
+            cell: ({ row }) => (
+                <Badge variant="outline" className="capitalize text-[10px] px-2 py-0 font-medium bg-muted/30">
+                    {row.getValue("property")}
+                </Badge>
+            ),
+        },
+        {
+            accessorKey: "totalUnits",
+            header: () => <div className="text-center font-semibold text-xs uppercase tracking-wider">Total Units</div>,
+            meta:{
+                label:"Total Units"
+            },
+            cell: ({ row }) => (
+                <div className="text-center font-medium">
+                    {row.getValue("totalUnits") || 0}
+                </div>
+            ),
+        },
+        {
+            accessorKey: "bookedCount",
+            header: () => <div className="text-center font-semibold text-xs uppercase tracking-wider">Status</div>,
+            meta:{
+                label:"Status"
+            },
+            cell: ({ row }) => {
+                const booked = Number(row.getValue("bookedCount")) || 0
+                const total = Number(row.original.totalUnits) || 0
+                const percentage = total > 0 ? Math.round((booked / total) * 100) : 0
+                
+                return (
+                    <div className="flex flex-col items-center gap-1">
+                        <Badge 
+                            variant="secondary" 
+                            className={`px-2 py-0.5 text-[10px] font-bold ${
+                                booked > 0 
+                                ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" 
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                        >
+                            {booked} Booked
+                        </Badge>
+                        {total > 0 && (
+                            <div className="text-[9px] text-muted-foreground font-medium">
+                                {percentage}% Occupied
+                            </div>
+                        )}
+                    </div>
+                )
+            },
+        },
+    ]
+
     return (
         <div className="px-4 md:px-6 py-6 max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-                <p className="text-muted-foreground text-sm mt-1">
-                    Your accessible inventory projects
-                </p>
-            </div>
+            {/* Debug Panel */}
+            {isDebug && (
+                <Card className="mb-4 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200">
+                    <CardHeader className="py-2">
+                        <CardTitle className="text-sm">Debug Info</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-xs space-y-2">
+                        <p><strong>Org:</strong> {getCookie("organization")}</p>
+                        <p><strong>Allowed (Cookie):</strong> {getCookie("allowed_projects")}</p>
+                        <p><strong>All Projects (API):</strong> {projects.length} / {projects.length > 0 ? "Found" : "Empty"}</p>
+                    </CardContent>
+                </Card>
+            )}
 
-            {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                <Card>
-                    <CardContent className="flex items-center gap-3 py-4">
-                        <div className="p-2.5 rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300">
-                            <Package className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold">{projects.length}</p>
-                            <p className="text-xs text-muted-foreground">Total Projects</p>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="flex items-center gap-3 py-4">
-                        <div className="p-2.5 rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300">
-                            <Building2 className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold">
-                                {projects.reduce((sum, p) => sum + (p.totalUnits || 0), 0)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Total Units</p>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="flex items-center gap-3 py-4">
-                        <div className="p-2.5 rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-300">
-                            <Layers className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold">
-                                {projects.reduce((sum, p) => sum + (p.bookedCount || 0), 0)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Booked Units</p>
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* View Mode Toggle */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+               <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+               <div className="flex items-center gap-4">
+                   {viewMode === "grid" && (
+                       <div className="relative">
+                           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                           <Input
+                               type="text"
+                               placeholder="Search projects by name..."
+                               className="w-full sm:w-[250px] pl-9 bg-background h-9 text-sm"
+                               value={searchTerm}
+                               onChange={(e) => setSearchTerm(e.target.value)}
+                           />
+                       </div>
+                   )}
+                   <div className="flex items-center gap-2">
+                       <h2 className="font-semibold">Projects ({filteredProjects.length})</h2>
+                       <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
+                    <ToggleGroup
+                        type="single"
+                        value={viewMode}
+                        onValueChange={(value) => {
+                            if (value) setViewMode(value as "grid" | "table")
+                        }}
+                    >
+                        <ToggleGroupItem value="grid" className="h-8 w-8 p-0">
+                            <LayoutGrid className="h-4 w-4" />
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="table" className="h-8 w-8 p-0">
+                            <List className="h-4 w-4" />
+                        </ToggleGroupItem>
+                    </ToggleGroup>
+                </div>
+                </div>
+                </div>
             </div>
 
             {/* Project Cards */}
@@ -156,9 +299,9 @@ export default function CpDashboard() {
                         You don't have access to any inventory projects yet. Contact your administrator to get project access.
                     </p>
                 </div>
-            ) : (
+            ) : viewMode === "grid" ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {projects.map((project) => (
+                    {filteredProjects.length > 0 ? filteredProjects.map((project) => (
                         <Card
                             key={project.product_id}
                             className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30"
@@ -205,8 +348,24 @@ export default function CpDashboard() {
                                 </div>
                             </CardContent>
                         </Card>
-                    ))}
+                    )) : (
+                        <div className="col-span-full py-12 text-center text-muted-foreground">
+                            No projects match your search "{searchTerm}".
+                        </div>
+                    )}
                 </div>
+            ) : (
+                <Card className="border-muted-foreground/10 overflow-hidden">
+                    <CardContent className="px-3 py-0">
+                        <DataTable
+                            columns={columns}
+                            data={projects}
+                            onRowClick={(project) => handleProjectClick(project)}
+                            filterColumn="name"
+                            filterPlaceholder="Filter by project name..."
+                        />
+                    </CardContent>
+                </Card>
             )}
         </div>
     )

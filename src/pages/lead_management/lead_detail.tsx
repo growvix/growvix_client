@@ -47,6 +47,7 @@ import {
     CheckCircle,
     Clock,
     Star,
+    Loader2,
 } from "lucide-react";
 import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables, GetLeadStagesQueryResponse, GetLeadStagesQueryVariables, GetOrganizationUsersQueryResponse, GetOrganizationUsersQueryVariables } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
@@ -355,6 +356,7 @@ const StageStatCard = ({ value, label, currentStageColor }: StageStatCardProps) 
 
 export default function LeadDetail() {
     const [loading, setLoading] = useState(true)
+    const [togglingImportantId, setTogglingImportantId] = useState<string | null>(null)
     const [leadDetail, setLeadDetail] = useState<Lead | null>(null)
     const { id } = useParams()
     const navigate = useNavigate()
@@ -1857,7 +1859,7 @@ export default function LeadDetail() {
                         </Card>
 
                     </div>
-                    <Card className="border-2 shadow-none py-1 gap-0 dark:bg-input/50">
+                    <Card className="border-2 shadow-none py-1 gap-0 dark:bg-input/50 h-full">
                         <CardHeader className="pt-2 pb-0">
                             <div className="flex items-center justify-between">
                                 <Label className="text-muted-foreground">Requirements</Label>
@@ -2360,7 +2362,7 @@ export default function LeadDetail() {
                     })()}
                 </div>
                 <div className="xl:col-span-2 lg:col-span-3">
-                    <Card className="border-2 shadow-none dark:bg-input/50 pt-2 gap-0 pb-0">
+                    <Card className="border-2 shadow-none dark:bg-input/50 pt-2 gap-0 pb-0 h-full">
                         <CardHeader className="mt-0 pt-0 pb-0">
                             <div className="flex items-center justify-between">
                                 <Label className="text-muted-foreground  ">
@@ -2833,12 +2835,14 @@ export default function LeadDetail() {
                                                                         disabled={!canEdit}
                                                                         onClick={async () => {
                                                                             if (!canEdit) return;
+                                                                            const actId = activity.id || `req-${activity._id}`;
+                                                                            setTogglingImportantId(actId);
                                                                             try {
                                                                                 await toggleImportantActivityMutation({
                                                                                     variables: {
                                                                                         organization,
                                                                                         leadId: leadDetail?._id,
-                                                                                        activityId: activity.id || `req-${activity._id}`,
+                                                                                        activityId: actId,
                                                                                         userId: currentUserId
                                                                                     }
                                                                                 });
@@ -2847,10 +2851,16 @@ export default function LeadDetail() {
                                                                             } catch (error) {
                                                                                 console.error('Failed to toggle important status:', error);
                                                                                 toast.error('Failed to update important status');
+                                                                            } finally {
+                                                                                setTogglingImportantId(null);
                                                                             }
                                                                         }}
                                                                     >
-                                                                        <Star className={cn("size-4", isImportant && "fill-current")} />
+                                                                        {togglingImportantId === (activity.id || `req-${activity._id}`) ? (
+                                                                            <Loader2 className="size-4 animate-spin" />
+                                                                        ) : (
+                                                                            <Star className={cn("size-4", isImportant && "fill-current")} />
+                                                                        )}
                                                                     </Button>
                                                                 </div>
                                                                 <div className="flex flex-col items-end gap-1">
@@ -2914,13 +2924,13 @@ export default function LeadDetail() {
                                                                         <div className="flex flex-col gap-0.5">
                                                                             <span className="text-[13px] font-medium text-muted-foreground">Scheduled for</span>
                                                                             <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
-                                                                                {activity.site_visit_date ? new Date(activity.site_visit_date).toLocaleString([], { 
-                                                                                    month: 'numeric', 
-                                                                                    day: 'numeric', 
-                                                                                    year: '2-digit', 
-                                                                                    hour: '2-digit', 
+                                                                                {activity.site_visit_date ? new Date(activity.site_visit_date).toLocaleString([], {
+                                                                                    month: 'numeric',
+                                                                                    day: 'numeric',
+                                                                                    year: '2-digit',
+                                                                                    hour: '2-digit',
                                                                                     minute: '2-digit',
-                                                                                    hour12: true 
+                                                                                    hour12: true
                                                                                 }) : 'N/A'}
                                                                             </span>
                                                                         </div>
@@ -2928,18 +2938,17 @@ export default function LeadDetail() {
                                                                         {activity.site_visit_completed && (
                                                                             <>
                                                                                 <div className="h-12 w-px bg-gray-200 dark:bg-zinc-800 self-center" />
-                                                                                
                                                                                 {/* Completed Info */}
                                                                                 <div className="flex flex-col gap-0.5">
                                                                                     <span className="text-[13px] font-medium text-muted-foreground">Completed on</span>
                                                                                     <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
-                                                                                        {activity.site_visit_completed_at ? new Date(activity.site_visit_completed_at).toLocaleString([], { 
-                                                                                            month: 'numeric', 
-                                                                                            day: 'numeric', 
-                                                                                            year: '2-digit', 
-                                                                                            hour: '2-digit', 
+                                                                                        {activity.site_visit_completed_at ? new Date(activity.site_visit_completed_at).toLocaleString([], {
+                                                                                            month: 'numeric',
+                                                                                            day: 'numeric',
+                                                                                            year: '2-digit',
+                                                                                            hour: '2-digit',
                                                                                             minute: '2-digit',
-                                                                                            hour12: true 
+                                                                                            hour12: true
                                                                                         }) : 'N/A'}
                                                                                     </span>
                                                                                 </div>

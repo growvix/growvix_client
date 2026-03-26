@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Edit } from "lucide-react";
+import { Edit, X } from "lucide-react";
 import {
   Tabs,
   TabsContent,
@@ -58,9 +58,17 @@ export default function ProfilePage() {
   return (
     <div 
       className="px-3 flex justify-center mt-10 min-h-[calc(100vh-100px)] cursor-default" 
-      onClick={() => navigate(-1)}
     >
-      <Card className="w-3xl h-fit mb-10" onClick={(e) => e.stopPropagation()}>
+      <Card className="w-3xl h-fit mb-10 relative" onClick={(e) => e.stopPropagation()}>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+          onClick={() => navigate(-1)}
+        >
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </Button>
         <CardHeader>
           <CardTitle>Profile Update</CardTitle>
           <CardDescription className="border-b pb-2">View and edit your profile information.</CardDescription>

@@ -32,6 +32,7 @@ export interface projects {
   property: string
   totalUnits?: number
   blockCount?: number
+  bookedCount?: number
   createdAt?: string
 }
 
