@@ -430,26 +430,26 @@ export default function ProjectListing() {
                                     className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30 relative flex flex-col"
                                     onClick={() => handleRowClick(project)}
                                 >
-                                    <CardHeader className="p-4 pb-3">
+                                    <CardHeader className="px-3.5 py-0">
                                         <div className="flex items-start justify-between">
                                             <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                                                {project.property === 'plots' ? <Layers className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
+                                                {project.property === 'plots' ? <Layers className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
                                             </div>
                                             <Badge variant="outline" className="capitalize text-xs">
                                                 {project.property || "—"}
                                             </Badge>
                                         </div>
-                                        <CardTitle className="text-base mt-2 group-hover:text-primary transition-colors truncate">
+                                        <CardTitle className="text-base mt-1 group-hover:text-primary transition-colors truncate">
                                             {project.name}
                                         </CardTitle>
                                         {project.location && (
-                                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                                                 <MapPin className="h-3 w-3 shrink-0" />
                                                 <span className="truncate">{project.location}</span>
                                             </div>
                                         )}
                                     </CardHeader>
-                                    <CardContent className="p-4 pt-0">
+                                    <CardContent className="px-4 pt-0">
                                         <div className="flex items-center justify-between pt-3 border-t">
                                             <div className="flex items-center gap-3">
                                                 <div className="text-xs">
