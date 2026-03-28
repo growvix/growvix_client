@@ -16,6 +16,8 @@ export const API = {
         CP_LOGIN: `${API_URL}/api/auth/Cplogin`,
     },
     USERS: `${API_URL}/api/users`,
+
+    // Projects (Inventory)
     PROJECTS: `${API_URL}/api/projects`,
     LEADS: `${API_URL}/api/leads`,
     TEAMS: `${API_URL}/api/teams`,
@@ -60,6 +62,8 @@ export const API = {
         FLOOR_PLANS: `${API_URL}/api/upload/floor-plans`,
     },
     MAIL: `${API_URL}/api/mail`,
+    MAIL_TEMPLATES: `${API_URL}/api/mail/templates`,
+    getMailTemplate: (id: string) => `${API_URL}/api/mail/templates/${id}`,
 };
 
 export default API;

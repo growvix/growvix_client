@@ -7,7 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { UserRoundCog, FileText, CalendarClock, Import, UsersRound, Search, SearchX, Handshake, Mail } from "lucide-react"
+import { UserRoundCog, Import, UsersRound, Search, SearchX, Handshake, Mail, MailPlus } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -114,13 +114,23 @@ export default function GeneralSetting() {
             description: "Fast and reliable email communication for personal and business.",
             icon: Mail,
             colorClass: "text-red-600 dark:text-red-400",
-             bgClass: "bg-red-100 dark:bg-red-900/40",
+            bgClass: "bg-red-100 dark:bg-red-900/40",
             hoverBorder: "hover:border-red-300 dark:hover:border-red-800",
             hoverGradient: "from-red-50/50 dark:from-red-950/20",
             path: "/setting/mail",
         },
+        {
+            title: "Mail Templates",
+            description: "Create and manage reusable email templates with simple or design editors.",
+            icon: MailPlus,
+            colorClass: "text-teal-600 dark:text-teal-400",
+            bgClass: "bg-teal-100 dark:bg-teal-900/40",
+            hoverBorder: "hover:border-teal-300 dark:hover:border-teal-800",
+            hoverGradient: "from-teal-50/50 dark:from-teal-950/20",
+            path: "/setting/mail_templates",
+        },
 
-      
+
     ]
 
     const filteredCards = settingsCards.filter(
