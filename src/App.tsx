@@ -32,6 +32,7 @@ import TeamDetailPage from "./pages/setting/team/team_detail";
 import CpTeamManagement from "./pages/setting/cp_team/cp_team_management";
 import CpTeamDetailPage from "./pages/setting/cp_team/cp_team_detail";
 import ImportLeads from "./pages/setting/import_data/import_leads";
+import NewLeadUpload from "./pages/setting/import_data/new_lead_upload";
 import CpLoginPage from "./pages/cp/cp_login";
 import CpLayout from "./pages/cp/cp_layout";
 import CpDashboard from "./pages/cp/cp_dashboard";
@@ -109,6 +110,7 @@ export default function App() {
             <Route path="/setting/cp_teams/:id" element={<CpTeamDetailPage />} />
             <Route path="/setting/channel_partner" element={<CPManagement />} />
             <Route path="/setting/import_leads" element={<ImportLeads />} />
+            <Route path="/setting/import_leads/new" element={<NewLeadUpload />} />
             <Route path="/setting/mail" element={<Mail />} />
 
           </Route>

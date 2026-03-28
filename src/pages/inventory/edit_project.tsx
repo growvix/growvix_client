@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { API } from '@/config/api'
@@ -9,12 +9,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Trash2, Plus, Building2, Layers, DoorOpen, X, Copy, Edit2, ArrowLeft } from 'lucide-react'
+import { Trash2, Plus, Building2, Layers, DoorOpen, X, Copy, Edit2, ArrowLeft, ImagePlus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '@/components/ui/drawer'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { getCookie } from '@/utils/cookies'
 import { decodeProjectId } from '@/utils/idEncoder'
 
@@ -43,6 +44,7 @@ interface Floor {
     floorNumber: number
     floorName: string
     units: Unit[]
+    floorChartImages?: string[]
 }
 
 interface Block {
@@ -135,6 +137,9 @@ export default function EditProject() {
     const [floorEditorOpen, setFloorEditorOpen] = useState(false)
     const [editingFloor, setEditingFloor] = useState<{ blockId: string; floorNumber: number } | null>(null)
     const [copyToFloors, setCopyToFloors] = useState<number[]>([])
+    const [floorImageUploading, setFloorImageUploading] = useState(false)
+    const floorImageInputRef = useRef<HTMLInputElement>(null)
+    const [lightboxImageIndex, setLightboxImageIndex] = useState<number | null>(null)
 
     const [plotsConfig, setPlotsConfig] = useState<{ totalPlots: number; defaultSize: number }>({ totalPlots: 10, defaultSize: 1200 })
     const [plotPage, setPlotPage] = useState(0)
@@ -330,7 +335,17 @@ export default function EditProject() {
         setFormData(prev => ({
             ...prev, blocks: prev.blocks.map(b => {
                 if (b.blockId !== sourceBlockId) return b
-                return { ...b, floors: b.floors.map(f => { if (!targetFloorNums.includes(f.floorNumber)) return f; return { ...f, units: generateUnitsFromTypes(f.floorNumber, unitTypes, config.pattern) } }) }
+                return {
+                    ...b,
+                    floors: b.floors.map(f => {
+                        if (!targetFloorNums.includes(f.floorNumber)) return f;
+                        return {
+                            ...f,
+                            units: generateUnitsFromTypes(f.floorNumber, unitTypes, config.pattern),
+                            floorChartImages: sourceFloor.floorChartImages ? [...sourceFloor.floorChartImages] : []
+                        }
+                    })
+                }
             })
         }))
         toast.success(`Copied to ${targetFloorNums.length} floors`)
@@ -413,6 +428,48 @@ export default function EditProject() {
 
     const removeLayoutImage = (imageUrl: string) => {
         setFormData(prev => ({ ...prev, layoutImages: prev.layoutImages?.filter(url => url !== imageUrl) || [] }))
+    }
+
+    // Handle floor chart image upload for individual floor (multiple images, max 5)
+    const handleFloorChartImageUpload = async (blockId: string, floorNumber: number, files: FileList | null) => {
+        if (!files || files.length === 0) return
+        const fileArray = Array.from(files)
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']
+        const invalidFile = fileArray.find(f => !allowedTypes.includes(f.type))
+        if (invalidFile) { toast.error('Only PNG, JPG, SVG, and WebP images are allowed'); return }
+        const block = formData.blocks.find(b => b.blockId === blockId)
+        const floor = block?.floors.find(f => f.floorNumber === floorNumber)
+        const currentCount = floor?.floorChartImages?.length || 0
+        if (currentCount + fileArray.length > 5) { toast.error(`Maximum 5 images allowed. You can add ${5 - currentCount} more.`); return }
+        setFloorImageUploading(true)
+        const formDataUpload = new FormData()
+        fileArray.forEach(file => formDataUpload.append('images', file))
+        try {
+            const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, { headers: { 'Content-Type': 'multipart/form-data' } })
+            const newUrls = response.data.data.urls
+            setFormData(prev => ({
+                ...prev,
+                blocks: prev.blocks.map(b => {
+                    if (b.blockId !== blockId) return b
+                    return { ...b, floors: b.floors.map(f => f.floorNumber !== floorNumber ? f : { ...f, floorChartImages: [...(f.floorChartImages || []), ...newUrls].slice(0, 5) }) }
+                })
+            }))
+            toast.success(`${newUrls.length} image(s) uploaded successfully`)
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to upload floor chart image')
+        } finally { setFloorImageUploading(false) }
+    }
+
+    // Remove a single floor chart image by URL
+    const removeFloorChartImage = (blockId: string, floorNumber: number, imageUrl: string) => {
+        setFormData(prev => ({
+            ...prev,
+            blocks: prev.blocks.map(b => {
+                if (b.blockId !== blockId) return b
+                return { ...b, floors: b.floors.map(f => f.floorNumber !== floorNumber ? f : { ...f, floorChartImages: (f.floorChartImages || []).filter(url => url !== imageUrl) }) }
+            })
+        }))
+        toast.success('Image removed')
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -662,10 +719,18 @@ export default function EditProject() {
                 </form>
             </div>
 
-            {/* Floor Editor Modal */}
-            <Dialog open={floorEditorOpen} onOpenChange={setFloorEditorOpen}>
-                <DialogContent className="min-w-4xl">
-                    <DialogHeader><DialogTitle>Edit Floor {editingFloor?.floorNumber} - {getFloorName(editingFloor?.floorNumber || 0)}</DialogTitle></DialogHeader>
+            {/* Floor Editor Drawer */}
+            <Drawer open={floorEditorOpen} onOpenChange={setFloorEditorOpen}>
+                <DrawerContent className="max-h-[85vh]">
+                    <DrawerHeader className="border-b pb-4">
+                        <DrawerTitle className="flex items-center gap-2">
+                            <DoorOpen className="h-5 w-5 text-primary" />
+                            Edit {getFloorName(editingFloor?.floorNumber || 0)}
+                        </DrawerTitle>
+                        <DrawerDescription>
+                            Customize units, upload floor chart, and copy settings to other floors
+                        </DrawerDescription>
+                    </DrawerHeader>
                     {editingFloor && (() => {
                         const block = formData.blocks.find(b => b.blockId === editingFloor.blockId)
                         const floor = block?.floors.find(f => f.floorNumber === editingFloor.floorNumber)
@@ -678,51 +743,201 @@ export default function EditProject() {
                         })
                         const currentUnitTypes = Array.from(unitTypesMap.values())
                         return (
-                            <div className="space-y-4 max-h-[50vh] overflow-auto">
-                                <div className="text-sm text-muted-foreground">Current: {floor.units.length} units - {currentUnitTypes.map(t => `${t.count}×${t.bhk}BHK`).join(', ')}</div>
-                                <div className="border rounded-lg p-3">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <Label className="text-sm font-medium">Individual Units (Door Numbers)</Label>
-                                        <Button type="button" variant="outline" size="sm" onClick={() => addUnitToFloor(editingFloor.blockId, editingFloor.floorNumber)}><Plus className="h-3 w-3 mr-1" />Add Unit</Button>
-                                    </div>
-                                    <div className="grid grid-cols-6 gap-2 text-xs font-medium text-muted-foreground mb-1 px-2"><div>Door No.</div><div>BHK</div><div>Bathrooms</div><div>Size (sqft)</div><div>Facing</div><div></div></div>
-                                    <div className="space-y-1 max-h-[200px] overflow-auto">
-                                        {floor.units.map((unit) => (
-                                            <div key={unit.unitId} className="grid grid-cols-6 gap-2 items-center bg-muted/20 p-2 rounded">
-                                                <Input className="h-8 text-xs font-medium" value={unit.unitNumber} onChange={e => updateSingleUnit(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, { unitNumber: e.target.value, unitId: e.target.value })} placeholder="e.g. 1A" />
-                                                <Select value={String(unit.bhk)} onValueChange={v => updateSingleUnit(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, { bhk: parseInt(v) })}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent>{[1,2,3,4,5].map(n => <SelectItem key={n} value={String(n)}>{n} BHK</SelectItem>)}</SelectContent></Select>
-                                                <Select value={String(unit.bathrooms)} onValueChange={v => updateSingleUnit(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, { bathrooms: parseInt(v) })}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent>{[1,2,3,4].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent></Select>
-                                                <Input type="number" className="h-8 text-xs" value={unit.size} onChange={e => updateSingleUnit(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, { size: parseInt(e.target.value) || 1000 })} />
-                                                <Select value={unit.facing} onValueChange={v => updateSingleUnit(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, { facing: v })}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="East">East</SelectItem><SelectItem value="West">West</SelectItem><SelectItem value="North">North</SelectItem><SelectItem value="South">South</SelectItem></SelectContent></Select>
-                                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeUnitFromFloor(editingFloor.blockId, editingFloor.floorNumber, unit.unitId)} disabled={floor.units.length <= 1}><X className="h-3 w-3" /></Button>
+                            <div className="overflow-y-auto px-4 pb-4">
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+                                    {/* Left Column: Floor Chart Images Upload/Preview */}
+                                    <div className="lg:col-span-1 space-y-4">
+                                        <div className="border rounded-lg p-4 bg-muted/20">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <Label className="text-sm font-semibold flex items-center gap-2">
+                                                    <ImagePlus className="h-4 w-4 text-primary" />
+                                                    Floor Chart Images
+                                                </Label>
+                                                <span className="text-xs text-muted-foreground">{(floor.floorChartImages || []).length}/5</span>
                                             </div>
-                                        ))}
+                                            {(floor.floorChartImages || []).length > 0 && (
+                                                <div className="grid grid-cols-2 gap-2 mb-3">
+                                                    {(floor.floorChartImages || []).map((url, idx) => (
+                                                        <div key={idx} className="relative group rounded-lg overflow-hidden border bg-white dark:bg-zinc-900 cursor-pointer" onClick={() => setLightboxImageIndex(idx)}>
+                                                            <img src={url} alt={`${floor.floorName} chart ${idx + 1}`} className="w-full h-24 object-cover" />
+                                                            <Button type="button" size="icon" variant="destructive" className="absolute top-1 right-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" onClick={(e) => { e.stopPropagation(); removeFloorChartImage(editingFloor.blockId, editingFloor.floorNumber, url) }}>
+                                                                <X className="h-3 w-3" />
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {(floor.floorChartImages || []).length < 5 && (
+                                                <div className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-200 group" onClick={() => floorImageInputRef.current?.click()}>
+                                                    <div className="flex flex-col items-center gap-1.5">
+                                                        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                                                            <ImagePlus className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium">{(floor.floorChartImages || []).length === 0 ? 'Upload Floor Chart Images' : 'Add More Images'}</p>
+                                                            <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG, SVG, or WebP (max 5)</p>
+                                                        </div>
+                                                        {floorImageUploading && (
+                                                            <div className="flex items-center gap-2 text-xs text-primary">
+                                                                <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                                                Uploading...
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <input ref={floorImageInputRef} type="file" accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp" multiple className="hidden" onChange={(e) => { handleFloorChartImageUpload(editingFloor.blockId, editingFloor.floorNumber, e.target.files); e.target.value = '' }} />
+                                        </div>
+                                        <div className="border rounded-lg p-4 bg-gradient-to-br from-primary/5 to-primary/10">
+                                            <h5 className="text-sm font-semibold mb-2">Floor Summary</h5>
+                                            <div className="space-y-1.5 text-sm">
+                                                <div className="flex justify-between"><span className="text-muted-foreground">Total Units</span><span className="font-medium">{floor.units.length}</span></div>
+                                                <Separator />
+                                                {currentUnitTypes.map((t, i) => (
+                                                    <div key={i} className="flex justify-between"><span className="text-muted-foreground">{t.name} ({t.bhk}BHK)</span><span className="font-medium">{t.count} units</span></div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {/* Right Column: Units Editor + Copy */}
+                                    <div className="lg:col-span-2 space-y-4">
+                                        <div className="border rounded-lg p-3">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <Label className="text-sm font-medium">Individual Units (Door Numbers)</Label>
+                                                <Button type="button" variant="outline" size="sm" onClick={() => addUnitToFloor(editingFloor.blockId, editingFloor.floorNumber)}><Plus className="h-3 w-3 mr-1" />Add Unit</Button>
+                                            </div>
+                                            <div className="grid grid-cols-6 gap-2 text-xs font-medium text-muted-foreground mb-1 px-2"><div>Door No.</div><div>BHK</div><div>Bathrooms</div><div>Size (sqft)</div><div>Facing</div><div></div></div>
+                                            <div className="space-y-1 max-h-[250px] overflow-auto">
+                                                {floor.units.map((unit) => (
+                                                    <div key={unit.unitId} className="grid grid-cols-6 gap-2 items-center bg-muted/20 p-2 rounded">
+                                                        <Input className="h-8 text-xs font-medium" value={unit.unitNumber} onChange={e => updateSingleUnit(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, { unitNumber: e.target.value, unitId: e.target.value })} placeholder="e.g. 1A" />
+                                                        <Select value={String(unit.bhk)} onValueChange={v => updateSingleUnit(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, { bhk: parseInt(v) })}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent>{[1,2,3,4,5].map(n => <SelectItem key={n} value={String(n)}>{n} BHK</SelectItem>)}</SelectContent></Select>
+                                                        <Select value={String(unit.bathrooms)} onValueChange={v => updateSingleUnit(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, { bathrooms: parseInt(v) })}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent>{[1,2,3,4].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent></Select>
+                                                        <Input type="number" className="h-8 text-xs" value={unit.size} onChange={e => updateSingleUnit(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, { size: parseInt(e.target.value) || 1000 })} />
+                                                        <Select value={unit.facing} onValueChange={v => updateSingleUnit(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, { facing: v })}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="East">East</SelectItem><SelectItem value="West">West</SelectItem><SelectItem value="North">North</SelectItem><SelectItem value="South">South</SelectItem></SelectContent></Select>
+                                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeUnitFromFloor(editingFloor.blockId, editingFloor.floorNumber, unit.unitId)} disabled={floor.units.length <= 1}><X className="h-3 w-3" /></Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <details className="border rounded-lg p-3">
+                                            <summary className="cursor-pointer text-sm font-medium flex items-center gap-2">
+                                                <Copy className="h-4 w-4 text-muted-foreground" />
+                                                Copy this floor's units to other floors
+                                            </summary>
+                                            <div className="mt-3 space-y-2">
+                                                <div className="flex flex-wrap gap-1 max-h-[100px] overflow-auto">
+                                                    {block.floors.filter(f => f.floorNumber !== editingFloor.floorNumber).map(f => (
+                                                        <label key={f.floorNumber} className={`px-2 py-1 border rounded text-xs cursor-pointer transition-colors ${copyToFloors.includes(f.floorNumber) ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent'}`}>
+                                                            <input type="checkbox" className="hidden" checked={copyToFloors.includes(f.floorNumber)} onChange={(e) => { if (e.target.checked) setCopyToFloors([...copyToFloors, f.floorNumber]); else setCopyToFloors(copyToFloors.filter(n => n !== f.floorNumber)) }} />
+                                                            Floor {f.floorNumber}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => setCopyToFloors(block.floors.filter(f => f.floorNumber !== editingFloor.floorNumber).map(f => f.floorNumber))}>Select All</Button>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => setCopyToFloors([])}>Clear</Button>
+                                                    <Button type="button" variant="secondary" size="sm" disabled={copyToFloors.length === 0} onClick={() => copyFloorToOthers(editingFloor.blockId, editingFloor.floorNumber, copyToFloors)}><Copy className="h-3 w-3 mr-1" />Copy to {copyToFloors.length} Floors</Button>
+                                                </div>
+                                            </div>
+                                        </details>
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-between border-t pt-4">
-                                    <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">✓ Changes are saved automatically</span>
-                                    <Button onClick={() => setFloorEditorOpen(false)}>Done</Button>
-                                </div>
-                                <details className="border rounded-lg p-3">
-                                    <summary className="cursor-pointer text-sm font-medium">Copy this floor's units to other floors</summary>
-                                    <div className="mt-3 space-y-2">
-                                        <div className="flex flex-wrap gap-1 max-h-[100px] overflow-auto">
-                                            {block.floors.filter(f => f.floorNumber !== editingFloor.floorNumber).map(f => (
-                                                <label key={f.floorNumber} className={`px-2 py-1 border rounded text-xs cursor-pointer transition-colors ${copyToFloors.includes(f.floorNumber) ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent'}`}>
-                                                    <input type="checkbox" className="hidden" checked={copyToFloors.includes(f.floorNumber)} onChange={(e) => { if (e.target.checked) setCopyToFloors([...copyToFloors, f.floorNumber]); else setCopyToFloors(copyToFloors.filter(n => n !== f.floorNumber)) }} />
-                                                    Floor {f.floorNumber}
-                                                </label>
-                                            ))}
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <Button type="button" variant="outline" size="sm" onClick={() => setCopyToFloors(block.floors.filter(f => f.floorNumber !== editingFloor.floorNumber).map(f => f.floorNumber))}>Select All</Button>
-                                            <Button type="button" variant="outline" size="sm" onClick={() => setCopyToFloors([])}>Clear</Button>
-                                            <Button type="button" variant="secondary" size="sm" disabled={copyToFloors.length === 0} onClick={() => copyFloorToOthers(editingFloor.blockId, editingFloor.floorNumber, copyToFloors)}><Copy className="h-3 w-3 mr-1" />Copy to {copyToFloors.length} Floors</Button>
-                                        </div>
-                                    </div>
-                                </details>
                             </div>
                         )
+                    })()}
+                    <DrawerFooter className="border-t pt-4">
+                        <div className="flex items-center justify-between w-full">
+                            <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">✓ Changes are saved automatically</span>
+                            <DrawerClose asChild>
+                                <Button>Done</Button>
+                            </DrawerClose>
+                        </div>
+                    </DrawerFooter>
+                </DrawerContent>
+            </Drawer>
+            {/* Image Lightbox Overlay (Task 2: Using Dialog for proper portaling to prevent Drawer closing) */}
+            <Dialog open={lightboxImageIndex !== null} onOpenChange={(open) => !open && setLightboxImageIndex(null)}>
+                <DialogContent 
+                    className="max-w-none sm:max-w-none w-screen h-screen bg-black/95 border-none p-0 flex flex-col items-center justify-center rounded-none z-[99999] shadow-none outline-none" 
+                    showCloseButton={false}
+                    onKeyDown={(e) => {
+                        if (!editingFloor) return;
+                        const block = formData.blocks.find(b => b.blockId === editingFloor.blockId);
+                        const floor = block?.floors.find(f => f.floorNumber === editingFloor.floorNumber);
+                        const images = floor?.floorChartImages || [];
+                        if (images.length === 0) return;
+                        const currentIndex = lightboxImageIndex ?? 0;
+                        if (e.key === 'ArrowLeft' && currentIndex > 0) setLightboxImageIndex(currentIndex - 1);
+                        if (e.key === 'ArrowRight' && currentIndex < images.length - 1) setLightboxImageIndex(currentIndex + 1);
+                    }}
+                >
+                    {lightboxImageIndex !== null && editingFloor && (() => {
+                        const block = formData.blocks.find(b => b.blockId === editingFloor.blockId);
+                        const floor = block?.floors.find(f => f.floorNumber === editingFloor.floorNumber);
+                        const images = floor?.floorChartImages || [];
+                        if (images.length === 0) return null;
+                        const currentIndex = Math.min(lightboxImageIndex, images.length - 1);
+
+                        return (
+                            <div className="relative w-full h-full flex flex-col items-center justify-center p-4 md:p-8" onClick={() => setLightboxImageIndex(null)}>
+                                {/* Close Button */}
+                                <button
+                                    className="absolute top-6 right-6 z-[100] h-11 w-11 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group"
+                                    onClick={(e) => { e.stopPropagation(); setLightboxImageIndex(null); }}
+                                >
+                                    <X className="h-6 w-6 text-white group-hover:scale-110 transition-transform" />
+                                </button>
+
+                                {/* Previous Arrow (Task 1: Navigation Fixed) */}
+                                {currentIndex > 0 && (
+                                    <button
+                                        className="absolute left-6 top-1/2 -translate-y-1/2 z-[100] h-14 w-14 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group shadow-2xl"
+                                        onClick={(e) => { e.stopPropagation(); setLightboxImageIndex(currentIndex - 1); }}
+                                    >
+                                        <ChevronLeft className="h-8 w-8 text-white group-hover:-translate-x-1 transition-transform" />
+                                    </button>
+                                )}
+
+                                {/* Next Arrow (Task 1: Navigation Fixed) */}
+                                {currentIndex < images.length - 1 && (
+                                    <button
+                                        className="absolute right-6 top-1/2 -translate-y-1/2 z-[100] h-14 w-14 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group shadow-2xl"
+                                        onClick={(e) => { e.stopPropagation(); setLightboxImageIndex(currentIndex + 1); }}
+                                    >
+                                        <ChevronRight className="h-8 w-8 text-white group-hover:translate-x-1 transition-transform" />
+                                    </button>
+                                )}
+
+                                {/* Main Image Container (Task 3: Reduced dimensions for better UI) */}
+                                <div className="flex-1 flex items-center justify-center w-full min-h-0" onClick={(e) => e.stopPropagation()}>
+                                    <img
+                                        src={images[currentIndex]}
+                                        alt={`Floor chart ${currentIndex + 1}`}
+                                        className="max-w-[75vw] max-h-[60vh] object-contain rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-white/10 animate-in fade-in zoom-in-95 duration-300"
+                                    />
+                                </div>
+
+                                {/* Bottom Thumbnails Strip */}
+                                {images.length > 1 && (
+                                    <div className="flex items-center gap-3 pb-4 pt-8" onClick={(e) => e.stopPropagation()}>
+                                        {images.map((url, idx) => (
+                                            <button
+                                                key={idx}
+                                                className={`h-16 w-16 rounded-lg overflow-hidden border-2 transition-all duration-300 ${
+                                                    idx === currentIndex
+                                                        ? 'border-white shadow-[0_0_20px_rgba(255,255,255,0.3)] scale-110'
+                                                        : 'border-white/20 opacity-40 hover:opacity-100 hover:border-white/50'
+                                                }`}
+                                                onClick={() => setLightboxImageIndex(idx)}
+                                            >
+                                                <img src={url} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
                     })()}
                 </DialogContent>
             </Dialog>
