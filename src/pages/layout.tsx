@@ -34,6 +34,7 @@ const SEARCHABLE_PAGES: SearchablePage[] = [
     { label: "General Reports", url: "/general_reports", group: "Reports", icon: BarChart3 },
     { label: "Lead Stage Analysis", url: "/lead_stage_analysis", group: "Reports", icon: TrendingUp },
     { label: "General Settings", url: "/settings", group: "Settings", icon: Settings },
+    { label: "Import Leads", url: "/setting/import_leads", group: "Settings", icon: PlusCircle },
     { label: "Channel Partner", url: "/setting/channel_partner", group: "Settings", icon: Handshake },
     { label: "User Management", url: "/setting/user_management", group: "Settings", icon: UserCog },
     { label: "Lead Stage Setting", url: "/setting/lead_stage_setting", group: "Settings", icon: GitBranch },
