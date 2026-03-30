@@ -387,122 +387,122 @@ export default function ProjectListing() {
             ) : error ? (
                 <div className="w-full text-center py-10 text-red-500">{error}</div>
             ) : viewMode === "table" ? (
-                /* ── List / Table View ── no Card wrapper, clean flat look */
-                <DataTable
-                    columns={columns}
-                    data={data}
-                    initialPageSize={15}
-                    filterColumn="name"
-                    filterPlaceholder="Filter by name..."
-                    onRowClick={handleRowClick}
-                />
-            ) : (
-                /* ── Grid View ── */
-                <div className="w-full">
-                    {/* Filter bar – same position as DataTable's filter */}
-                    <div className="flex justify-between gap-4 py-4 w-full">
-                        <div className="relative w-full max-w-sm">
-                            <Input
-                                type="text"
-                                placeholder="Filter by name..."
-                                value={gridSearch}
-                                onChange={(e) => setGridSearch(e.target.value)}
-                                className="w-full pr-8 bg-input/30 dark:bg-input/50"
-                            />
-                            {gridSearch && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setGridSearch("")}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            )}
+                    /* ── List / Table View ── no Card wrapper, clean flat look */
+                    <DataTable
+                        columns={columns}
+                        data={data}
+                        initialPageSize={15}
+                        filterColumn="name"
+                        filterPlaceholder="Filter by name..."
+                        onRowClick={handleRowClick}
+                    />
+                ) : (
+                    /* ── Grid View ── */
+                    <div className="w-full">
+                        {/* Filter bar – same position as DataTable's filter */}
+                        <div className="flex justify-between gap-4 py-4 w-full">
+                            <div className="relative w-full max-w-sm">
+                                <Input
+                                    type="text"
+                                    placeholder="Filter by name..."
+                                    value={gridSearch}
+                                    onChange={(e) => setGridSearch(e.target.value)}
+                                    className="w-full pr-8 bg-input/30 dark:bg-input/50"
+                                />
+                                {gridSearch && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setGridSearch("")}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                    {filteredGridData.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                            {filteredGridData.map((project) => (
-                                <Card
-                                    key={project.product_id}
-                                    className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30 relative flex flex-col"
-                                    onClick={() => handleRowClick(project)}
-                                >
-                                    <CardHeader className="px-3.5 py-0">
-                                        <div className="flex items-start justify-between">
-                                            <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                                                {project.property === 'plots' ? <Layers className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
-                                            </div>
-                                            <Badge variant="outline" className="capitalize text-xs">
-                                                {project.property || "—"}
-                                            </Badge>
-                                        </div>
-                                        <CardTitle className="text-base mt-1 group-hover:text-primary transition-colors truncate">
-                                            {project.name}
-                                        </CardTitle>
-                                        {project.location && (
-                                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                                                <MapPin className="h-3 w-3 shrink-0" />
-                                                <span className="truncate">{project.location}</span>
-                                            </div>
-                                        )}
-                                    </CardHeader>
-                                    <CardContent className="px-4 pt-0">
-                                        <div className="flex items-center justify-between pt-3 border-t">
-                                            <div className="flex items-center gap-3">
-                                                <div className="text-xs">
-                                                    <span className="font-semibold text-foreground">{project.totalUnits || 0}</span>
-                                                    <span className="text-muted-foreground ml-1">units</span>
+                        {filteredGridData.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                                {filteredGridData.map((project) => (
+                                    <Card
+                                        key={project.product_id}
+                                        className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30 relative flex flex-col"
+                                        onClick={() => handleRowClick(project)}
+                                    >
+                                        <CardHeader className="px-3.5 py-0">
+                                            <div className="flex items-start justify-between">
+                                                <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                                    {project.property === 'plots' ? <Layers className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
                                                 </div>
-                                                {(project.blockCount != null && project.blockCount > 0) && (
+                                                <Badge variant="outline" className="capitalize text-xs">
+                                                    {project.property || "—"}
+                                                </Badge>
+                                            </div>
+                                            <CardTitle className="text-base mt-1 group-hover:text-primary transition-colors truncate">
+                                                {project.name}
+                                            </CardTitle>
+                                            {project.location && (
+                                                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                                    <MapPin className="h-3 w-3 shrink-0" />
+                                                    <span className="truncate">{project.location}</span>
+                                                </div>
+                                            )}
+                                        </CardHeader>
+                                        <CardContent className="px-4 pt-0">
+                                            <div className="flex items-center justify-between pt-3 border-t">
+                                                <div className="flex items-center gap-3">
                                                     <div className="text-xs">
-                                                        <span className="font-semibold text-foreground">{project.blockCount}</span>
-                                                        <span className="text-muted-foreground ml-1">blocks</span>
+                                                        <span className="font-semibold text-foreground">{project.totalUnits || 0}</span>
+                                                        <span className="text-muted-foreground ml-1">units</span>
                                                     </div>
-                                                )}
-                                                {(project.bookedCount != null && project.bookedCount > 0) && (
-                                                    <Badge className="ml-auto text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 hover:bg-orange-200">
-                                                        {project.bookedCount} booked
-                                                    </Badge>
-                                                )}
-                                            </div>
+                                                    {(project.blockCount != null && project.blockCount > 0) && (
+                                                        <div className="text-xs">
+                                                            <span className="font-semibold text-foreground">{project.blockCount}</span>
+                                                            <span className="text-muted-foreground ml-1">blocks</span>
+                                                        </div>
+                                                    )}
+                                                    {(project.bookedCount != null && project.bookedCount > 0) && (
+                                                        <Badge className="ml-auto text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 hover:bg-orange-200">
+                                                            {project.bookedCount} booked
+                                                        </Badge>
+                                                    )}
+                                                </div>
 
-                                            {/* Three dots menu */}
-                                            <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" className="h-6 w-6 p-0 text-muted-foreground transition-colors hover:text-foreground">
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRowClick(project); }}>
-                                                            View Project
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={(e) => handleEditProject(e, project)}>
-                                                            <Pencil className="mr-2 h-4 w-4" />
-                                                            Edit Project
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem>Download Brochure</DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                                {/* Three dots menu */}
+                                                <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-6 w-6 p-0 text-muted-foreground transition-colors hover:text-foreground">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRowClick(project); }}>
+                                                                View Project
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={(e) => handleEditProject(e, project)}>
+                                                                <Pencil className="mr-2 h-4 w-4" />
+                                                                Edit Project
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem>Download Brochure</DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="col-span-full py-12 text-center text-muted-foreground">
-                            No projects match your search "{gridSearch}".
-                        </div>
-                    )}
-                </div>
-            )}
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="col-span-full py-12 text-center text-muted-foreground">
+                                No projects match your search "{gridSearch}".
+                            </div>
+                        )}
+                    </div>
+                )}
 
             <Sheet open={bookedUnitsOpen} onOpenChange={setBookedUnitsOpen}>
                 <SheetContent side="right" className="w-[400px] sm:w-[540px] px-0 flex flex-col">

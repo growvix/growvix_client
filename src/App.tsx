@@ -60,6 +60,7 @@ const RoleBasedRedirect = () => {
   const role = getCookie('role');
   if (role === 'admin') return <Navigate to="/master_dashboard" replace />;
   if (role === 'manager') return <Navigate to="/management_dashboard" replace />;
+  if (role === 'cp' || role === 'channel_partner' || role === 'cp_user') return <Navigate to="/cp/dashboard" replace />;
   return <Navigate to="/executive_dashboard" replace />;
 };
 
@@ -74,16 +75,16 @@ export default function App() {
           <Route path="/cp/login" element={<CpLoginPage />} />
 
           {/* CP Routes — no sidebar */}
-          <Route element={<ProtectedRoute><CpLayout /></ProtectedRoute>}>
+          <Route element={<ProtectedRoute allowedRoles={['cp', 'channel_partner', 'cp_user']}><CpLayout /></ProtectedRoute>}>
             <Route path="/cp/dashboard" element={<CpDashboard />} />
             <Route path="/cp/project" element={<CpProjectShowcase />} />
           </Route>
-          <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>
+          <Route element={<ProtectedRoute blockCpFromApp><SidebarLayout /></ProtectedRoute>}>
             <Route path="/" element={<RoleBasedRedirect />} />
             <Route path="/executive_dashboard" element={<Dashboard />} />
-            <Route path="/master_dashboard" element={<MasterDashboard />} />
-            <Route path="/management_dashboard" element={<ManagementDashboard />} />
-            <Route path="/admin_dashboard" element={<Dashboard />} />
+            <Route path="/master_dashboard" element={<ProtectedRoute allowedRoles={['admin']}><MasterDashboard /></ProtectedRoute>} />
+            <Route path="/management_dashboard" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ManagementDashboard /></ProtectedRoute>} />
+            <Route path="/admin_dashboard" element={<ProtectedRoute allowedRoles={['admin']}><Dashboard /></ProtectedRoute>} />
 
             <Route path="/all_leads" element={<AllLeads />} />
             <Route path="/NewLead" element={<NewLead />} />
