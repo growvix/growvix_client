@@ -42,7 +42,7 @@ import Mail from "./pages/setting/mail";
 import MailTemplatesListing from "./pages/setting/mail_templates/mail_listing";
 import CreateTemplate from "./pages/setting/mail_templates/create_template";
 import Automation from "./pages/tools/automation";
-import ThirdPartyIntegration from "./pages/setting/third_party_integration";
+import ThirdPartyIntegration from "./pages/tools/third_party_integration";
 
 // Searchable pages index
 function ScrollToTop() {
@@ -100,7 +100,7 @@ export default function App() {
             <Route path="/project_showcase" element={<ProjectShowcase />} />
             <Route path="/new_project" element={<NewProject />} />
             <Route path="/edit_project/:id" element={<EditProject />} />
-            <Route path="/automation" element={<Automation />} />
+            <Route path="tools/automation" element={<Automation />} />
             <Route path="/settings" element={<GeneralSetting />} />
             <Route path="/setting/user_management" element={<UserManagement />} />
             <Route path="/setting/lead_stage_setting" element={<LeadStageSetting />} />
@@ -120,7 +120,7 @@ export default function App() {
             <Route path="/setting/mail_templates" element={<MailTemplatesListing />} />
             <Route path="/setting/mail_templates/create" element={<CreateTemplate />} />
             <Route path="/setting/mail_templates/edit/:id" element={<CreateTemplate />} />
-            <Route path="/setting/third_party_integration" element={<ThirdPartyIntegration />} />
+            <Route path="/tools/third_party_integration" element={<ThirdPartyIntegration />} />
 
           </Route>
         </Routes>

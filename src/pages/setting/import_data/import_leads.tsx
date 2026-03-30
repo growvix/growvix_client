@@ -201,17 +201,6 @@ export default function ImportLeads() {
     // ── Render ──
     return (
         <div className="flex flex-1 flex-col gap-4 px-3">
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold tracking-tight">Import Leads</h2>
-                <Button 
-                    variant="default"
-                    className="shadow-sm"
-                    onClick={() => navigate('/setting/import_leads/new')}
-                >
-                    New Upload
-                </Button>
-            </div>
-
             {loading ? (
                 <div className="flex items-center justify-center py-20 text-muted-foreground">
                     Loading uploads...
@@ -223,6 +212,16 @@ export default function ImportLeads() {
                     initialPageSize={15}
                     filterColumn="initiatedBy"
                     filterPlaceholder="Search by name..."
+                    topRightContent={
+                        <Button 
+                            variant="default"
+                            className="shadow-sm text-xs"
+                            size="sm"
+                            onClick={() => navigate('/setting/import_leads/new')}
+                        >
+                            New Upload
+                        </Button>
+                    }
                 />
             )}
         </div>

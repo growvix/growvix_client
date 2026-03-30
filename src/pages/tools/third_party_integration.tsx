@@ -89,22 +89,6 @@ export default function ThirdPartyIntegration() {
 
     return (
         <div className="flex flex-1 flex-col gap-4 px-6 py-4 max-w-[90%] mx-auto w-full">
-            
-            <div className="flex items-center gap-4 mb-2">
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => navigate("/settings")}
-                    className="rounded-full"
-                >
-                    <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <div className="flex flex-col">
-                    <h1 className="text-xl font-bold tracking-tight">Third-Party Integrations</h1>
-                    <p className="text-sm text-muted-foreground">Manage your connections with external platforms</p>
-                </div>
-            </div>
-
             <div className="relative max-w-sm mx-auto w-full mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground " />
                 <Input

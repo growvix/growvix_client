@@ -156,9 +156,10 @@ export function DataTable<TData, TValue>({
                     {topLeftContent}
                 </div>
                 <div className="flex items-center gap-3 ml-auto">
-                    {topRightContent}
+                    
                     {!hidePagination && (
                         <div className="flex items-center gap-2">
+                            {topRightContent}
                             <span className="text-sm text-muted-foreground">Rows per page</span>
                             <Select
                                 value={`${table.getState().pagination.pageSize}`}
@@ -179,6 +180,7 @@ export function DataTable<TData, TValue>({
                             </Select>
                         </div>
                     )}
+                    
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm" className="ml-auto">
@@ -186,6 +188,7 @@ export function DataTable<TData, TValue>({
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                            
                             {table
                                 .getAllColumns()
                                 .filter((column) => column.getCanHide())
@@ -205,6 +208,7 @@ export function DataTable<TData, TValue>({
                                 })}
                         </DropdownMenuContent>
                     </DropdownMenu>
+                    
                 </div>
             </div>
             <div className="overflow-hidden rounded-md border">

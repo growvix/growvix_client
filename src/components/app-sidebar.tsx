@@ -9,6 +9,7 @@ import {
   Settings,
   Users,
   LayoutDashboard,
+  Wrench,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -87,6 +88,22 @@ const data = {
           title: "Add Project",
           url: "/new_project",
         },
+      ],
+    },
+    {
+      title: "Tools",
+      url: "#",
+      icon: Wrench,
+      isActive: true,
+      items: [
+        {
+          title: "Automation",
+          url: "/tools/automation",
+        },
+        {
+          title: "Third Party Integration",
+          url: "/tools/third_party_integration",
+        }
       ],
     },
     {
