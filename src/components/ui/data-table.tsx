@@ -56,6 +56,8 @@ interface DataTableProps<TData, TValue> {
     filterPlaceholder?: string
     onRowClick?: (row: TData) => void
     hidePagination?: boolean
+    topLeftContent?: React.ReactNode
+    topRightContent?: React.ReactNode
 }
 
 export function DataTable<TData, TValue>({
@@ -66,6 +68,8 @@ export function DataTable<TData, TValue>({
     filterPlaceholder = "Filter...",
     onRowClick,
     hidePagination = false,
+    topLeftContent,
+    topRightContent,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -123,32 +127,36 @@ export function DataTable<TData, TValue>({
 
     return (
         <div className="w-full">
-            <div className="flex justify-between gap-4 py-4 w-full">
-                {filterColumn && (
-                    <div className="relative w-full max-w-sm">
-                        <Input
-                            placeholder={filterPlaceholder}
-                            value={(table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""}
-                            onChange={(event) => {
-                                table.getColumn(filterColumn)?.setFilterValue(event.target.value)
-                            }}
-                            className="w-full pr-8 bg-input/30 dark:bg-input/50"
-                        />
+            <div className="flex justify-between items-center gap-4 py-4 w-full flex-wrap">
+                <div className="flex items-center gap-4 flex-1">
+                    {filterColumn && (
+                        <div className="relative w-full max-w-sm">
+                            <Input
+                                placeholder={filterPlaceholder}
+                                value={(table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""}
+                                onChange={(event) => {
+                                    table.getColumn(filterColumn)?.setFilterValue(event.target.value)
+                                }}
+                                className="w-full pr-8 bg-input/30 dark:bg-input/50"
+                            />
 
-                        {(table.getColumn(filterColumn)?.getFilterValue() as string) && (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => table.getColumn(filterColumn)?.setFilterValue("")}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
-                        )}
-                    </div>
-                )}
-                <div className="flex gap-4 ml-auto">
+                            {(table.getColumn(filterColumn)?.getFilterValue() as string) && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => table.getColumn(filterColumn)?.setFilterValue("")}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
+                    )}
+                    {topLeftContent}
+                </div>
+                <div className="flex items-center gap-3 ml-auto">
+                    {topRightContent}
                     {!hidePagination && (
                         <div className="flex items-center gap-2">
                             <span className="text-sm text-muted-foreground">Rows per page</span>
@@ -173,8 +181,8 @@ export function DataTable<TData, TValue>({
                     )}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="ml-auto">
-                                Columns <ChevronDown />
+                            <Button variant="outline" size="sm" className="ml-auto">
+                                Columns <ChevronDown className="ml-2 h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
