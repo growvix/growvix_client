@@ -183,6 +183,23 @@ export interface UpdateLeadMutationVariables {
   input: UpdateLeadInput;
 }
 
+export interface BookedItem {
+  id: string;
+  label: string;
+  type: string;
+  bookedBy: {
+    leadName?: string;
+    leadUuid?: string;
+    profileId?: number;
+    phone?: string;
+    userId?: string;
+    userName?: string;
+    bookedAt?: string;
+  };
+  project_name: string;
+  project_id: number;
+}
+
 export interface ProjectSummary {
   product_id: number;
   name: string;
@@ -190,7 +207,16 @@ export interface ProjectSummary {
   property: string;
   img_location?: {
     logo?: string;
+    banner?: string;
+    brochure?: string;
+    post?: string;
+    videos?: string;
   };
+  blockCount?: number;
+  totalUnits?: number;
+  bookedCount?: number;
+  bookedUnits?: BookedItem[];
+  createdAt?: string;
 }
 
 export interface GetAllProjectsQueryResponse {
@@ -230,4 +256,13 @@ export interface GetOrganizationUsersQueryResponse {
 
 export interface GetOrganizationUsersQueryVariables {
   organization: string;
+}
+
+export interface GetProjectBookedUnitsQueryResponse {
+  getProjectById: ProjectSummary;
+}
+
+export interface GetProjectBookedUnitsQueryVariables {
+  organization: string;
+  id: number;
 }

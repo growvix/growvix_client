@@ -3,6 +3,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
 import TextAlign from '@tiptap/extension-text-align'
+import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import { useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -70,6 +71,7 @@ export function RichTextEditor({
         extensions: [
             StarterKit,
             Underline,
+            Image,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
             Placeholder.configure({ placeholder }),
             Link.configure({
@@ -89,10 +91,13 @@ export function RichTextEditor({
         },
     })
 
-    // Sync external value changes (e.g. reset)
+    // Sync external value changes (e.g. reset or template population)
     useEffect(() => {
-        if (editor && value === '') {
+        if (!editor) return
+        if (value === '') {
             editor.commands.clearContent()
+        } else if (value !== editor.getHTML()) {
+            editor.commands.setContent(value, { emitUpdate: false })
         }
     }, [value, editor])
 

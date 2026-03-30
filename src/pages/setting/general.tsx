@@ -7,11 +7,21 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { UserRoundCog, Import, UsersRound, Search, SearchX, Handshake, Mail, MailPlus } from "lucide-react"
+import {
+    UserRoundCog,
+    Import,
+    UsersRound,
+    Search,
+    SearchX,
+    Handshake,
+    Mail,
+    MailPlus,
+    Plug2,
+    Info
+} from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
-import { Info } from "lucide-react"
 
 export default function GeneralSetting() {
     const navigate = useNavigate()
@@ -129,8 +139,16 @@ export default function GeneralSetting() {
             hoverGradient: "from-teal-50/50 dark:from-teal-950/20",
             path: "/setting/mail_templates",
         },
-
-
+        {
+            title: "Third-Party Integration",
+            description: "Connect and manage integrations with Google, Meta, WhatsApp, and more.",
+            icon: Plug2,
+            colorClass: "text-indigo-600 dark:text-indigo-400",
+            bgClass: "bg-indigo-100 dark:bg-indigo-900/40",
+            hoverBorder: "hover:border-indigo-300 dark:hover:border-indigo-800",
+            hoverGradient: "from-indigo-50/50 dark:from-indigo-950/20",
+            path: "/setting/third_party_integration",
+        },
     ]
 
     const filteredCards = settingsCards.filter(
