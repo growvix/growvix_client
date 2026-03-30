@@ -16,7 +16,6 @@ import LeadDetail from "@/pages/lead_management/lead_detail"
 import NewLead from "./pages/lead_management/new_lead";
 import UserCalendar from "@/pages/calendar/user_calendar"
 import ProfilePage from "@/pages/profile"
-
 import ProjectListing from "./pages/inventory/project_listing";
 import ProjectShowcase from "./pages/inventory/project_showcase";
 import NewProject from "./pages/inventory/new_project";
@@ -42,6 +41,7 @@ import EditProject from "./pages/inventory/edit_project";
 import Mail from "./pages/setting/mail";
 import MailTemplatesListing from "./pages/setting/mail_templates/mail_listing";
 import CreateTemplate from "./pages/setting/mail_templates/create_template";
+import Automation from "./pages/tools/automation";
 
 // Searchable pages index
 function ScrollToTop() {
@@ -99,6 +99,7 @@ export default function App() {
             <Route path="/project_showcase" element={<ProjectShowcase />} />
             <Route path="/new_project" element={<NewProject />} />
             <Route path="/edit_project/:id" element={<EditProject />} />
+            <Route path="/automation" element={<Automation />} />
             <Route path="/settings" element={<GeneralSetting />} />
             <Route path="/setting/user_management" element={<UserManagement />} />
             <Route path="/setting/lead_stage_setting" element={<LeadStageSetting />} />
