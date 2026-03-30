@@ -1,13 +1,14 @@
-import { useEffect } from "react"
+import * as React from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import * as React from "react"
-import axios from "axios"
-import { API } from "@/config/api"
 import {
     type ColumnDef,
 } from "@tanstack/react-table"
+import { gql } from "@apollo/client"
+import { useQuery, useLazyQuery } from "@apollo/client/react"
+import type { ProjectSummary, BookedItem, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables, GetProjectBookedUnitsQueryResponse, GetProjectBookedUnitsQueryVariables } from "@/types"
 
 import { ArrowUpDown, Ban, Info, MoreHorizontal, Pencil, LayoutGrid, List, Building2, MapPin, Layers, X } from "lucide-react"
 import { useNavigate } from "react-router-dom"
@@ -28,37 +29,77 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import type { projects } from "@/types"
 import { DataTable } from "@/components/ui/data-table"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Tabs, TabsContent,TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+const GET_ALL_PROJECTS = gql`
+  query GetAllProjects($organization: String!) {
+    getAllProjects(organization: $organization) {
+      product_id
+      name
+      location
+      property
+      img_location {
+        logo
+        banner
+        brochure
+        post
+        videos
+      }
+      blockCount
+      totalUnits
+      bookedCount
+      createdAt
+    }
+  }
+`;
+
+const GET_PROJECT_BOOKED_UNITS = gql`
+  query GetProjectBookedUnits($organization: String!, $id: Int!) {
+    getProjectById(organization: $organization, id: $id) {
+      bookedUnits {
+        id
+        label
+        type
+        bookedBy {
+          leadName
+          leadUuid
+          profileId
+          phone
+          userId
+          userName
+          bookedAt
+        }
+        project_name
+        project_id
+      }
+    }
+  }
+`;
 
 
 export default function ProjectListing() {
     const { setBreadcrumbs } = useBreadcrumb()
-    const [data, setData] = React.useState<projects[]>([])
-    const [loading, setLoading] = React.useState(true)
-    const [error, setError] = React.useState('')
-    const [viewMode, setViewMode] = React.useState<"table" | "grid">(() => {
+    const [data, setData] = useState<ProjectSummary[]>([])
+    const [viewMode, setViewMode] = useState<"table" | "grid">(() => {
         const saved = sessionStorage.getItem("projectListingViewMode")
         return (saved === "grid" || saved === "table") ? saved : "grid"
     })
-    const [gridSearch, setGridSearch] = React.useState("")
+    const [gridSearch, setGridSearch] = useState("")
 
     // Persist viewMode to sessionStorage
-    React.useEffect(() => {
+    useEffect(() => {
         sessionStorage.setItem("projectListingViewMode", viewMode)
     }, [viewMode])
 
     // Booked Units State
-    const [bookedUnitsOpen, setBookedUnitsOpen] = React.useState(false)
-    const [bookedUnitsData, setBookedUnitsData] = React.useState<any[]>([])
-    const [bookedUnitsLoading, setBookedUnitsLoading] = React.useState(false)
-    const [bookedProjectName, setBookedProjectName] = React.useState('')
-    const [bookedProjectId, setBookedProjectId] = React.useState<number>(0)
-    const [searchBookedQuery, setSearchBookedQuery] = React.useState('')
+    const [bookedUnitsOpen, setBookedUnitsOpen] = useState(false)
+    const [bookedUnitsData, setBookedUnitsData] = useState<BookedItem[]>([])
+    const [bookedProjectName, setBookedProjectName] = useState('')
+    const [bookedProjectId, setBookedProjectId] = useState<number>(0)
+    const [searchBookedQuery, setSearchBookedQuery] = useState('')
 
-    const filteredBookedUnitsData = React.useMemo(() => {
+    const filteredBookedUnitsData = useMemo(() => {
         if (!searchBookedQuery) return bookedUnitsData;
         const queryLower = searchBookedQuery.toLowerCase();
         return bookedUnitsData.filter((unit) => {
@@ -69,6 +110,25 @@ export default function ProjectListing() {
     }, [bookedUnitsData, searchBookedQuery]);
 
     const navigate = useNavigate()
+    const permissions = getPermissions()
+    const canViewInventory = permissions.includes("view_inventory")
+    const org = getCookie('organization') || ''
+
+    const { loading: projectsLoading, error: projectsError, data: projectsData } = useQuery<GetAllProjectsQueryResponse, GetAllProjectsQueryVariables>(
+        GET_ALL_PROJECTS,
+        {
+            variables: { organization: org },
+            skip: !org || !canViewInventory
+        }
+    );
+
+    const [fetchBookedUnits, { loading: bookedUnitsLoading }] = useLazyQuery<GetProjectBookedUnitsQueryResponse, GetProjectBookedUnitsQueryVariables>(GET_PROJECT_BOOKED_UNITS);
+
+    useEffect(() => {
+        if (projectsData) {
+            setData(projectsData.getAllProjects as ProjectSummary[]);
+        }
+    }, [projectsData]);
 
     useEffect(() => {
         setBreadcrumbs([
@@ -90,40 +150,9 @@ export default function ProjectListing() {
         ]);
     }, [setBreadcrumbs]);
 
-    const fetchProjects = React.useCallback(async () => {
-        const permissions = getPermissions()
-        if (!permissions.includes("view_inventory")) {
-            setLoading(false)
-            return
-        }
+    const errorMsg = projectsError?.message;
 
-        try {
-            setLoading(true)
-            const org = getCookie('organization')
-            if (!org) {
-                setError('Organization not found in cookies')
-                setLoading(false)
-                return
-            }
-            const response = await axios.get(`${API.PROJECTS}?organization=${org}`)
-            setData(response.data.data || [])
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to fetch projects')
-        } finally {
-            setLoading(false)
-        }
-    }, [])
-
-    const permissions = getPermissions()
-    const canViewInventory = permissions.includes("view_inventory")
-
-    // Fetch projects from API on mount
-    React.useEffect(() => {
-        if (canViewInventory) fetchProjects()
-        else setLoading(false)
-    }, [fetchProjects, canViewInventory])
-
-    const handleEditProject = React.useCallback((e: React.MouseEvent, project: projects) => {
+    const handleEditProject = useCallback((e: React.MouseEvent, project: ProjectSummary) => {
         e.stopPropagation() 
         const permissions = getPermissions()
         if (!permissions.includes("edit_inventory")) {
@@ -134,27 +163,27 @@ export default function ProjectListing() {
         navigate(`/edit_project/${encodedId}`)
     }, [navigate])
 
-    const handleBookedUnitsClick = async (e: React.MouseEvent, project: projects) => {
+    const handleBookedUnitsClick = async (e: React.MouseEvent, project: ProjectSummary) => {
         e.stopPropagation()
         setBookedProjectName(project.name)
         setBookedProjectId(project.product_id)
         setBookedUnitsOpen(true)
-        setBookedUnitsLoading(true)
 
+        setBookedUnitsData([]) // Clear previous data
         try {
-            const org = getCookie('organization')
-            const response = await axios.get(API.getProjectBookedUnits(project.product_id) + `?organization=${org}`)
-            setBookedUnitsData(response.data.data || [])
+            const org = getCookie('organization') || ''
+            const { data: response } = await fetchBookedUnits({
+                variables: { organization: org, id: project.product_id }
+            })
+            setBookedUnitsData(response?.getProjectById?.bookedUnits || [])
         } catch (err: any) {
             console.error("Error fetching booked units:", err)
-            toast.error(err.response?.data?.message || "Failed to fetch booked units")
+            toast.error(err.message || "Failed to fetch booked units")
             setBookedUnitsData([])
-        } finally {
-            setBookedUnitsLoading(false)
         }
     }
 
-    const columns: ColumnDef<projects>[] = React.useMemo(() => [
+    const columns: ColumnDef<ProjectSummary>[] = React.useMemo(() => [
         {
             accessorKey: "product_id",
             header: ({ column }) => {
@@ -314,7 +343,7 @@ export default function ProjectListing() {
         },
     ], [handleEditProject])
 
-    const handleRowClick = async (project: projects) => {
+    const handleRowClick = async (project: ProjectSummary) => {
         const encodedId = encodeProjectId(project.product_id)
         navigate(`/project_showcase?id=${encodedId}`)
     }
@@ -380,12 +409,12 @@ export default function ProjectListing() {
             </div>
 
             {/* Content */}
-            {loading ? (
+            {projectsLoading ? (
                 <div className="flex items-center justify-center py-20">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>
-            ) : error ? (
-                <div className="w-full text-center py-10 text-red-500">{error}</div>
+            ) : errorMsg ? (
+                <div className="w-full text-center py-10 text-red-500">{errorMsg}</div>
             ) : viewMode === "table" ? (
                     /* ── List / Table View ── no Card wrapper, clean flat look */
                     <DataTable
@@ -463,7 +492,7 @@ export default function ProjectListing() {
                                                         </div>
                                                     )}
                                                     {(project.bookedCount != null && project.bookedCount > 0) && (
-                                                        <Badge className="ml-auto text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 hover:bg-orange-200">
+                                                        <Badge className="ml-auto text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 hover:bg-orange-200" onClick={(e) => handleBookedUnitsClick(e, project)}>
                                                             {project.bookedCount} booked
                                                         </Badge>
                                                     )}
