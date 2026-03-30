@@ -42,6 +42,7 @@ import EditProject from "./pages/inventory/edit_project";
 import Mail from "./pages/setting/mail";
 import MailTemplatesListing from "./pages/setting/mail_templates/mail_listing";
 import CreateTemplate from "./pages/setting/mail_templates/create_template";
+import ThirdPartyIntegration from "./pages/setting/third_party_integration";
 
 // Searchable pages index
 function ScrollToTop() {
@@ -117,6 +118,7 @@ export default function App() {
             <Route path="/setting/mail_templates" element={<MailTemplatesListing />} />
             <Route path="/setting/mail_templates/create" element={<CreateTemplate />} />
             <Route path="/setting/mail_templates/edit/:id" element={<CreateTemplate />} />
+            <Route path="/setting/third_party_integration" element={<ThirdPartyIntegration />} />
 
           </Route>
         </Routes>

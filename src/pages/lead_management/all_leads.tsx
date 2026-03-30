@@ -531,7 +531,7 @@ export default function AllLeads() {
                   <CommandList>
                     <CommandEmpty>No status found.</CommandEmpty>
                     <CommandGroup>
-                      {["all", "Hot", "Warm", "Cold"].map((s) => (
+                      {["all", "No Activity", "Hot", "Warm", "Cold"].map((s) => (
                         <CommandItem key={s} value={s} onSelect={() => { handleChange("status", s); setStatusOpen(false) }}>
                           <Check className={cn("mr-2 h-4 w-4", filters.status === s ? "opacity-100" : "opacity-0")} />
                           {s === "all" ? "All" : s}
