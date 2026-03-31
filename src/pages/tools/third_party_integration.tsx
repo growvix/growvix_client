@@ -109,7 +109,7 @@ export default function ThirdPartyIntegration() {
                         >
                             <div className={`absolute inset-0 bg-gradient-to-br ${card.hoverGradient} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
-                            <CardHeader className="flex flex-row items-center gap-4 pb-2 z-10 w-full space-y-0">
+                            <CardHeader className="flex flex-row items-center gap-4 pb-2 z-1 w-full space-y-0">
                                 <div className={`p-4 rounded-xl transition-all duration-300 group-hover:scale-110 ${card.bgClass} ${card.colorClass}`}>
                                     <Icon size={32} strokeWidth={1.5} />
                                 </div>
@@ -125,7 +125,7 @@ export default function ThirdPartyIntegration() {
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent className="z-10 pb-6 pt-4 flex-1 flex flex-col justify-between gap-6">
+                            <CardContent className="z-1 pb-6 pt-4 flex-1 flex flex-col justify-between gap-6 ">
                                 <CardDescription className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 font-medium">
                                     {card.description}
                                 </CardDescription>
