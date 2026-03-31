@@ -74,6 +74,8 @@ const PERMISSION_OPTIONS = [
     { key: "edit_users", label: "Edit All Users" },
     { key: "delete_users", label: "Delete Users" },
     { key: "show_user_phone_number", label: "Show User Phone Number" },
+    { key: "manage_users", label: "Manage User (Settings Card)" },
+    { key: "manage_teams", label: "Manage Team (Settings Card)" },
 ] as const;
 
 // ─── Types ──────────────────────────────────────────────

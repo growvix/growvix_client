@@ -16,12 +16,12 @@ import {
     Handshake,
     Mail,
     MailPlus,
-    Plug2,
     Info
 } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
+import { getPermissions } from "@/utils/cookies"
 
 export default function GeneralSetting() {
     const navigate = useNavigate()
@@ -58,6 +58,7 @@ export default function GeneralSetting() {
             hoverBorder: "hover:border-blue-300 dark:hover:border-blue-800",
             hoverGradient: "from-blue-50/50 dark:from-blue-950/20",
             path: "/setting/user_management",
+            permission: "manage_users"
         },
         {
             title: "Manage Teams",
@@ -68,6 +69,7 @@ export default function GeneralSetting() {
             hoverBorder: "hover:border-purple-300 dark:hover:border-purple-800",
             hoverGradient: "from-purple-50/50 dark:from-purple-950/20",
             path: "/setting/teams",
+            permission: "manage_teams"
         },
         // {
         //     title: "Billing",
@@ -141,7 +143,16 @@ export default function GeneralSetting() {
         },
     ]
 
-    const filteredCards = settingsCards.filter(
+    const activePermissions = getPermissions()
+    
+    const visibleCards = settingsCards.filter(card => {
+        if (card.permission) {
+            return activePermissions.includes(card.permission)
+        }
+        return true
+    })
+
+    const filteredCards = visibleCards.filter(
         (card) =>
             card.title.toLowerCase().includes(search.toLowerCase()) ||
             card.description.toLowerCase().includes(search.toLowerCase())
