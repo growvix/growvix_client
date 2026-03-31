@@ -204,20 +204,6 @@ export default function MailTemplatesListing() {
 
     return (
         <div className="flex flex-1 flex-col gap-4 px-6 py-4">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="icon" onClick={() => navigate("/settings")} className="h-8 w-8" >
-                        <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                    <h2 className="text-2xl font-bold tracking-tight">Mail Templates</h2>
-                </div>
-                {canCreate && (
-                    <Button onClick={() => navigate("/setting/mail_templates/create")}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Template
-                    </Button>
-                )}
-            </div>
 
             <DataTable
                 columns={columns}
@@ -225,6 +211,14 @@ export default function MailTemplatesListing() {
                 initialPageSize={10}
                 filterColumn="templateName"
                 filterPlaceholder="Filter by template name..."
+                topRightContent={
+                    canCreate && (
+                        <Button size="sm" className="text-xs" onClick={() => navigate("/setting/mail_templates/create")}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Template
+                        </Button>
+                    )
+                }
             />
         </div>
     )

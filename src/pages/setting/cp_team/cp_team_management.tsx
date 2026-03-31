@@ -253,37 +253,7 @@ export default function CpTeamManagement() {
 
     // ── Render ──
     return (
-        <div className="flex flex-1 flex-col gap-4 px-3">
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold tracking-tight">CP Teams</h2>
-                {canCreateTeam && (
-                    <Sheet open={open} onOpenChange={setOpen}>
-                        <SheetTrigger asChild>
-                            <Button>Create CP Team</Button>
-                        </SheetTrigger>
-                        <SheetContent className="w-xl px-5">
-                            <SheetHeader>
-                                <SheetTitle>Create New CP Team</SheetTitle>
-                                <SheetDescription>
-                                    Enter the details below to create a new CP team.
-                                </SheetDescription>
-                            </SheetHeader>
-                            <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="name">Team Name</Label>
-                                    <Input id="name" placeholder="e.g. Metro CP Team" value={formData.name} onChange={handleInputChange} required />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="description">Description</Label>
-                                    <Input id="description" placeholder="Optional team description" value={formData.description} onChange={handleInputChange} />
-                                </div>
-                                <Button type="submit" className="mt-4">Create Team</Button>
-                            </form>
-                        </SheetContent>
-                    </Sheet>
-                )}
-            </div>
-
+        <div className="flex flex-1 flex-col gap-4 px-3">      
             <DataTable
                 columns={columns}
                 data={teams}
@@ -291,6 +261,34 @@ export default function CpTeamManagement() {
                 filterColumn="name"
                 filterPlaceholder="Filter by CP team name..."
                 onRowClick={(row: CpTeamData) => navigate(`/setting/cp_teams/${row._id}`)}
+                topRightContent={
+                    canCreateTeam && (
+                        <Sheet open={open} onOpenChange={setOpen}>
+                            <SheetTrigger asChild>
+                                <Button size="sm" className="text-xs">Create CP Team</Button>
+                            </SheetTrigger>
+                            <SheetContent className="w-xl px-5">
+                                <SheetHeader>
+                                    <SheetTitle>Create New CP Team</SheetTitle>
+                                    <SheetDescription>
+                                        Enter the details below to create a new CP team.
+                                    </SheetDescription>
+                                </SheetHeader>
+                                <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="name">Team Name</Label>
+                                        <Input id="name" placeholder="e.g. Metro CP Team" value={formData.name} onChange={handleInputChange} required />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="description">Description</Label>
+                                        <Input id="description" placeholder="Optional team description" value={formData.description} onChange={handleInputChange} />
+                                    </div>
+                                    <Button type="submit" className="mt-4">Create Team</Button>
+                                </form>
+                            </SheetContent>
+                        </Sheet>
+                    )
+                }
             />
         </div>
     )

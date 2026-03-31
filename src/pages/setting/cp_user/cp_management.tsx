@@ -465,70 +465,6 @@ export default function CPManagement() {
     // ── Render ──
     return (
         <div className="flex flex-1 flex-col gap-4 px-3">
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold tracking-tight">Channel Partners</h2>
-
-                {/* ── Add CP Sheet ── */}
-                <Sheet open={open} onOpenChange={setOpen}>
-                    <SheetTrigger asChild>
-                        <Button>Add CP</Button>
-                    </SheetTrigger>
-                    <SheetContent className="w-xl px-5">
-                        <SheetHeader>
-                            <SheetTitle>Add New CP</SheetTitle>
-                            <SheetDescription>
-                                Enter the details below to create a new Channel Partner account.
-                            </SheetDescription>
-                        </SheetHeader>
-                        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="firstName">First Name</Label>
-                                    <Input id="firstName" placeholder="John" value={formData.firstName} onChange={handleInputChange} required />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="lastName">Last Name <span className="text-muted-foreground">(Optional)</span></Label>
-                                    <Input id="lastName" placeholder="Doe" value={formData.lastName} onChange={handleInputChange}/>
-                                </div>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">Email</Label>
-                                <Input id="email" type="email" placeholder="partner@example.com" value={formData.email} onChange={handleInputChange} required />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="password">Password</Label>
-                                <Input id="password" type="password" placeholder="••••••••" value={formData.password} onChange={handleInputChange} required />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="phone">Phone Number</Label>
-                                <Input id="phone" placeholder="+91 98765 43210" value={formData.phone} onChange={handleInputChange} required />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="address">Address</Label>
-                                <textarea
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    id="address"
-                                    placeholder="123 Business Rd..."
-                                    value={formData.address}
-                                    onChange={handleInputChange}
-                                    required
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="company">Company (optional)</Label>
-                                <Input id="company" placeholder="Partner Ltd." value={formData.company} onChange={handleInputChange} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="team">Team (optional)</Label>
-                                <Input id="team" placeholder="Assigned Team" value={formData.team} onChange={handleInputChange} />
-                            </div>
-                            <Button type="submit" className="mt-4" disabled={submitting}>
-                                {submitting ? "Creating..." : "Create CP"}
-                            </Button>
-                        </form>
-                    </SheetContent>
-                </Sheet>
-            </div>
 
             {/* ── Edit CP Sheet ── */}
             <Sheet open={editOpen} onOpenChange={setEditOpen}>
@@ -596,6 +532,67 @@ export default function CPManagement() {
                     initialPageSize={15}
                     filterColumn="cpName"
                     filterPlaceholder="Search by name..."
+                    topRightContent={
+                        <Sheet open={open} onOpenChange={setOpen}>
+                            <SheetTrigger asChild>
+                                <Button size="sm" className="text-xs">Add CP</Button>
+                            </SheetTrigger>
+                            <SheetContent className="w-xl px-5">
+                                <SheetHeader>
+                                    <SheetTitle>Add New CP</SheetTitle>
+                                    <SheetDescription>
+                                        Enter the details below to create a new Channel Partner account.
+                                    </SheetDescription>
+                                </SheetHeader>
+                                <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="firstName">First Name</Label>
+                                            <Input id="firstName" placeholder="John" value={formData.firstName} onChange={handleInputChange} required />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="lastName">Last Name <span className="text-muted-foreground">(Optional)</span></Label>
+                                            <Input id="lastName" placeholder="Doe" value={formData.lastName} onChange={handleInputChange}/>
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="email">Email</Label>
+                                        <Input id="email" type="email" placeholder="partner@example.com" value={formData.email} onChange={handleInputChange} required />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="password">Password</Label>
+                                        <Input id="password" type="password" placeholder="••••••••" value={formData.password} onChange={handleInputChange} required />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="phone">Phone Number</Label>
+                                        <Input id="phone" placeholder="+91 98765 43210" value={formData.phone} onChange={handleInputChange} required />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="address">Address</Label>
+                                        <textarea
+                                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                            id="address"
+                                            placeholder="123 Business Rd..."
+                                            value={formData.address}
+                                            onChange={handleInputChange}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="company">Company (optional)</Label>
+                                        <Input id="company" placeholder="Partner Ltd." value={formData.company} onChange={handleInputChange} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="team">Team (optional)</Label>
+                                        <Input id="team" placeholder="Assigned Team" value={formData.team} onChange={handleInputChange} />
+                                    </div>
+                                    <Button type="submit" className="mt-4" disabled={submitting}>
+                                        {submitting ? "Creating..." : "Create CP"}
+                                    </Button>
+                                </form>
+                            </SheetContent>
+                        </Sheet>
+                    }
                 />
             )}
 

@@ -500,9 +500,6 @@ export default function UserCalendar() {
                   <CalendarYearPicker start={earliestYear} end={latestYear} />
                 </div>
               </div>
-
-              <div className="hidden h-[36px] w-px bg-border md:block self-end"></div>
-
               {/* Team Filter */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-muted-foreground">Team</label>
