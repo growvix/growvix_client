@@ -462,11 +462,20 @@ export default function UserManagement() {
     ], [handleEditUser, handleDeleteUser])
 
     // ── Filter state ──
-    const [filterName, setFilterName] = useState("")
-    const [filterEmail, setFilterEmail] = useState("")
+    const [filters, setFilters] = useState({
+        name: "",
+        email: "",
+        team: "all",
+        role: "all",
+        status: "all",
+        department: "all"
+    })
+    const [appliedFilters, setAppliedFilters] = useState(filters)
     const [emailOpen, setEmailOpen] = useState(false)
-    const [filterTeam, setFilterTeam] = useState("all")
-    const [filterRole, setFilterRole] = useState("all")
+    const [teamOpen, setTeamOpen] = useState(false)
+    const [roleOpen, setRoleOpen] = useState(false)
+    const [statusOpen, setStatusOpen] = useState(false)
+    const [deptOpen, setDeptOpen] = useState(false)
     const [teams, setTeams] = useState<{ _id: string; name: string }[]>([])
 
     // Fetch teams for filter dropdown
@@ -500,28 +509,42 @@ export default function UserManagement() {
     // Filtered users
     const filteredUsers = useMemo(() => {
         return users.filter((user) => {
-            if (filterName) {
+            if (appliedFilters.name) {
                 const fullName = `${user.profile.firstName} ${user.profile.lastName}`.toLowerCase()
-                if (!fullName.includes(filterName.toLowerCase())) return false
+                if (!fullName.includes(appliedFilters.name.toLowerCase())) return false
             }
-            if (filterEmail && user.profile.email !== filterEmail) return false
-            if (filterRole !== "all" && user.role !== filterRole) return false
-            if (filterTeam !== "all") {
-                const inTeam = (user.teams || []).some((t) => t.teamId === filterTeam)
+            if (appliedFilters.email && user.profile.email !== appliedFilters.email) return false
+            if (appliedFilters.role !== "all" && user.role !== appliedFilters.role) return false
+            if (appliedFilters.team !== "all") {
+                const inTeam = (user.teams || []).some((t) => t.teamId === appliedFilters.team)
                 if (!inTeam) return false
             }
+            if (appliedFilters.status !== "all") {
+                const isActive = appliedFilters.status === "active"
+                if (user.isActive !== isActive) return false
+            }
+            if (appliedFilters.department !== "all" && user.department !== appliedFilters.department) return false
             return true
         })
-    }, [users, filterName, filterEmail, filterRole, filterTeam])
+    }, [users, appliedFilters])
 
-    const clearFilters = () => {
-        setFilterName("")
-        setFilterEmail("")
-        setFilterTeam("all")
-        setFilterRole("all")
+    const handleFilterReset = () => {
+        const resetData = {
+            name: "",
+            email: "",
+            team: "all",
+            role: "all",
+            status: "all",
+            department: "all"
+        }
+        setFilters(resetData)
+        setAppliedFilters(resetData)
     }
 
-    const hasActiveFilters = filterName !== "" || filterEmail !== "" || filterTeam !== "all" || filterRole !== "all"
+    const handleFilterSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        setAppliedFilters(filters)
+    }
 
     // ── Add-user form handlers ──
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -599,185 +622,397 @@ export default function UserManagement() {
 
     // ── Render ──
     return (
+        
         <div className="flex flex-1 flex-col gap-4 px-3">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold tracking-tight">Users</h2>
-                {canAddUsers && (
-                    <Sheet open={open} onOpenChange={setOpen}>
-                        <SheetTrigger asChild>
-                            <Button className="mt-3" size="lg">Add User</Button>
-                        </SheetTrigger>
-                        <SheetContent className="w-xl px-5 overflow-y-auto">
-                            <SheetHeader>
-                                <SheetTitle>Add New User</SheetTitle>
-                                <SheetDescription>
-                                    Enter the details below to create a new user account.
-                                </SheetDescription>
-                            </SheetHeader>
-                            <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="first-name">First Name</Label>
-                                        <Input id="first-name" placeholder="John" value={formData.firstName} onChange={handleInputChange} required />
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="last-name">Last Name <span className="text-muted-foreground">(Optional)</span></Label>
-                                        <Input id="last-name" placeholder="Doe" value={formData.lastName} onChange={handleInputChange}/>
-                                    </div>
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="email">Email</Label>
-                                    <Input id="email" type="email" placeholder="john.doe@example.com" value={formData.email} onChange={handleInputChange} required />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="phone-number">Phone Number</Label>
-                                    <Input id="phone-number" placeholder="+1 234 567 890" value={formData.phoneNumber} onChange={handleInputChange} required />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="password">Password</Label>
-                                    <Input id="password" type="password" value={formData.password} onChange={handleInputChange} required />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="role">Role</Label>
-                                    <Select onValueChange={handleSelectChange} value={formData.role}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select a role" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="admin">Admin</SelectItem>
-                                            <SelectItem value="manager">Manager</SelectItem>
-                                            <SelectItem value="user">User</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="department">Department</Label>
-                                    <Select onValueChange={(value) => setFormData((prev) => ({ ...prev, department: value }))} value={formData.department}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select a department" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="pre-sales">Pre-Sales</SelectItem>
-                                            <SelectItem value="sales">Sales</SelectItem>
-                                            <SelectItem value="post-sales">Post-Sales</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label>Permissions</Label>
-                                    <div className="grid grid-cols-2 gap-3 rounded-md border p-3">
-                                        {PERMISSION_OPTIONS.map((perm) => (
-                                            <label key={perm.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                                                <Checkbox
-                                                    checked={formData.permissions.includes(perm.key)}
-                                                    onCheckedChange={() => togglePermission(perm.key)}
-                                                />
-                                                {perm.label}
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                                <Button type="submit" className="mt-4">Create User</Button>
-                            </form>
-                        </SheetContent>
-                    </Sheet>
-                )}
-            </div>
-
             {/* Filters */}
-            <div className="flex items-center gap-2 flex-wrap">
-                <Input
-                    placeholder="Search by name..."
-                    value={filterName}
-                    onChange={(e) => setFilterName(e.target.value)}
-                    className="w-[200px] bg-input/30 dark:bg-input/50"
-                />
+            <div className="rounded-xl bg-muted/50 dark:bg-muted/50 py-4 px-3">
+                <form onSubmit={handleFilterSubmit} className="grid gap-3 grid-cols-4">
+                    {/* Name */}
+                    <div className="col-span-1">
+                        <Label htmlFor="filter-name" className="text-s mb-1 ms-1">
+                            Name
+                        </Label>
+                        <Input
+                            id="filter-name"
+                            className="bg-background dark:bg-background"
+                            value={filters.name}
+                            onChange={(e) => setFilters(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="Search by name..."
+                        />
+                    </div>
 
-                <Popover open={emailOpen} onOpenChange={setEmailOpen}>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={emailOpen}
-                            className="w-[220px] justify-between font-normal"
-                        >
-                            <span className="truncate">
-                                {filterEmail || "All Emails"}
-                            </span>
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    {/* Email */}
+                    <div className="col-span-1">
+                        <Label htmlFor="filter-email" className="text-s mb-1 ms-1">
+                            Email
+                        </Label>
+                        <Popover open={emailOpen} onOpenChange={setEmailOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={emailOpen}
+                                    className="w-full justify-between font-normal bg-background dark:bg-background hover:dark:bg-background"
+                                >
+                                    <span className="truncate">
+                                        {filters.email || "All Emails"}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[220px] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Search email..." />
+                                    <CommandList>
+                                        <CommandEmpty>No email found.</CommandEmpty>
+                                        <CommandGroup>
+                                            <CommandItem
+                                                onSelect={() => {
+                                                    setFilters(prev => ({ ...prev, email: "" }))
+                                                    setEmailOpen(false)
+                                                }}
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", !filters.email ? "opacity-100" : "opacity-0")} />
+                                                All Emails
+                                            </CommandItem>
+                                            {uniqueEmails.map((email) => (
+                                                <CommandItem
+                                                    key={email}
+                                                    value={email}
+                                                    onSelect={() => {
+                                                        setFilters(prev => ({ ...prev, email: email === filters.email ? "" : email }))
+                                                        setEmailOpen(false)
+                                                    }}
+                                                >
+                                                    <Check className={cn("mr-2 h-4 w-4", filters.email === email ? "opacity-100" : "opacity-0")} />
+                                                    {email}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
+                    {/* Team */}
+                    <div className="col-span-1">
+                        <Label htmlFor="filter-team" className="text-s mb-1 ms-1">
+                            Team
+                        </Label>
+                        <Popover open={teamOpen} onOpenChange={setTeamOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={teamOpen}
+                                    className="w-full justify-between font-normal bg-background dark:bg-background hover:dark:bg-background"
+                                >
+                                    <span className="truncate">
+                                        {filters.team === "all" ? "All Teams" : teams.find(t => t._id === filters.team)?.name || "All Teams"}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[220px] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Search team..." />
+                                    <CommandList>
+                                        <CommandEmpty>No team found.</CommandEmpty>
+                                        <CommandGroup>
+                                            <CommandItem
+                                                onSelect={() => {
+                                                    setFilters(prev => ({ ...prev, team: "all" }))
+                                                    setTeamOpen(false)
+                                                }}
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", filters.team === "all" ? "opacity-100" : "opacity-0")} />
+                                                All Teams
+                                            </CommandItem>
+                                            {teams.map((t) => (
+                                                <CommandItem
+                                                    key={t._id}
+                                                    value={t.name}
+                                                    onSelect={() => {
+                                                        setFilters(prev => ({ ...prev, team: t._id }))
+                                                        setTeamOpen(false)
+                                                    }}
+                                                >
+                                                    <Check className={cn("mr-2 h-4 w-4", filters.team === t._id ? "opacity-100" : "opacity-0")} />
+                                                    {t.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
+                    {/* Role */}
+                    <div className="col-span-1">
+                        <Label htmlFor="filter-role" className="text-s mb-1 ms-1">
+                            Role
+                        </Label>
+                        <Popover open={roleOpen} onOpenChange={setRoleOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={roleOpen}
+                                    className="w-full justify-between font-normal bg-background dark:bg-background hover:dark:bg-background"
+                                >
+                                    <span className="truncate">
+                                        {filters.role === "all" ? "All Roles" : filters.role}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[200px] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Search role..." />
+                                    <CommandList>
+                                        <CommandEmpty>No role found.</CommandEmpty>
+                                        <CommandGroup>
+                                            <CommandItem
+                                                onSelect={() => {
+                                                    setFilters(prev => ({ ...prev, role: "all" }))
+                                                    setRoleOpen(false)
+                                                }}
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", filters.role === "all" ? "opacity-100" : "opacity-0")} />
+                                                All Roles
+                                            </CommandItem>
+                                            {uniqueRoles.map((role) => (
+                                                <CommandItem
+                                                    key={role}
+                                                    value={role}
+                                                    onSelect={() => {
+                                                        setFilters(prev => ({ ...prev, role: role }))
+                                                        setRoleOpen(false)
+                                                    }}
+                                                >
+                                                    <Check className={cn("mr-2 h-4 w-4", filters.role === role ? "opacity-100" : "opacity-0")} />
+                                                    <span className="capitalize">{role}</span>
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
+                    {/* Status */}
+                    <div className="col-span-1">
+                        <Label htmlFor="filter-status" className="text-s mb-1 ms-1">
+                            Status
+                        </Label>
+                        <Popover open={statusOpen} onOpenChange={setStatusOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={statusOpen}
+                                    className="w-full justify-between font-normal bg-background dark:bg-background hover:dark:bg-background"
+                                >
+                                    <span className="truncate capitalize">
+                                        {filters.status === "all" ? "All Status" : filters.status}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[180px] p-0">
+                                <Command>
+                                    <CommandList>
+                                        <CommandGroup>
+                                            <CommandItem
+                                                onSelect={() => {
+                                                    setFilters(prev => ({ ...prev, status: "all" }))
+                                                    setStatusOpen(false)
+                                                }}
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", filters.status === "all" ? "opacity-100" : "opacity-0")} />
+                                                All
+                                            </CommandItem>
+                                            <CommandItem
+                                                onSelect={() => {
+                                                    setFilters(prev => ({ ...prev, status: "active" }))
+                                                    setStatusOpen(false)
+                                                }}
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", filters.status === "active" ? "opacity-100" : "opacity-0")} />
+                                                Active
+                                            </CommandItem>
+                                            <CommandItem
+                                                onSelect={() => {
+                                                    setFilters(prev => ({ ...prev, status: "inactive" }))
+                                                    setStatusOpen(false)
+                                                }}
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", filters.status === "inactive" ? "opacity-100" : "opacity-0")} />
+                                                Inactive
+                                            </CommandItem>
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
+                    {/* Department */}
+                    <div className="col-span-1">
+                        <Label htmlFor="filter-dept" className="text-s mb-1 ms-1">
+                            Department
+                        </Label>
+                        <Popover open={deptOpen} onOpenChange={setDeptOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={deptOpen}
+                                    className="w-full justify-between font-normal bg-background dark:bg-background hover:dark:bg-background"
+                                >
+                                    <span className="truncate capitalize">
+                                        {filters.department === "all" ? "All Departments" : filters.department}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[200px] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Search department..." />
+                                    <CommandList>
+                                        <CommandEmpty>No department found.</CommandEmpty>
+                                        <CommandGroup>
+                                            <CommandItem
+                                                onSelect={() => {
+                                                    setFilters(prev => ({ ...prev, department: "all" }))
+                                                    setDeptOpen(false)
+                                                }}
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", filters.department === "all" ? "opacity-100" : "opacity-0")} />
+                                                All
+                                            </CommandItem>
+                                            {["pre-sales", "sales", "post-sales"].map((dept) => (
+                                                <CommandItem
+                                                    key={dept}
+                                                    value={dept}
+                                                    onSelect={() => {
+                                                        setFilters(prev => ({ ...prev, department: dept }))
+                                                        setDeptOpen(false)
+                                                    }}
+                                                >
+                                                    <Check className={cn("mr-2 h-4 w-4", filters.department === dept ? "opacity-100" : "opacity-0")} />
+                                                    <span className="capitalize">{dept}</span>
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
+                    <div className="col-span-1"></div>
+
+                    {/* Buttons */}
+                    <div className="col-span-1 flex justify-center items-center gap-2 w-full mt-2">
+                        <Button variant="destructive" className="mt-2 w-[45%]" size="sm" type="button" onClick={handleFilterReset}>
+                            Reset
                         </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[220px] p-0">
-                        <Command>
-                            <CommandInput placeholder="Search email..." />
-                            <CommandList>
-                                <CommandEmpty>No email found.</CommandEmpty>
-                                <CommandGroup>
-                                    <CommandItem
-                                        onSelect={() => {
-                                            setFilterEmail("")
-                                            setEmailOpen(false)
-                                        }}
-                                    >
-                                        <Check className={cn("mr-2 h-4 w-4", !filterEmail ? "opacity-100" : "opacity-0")} />
-                                        All Emails
-                                    </CommandItem>
-                                    {uniqueEmails.map((email) => (
-                                        <CommandItem
-                                            key={email}
-                                            value={email}
-                                            onSelect={() => {
-                                                setFilterEmail(email === filterEmail ? "" : email)
-                                                setEmailOpen(false)
-                                            }}
-                                        >
-                                            <Check className={cn("mr-2 h-4 w-4", filterEmail === email ? "opacity-100" : "opacity-0")} />
-                                            {email}
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </CommandList>
-                        </Command>
-                    </PopoverContent>
-                </Popover>
-
-                <Select value={filterTeam} onValueChange={setFilterTeam}>
-                    <SelectTrigger className="w-[170px]">
-                        <SelectValue placeholder="All Teams" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Teams</SelectItem>
-                        {teams.map((t) => (
-                            <SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-
-                <Select value={filterRole} onValueChange={setFilterRole}>
-                    <SelectTrigger className="w-[140px]">
-                        <SelectValue placeholder="All Roles" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Roles</SelectItem>
-                        {uniqueRoles.map((role) => (
-                            <SelectItem key={role} value={role} className="capitalize">{role}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-
-                {hasActiveFilters && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
-                        <X className="h-4 w-4 mr-1" />
-                        Clear
-                    </Button>
-                )}
+                        <Button size="sm" className="mt-2 w-[45%] active:bg-primary" type="submit">
+                            Apply
+                        </Button>
+                    </div>
+                </form>
             </div>
-
             <DataTable
                 columns={columns}
                 data={filteredUsers}
                 initialPageSize={15}
+                topRightContent={
+                    canAddUsers && (
+                        <Sheet open={open} onOpenChange={setOpen}>
+                            <SheetTrigger asChild>
+                                <Button className="text-xs" size="sm">Add User</Button>
+                            </SheetTrigger>
+                            <SheetContent className="w-xl px-5 overflow-y-auto">
+                                <SheetHeader>
+                                    <SheetTitle>Add New User</SheetTitle>
+                                    <SheetDescription>
+                                        Enter the details below to create a new user account.
+                                    </SheetDescription>
+                                </SheetHeader>
+                                <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="first-name">First Name</Label>
+                                            <Input id="first-name" placeholder="John" value={formData.firstName} onChange={handleInputChange} required />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="last-name">Last Name <span className="text-muted-foreground">(Optional)</span></Label>
+                                            <Input id="last-name" placeholder="Doe" value={formData.lastName} onChange={handleInputChange} />
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="email">Email</Label>
+                                        <Input id="email" type="email" placeholder="john.doe@example.com" value={formData.email} onChange={handleInputChange} required />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="phone-number">Phone Number</Label>
+                                        <Input id="phone-number" placeholder="+1 234 567 890" value={formData.phoneNumber} onChange={handleInputChange} required />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="password">Password</Label>
+                                        <Input id="password" type="password" value={formData.password} onChange={handleInputChange} required />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="role">Role</Label>
+                                        <Select onValueChange={handleSelectChange} value={formData.role}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select a role" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="admin">Admin</SelectItem>
+                                                <SelectItem value="manager">Manager</SelectItem>
+                                                <SelectItem value="user">User</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="department">Department</Label>
+                                        <Select onValueChange={(value) => setFormData((prev) => ({ ...prev, department: value }))} value={formData.department}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select a department" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="pre-sales">Pre-Sales</SelectItem>
+                                                <SelectItem value="sales">Sales</SelectItem>
+                                                <SelectItem value="post-sales">Post-Sales</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label>Permissions</Label>
+                                        <div className="grid grid-cols-2 gap-3 rounded-md border p-3">
+                                            {PERMISSION_OPTIONS.map((perm) => (
+                                                <label key={perm.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                                                    <Checkbox
+                                                        checked={formData.permissions.includes(perm.key)}
+                                                        onCheckedChange={() => togglePermission(perm.key)}
+                                                    />
+                                                    {perm.label}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <Button type="submit" className="mt-4">Create User</Button>
+                                </form>
+                            </SheetContent>
+                        </Sheet>
+                    )
+                }
             />
 
             {/* ────────── Edit User Sheet ────────── */}
