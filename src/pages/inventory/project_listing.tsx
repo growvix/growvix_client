@@ -7,9 +7,9 @@ import {
     type ColumnDef,
 } from "@tanstack/react-table"
 import { gql } from "@apollo/client"
-import { useQuery, useLazyQuery } from "@apollo/client/react"
-import type { ProjectSummary, BookedItem, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables, GetProjectBookedUnitsQueryResponse, GetProjectBookedUnitsQueryVariables } from "@/types"
-
+import { useQuery } from "@apollo/client/react"
+import type { ProjectSummary, BookedItem, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables } from "@/types"
+import LoaderScreen, { HorizontalLoader } from "@/components/ui/loader-screen"
 import { ArrowUpDown, Ban, Info, MoreHorizontal, Pencil, LayoutGrid, List, Building2, MapPin, Layers, X } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -30,7 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { DataTable } from "@/components/ui/data-table"
-import { Tabs, TabsContent,TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const GET_ALL_PROJECTS = gql`
   query GetAllProjects($organization: String!) {
@@ -49,14 +49,6 @@ const GET_ALL_PROJECTS = gql`
       blockCount
       totalUnits
       bookedCount
-      createdAt
-    }
-  }
-`;
-
-const GET_PROJECT_BOOKED_UNITS = gql`
-  query GetProjectBookedUnits($organization: String!, $id: Int!) {
-    getProjectById(organization: $organization, id: $id) {
       bookedUnits {
         id
         label
@@ -73,6 +65,7 @@ const GET_PROJECT_BOOKED_UNITS = gql`
         project_name
         project_id
       }
+      createdAt
     }
   }
 `;
@@ -122,7 +115,7 @@ export default function ProjectListing() {
         }
     );
 
-    const [fetchBookedUnits, { loading: bookedUnitsLoading }] = useLazyQuery<GetProjectBookedUnitsQueryResponse, GetProjectBookedUnitsQueryVariables>(GET_PROJECT_BOOKED_UNITS);
+
 
     useEffect(() => {
         if (projectsData) {
@@ -163,24 +156,12 @@ export default function ProjectListing() {
         navigate(`/edit_project/${encodedId}`)
     }, [navigate])
 
-    const handleBookedUnitsClick = async (e: React.MouseEvent, project: ProjectSummary) => {
+    const handleBookedUnitsClick = (e: React.MouseEvent, project: ProjectSummary) => {
         e.stopPropagation()
         setBookedProjectName(project.name)
         setBookedProjectId(project.product_id)
+        setBookedUnitsData(project.bookedUnits || [])
         setBookedUnitsOpen(true)
-
-        setBookedUnitsData([]) // Clear previous data
-        try {
-            const org = getCookie('organization') || ''
-            const { data: response } = await fetchBookedUnits({
-                variables: { organization: org, id: project.product_id }
-            })
-            setBookedUnitsData(response?.getProjectById?.bookedUnits || [])
-        } catch (err: any) {
-            console.error("Error fetching booked units:", err)
-            toast.error(err.message || "Failed to fetch booked units")
-            setBookedUnitsData([])
-        }
     }
 
     const columns: ColumnDef<ProjectSummary>[] = React.useMemo(() => [
@@ -372,6 +353,9 @@ export default function ProjectListing() {
             (p.location && p.location.toLowerCase().includes(q))
         )
     }, [data, gridSearch])
+    if (projectsLoading && data.length === 0) {
+        return <LoaderScreen />
+    }
 
     return (
         <div className="px-6 sm:px-6 mt-2 pb-6">
@@ -409,11 +393,11 @@ export default function ProjectListing() {
             </div>
 
             {/* Content */}
-            {projectsLoading ? (
-                <div className="flex items-center justify-center py-20">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                </div>
-            ) : errorMsg ? (
+            <div className="w-full">
+                {projectsLoading && <HorizontalLoader />}
+            </div>
+
+            {errorMsg ? (
                 <div className="w-full text-center py-10 text-red-500">{errorMsg}</div>
             ) : viewMode === "table" ? (
                     /* ── List / Table View ── no Card wrapper, clean flat look */
@@ -532,6 +516,11 @@ export default function ProjectListing() {
                         )}
                     </div>
                 )}
+            
+            <div className="w-full mt-2">
+                {projectsLoading && <HorizontalLoader />}
+            </div>
+
 
             <Sheet open={bookedUnitsOpen} onOpenChange={setBookedUnitsOpen}>
                 <SheetContent side="right" className="w-[400px] sm:w-[540px] px-0 flex flex-col">
@@ -553,12 +542,7 @@ export default function ProjectListing() {
 
                     <ScrollArea className="h-[calc(100vh-140px)] px-6 overflow-y-auto">
                         <div className="py-2 space-y-2 pr-1">
-                            {bookedUnitsLoading ? (
-                                <div className="flex flex-col items-center justify-center py-10 space-y-4">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                                    <p className="text-sm text-muted-foreground">Loading booked units...</p>
-                                </div>
-                            ) : filteredBookedUnitsData.length === 0 ? (
+                            {filteredBookedUnitsData.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
                                     <div className="bg-muted/50 p-4 rounded-full mb-4">
                                         <Ban className="h-8 w-8 text-muted-foreground/60" />

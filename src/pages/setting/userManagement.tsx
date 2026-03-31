@@ -73,6 +73,7 @@ const PERMISSION_OPTIONS = [
     { key: "view_users", label: "View Users" },
     { key: "edit_users", label: "Edit All Users" },
     { key: "delete_users", label: "Delete Users" },
+    { key: "show_user_phone_number", label: "Show User Phone Number" },
 ] as const;
 
 // ─── Types ──────────────────────────────────────────────
@@ -123,6 +124,7 @@ export default function UserManagement() {
     const userPermissions = getPermissions()
     const canViewUsers = userPermissions.includes("view_users")
     const canAddUsers = userPermissions.includes("add_users")
+    const canShowUserPhone = userPermissions.includes("show_user_phone_number")
 
     // ── Add-user form state ──
     const [open, setOpen] = useState(false)
@@ -834,6 +836,7 @@ export default function UserManagement() {
                                 placeholder="+1 234 567 890"
                                 value={editFormData.phone}
                                 onChange={handleEditInputChange}
+                                disabled={!canShowUserPhone}
                             />
                         </div>
                         <div className="grid gap-2">
