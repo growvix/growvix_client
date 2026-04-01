@@ -55,6 +55,7 @@ export function NavUser({
   const { isMobile, setLocked, setOpen, setOpenMobile } = useSidebar()
   const rawRole = getCookie('role');
   const role = rawRole?.toLowerCase();
+  const canImpersonate = role === 'admin' || role === 'manager';
   console.log("Current user role (active):", role);
   const [showSwitchAccount, setShowSwitchAccount] = useState(false);
   const [executives, setExecutives] = useState<any[]>([]);
@@ -66,20 +67,31 @@ export function NavUser({
   const isAdminImpersonating = !!getCookie('admin_token');
 
   useEffect(() => {
-    if (showSwitchAccount && role === 'admin' && executives.length === 0) {
+    if (showSwitchAccount && canImpersonate && executives.length === 0) {
       const fetchUsers = async () => {
         setLoadingUsers(true);
         try {
           const org = getCookie("organization");
           const token = getCookie("token");
-          const response = await axios.get(`${API.USERS}?organization=${org}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          const users = response.data.data?.users || [];
+          
+          let response;
+          if (role === 'admin') {
+            response = await axios.get(`${API.USERS}?organization=${org}&limit=500`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+          } else {
+            response = await axios.get(`${API.getTeamUsers()}?organization=${org}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+          }
+          
+          const payload = response.data.data;
+          const users = Array.isArray(payload) ? payload : (payload?.users || []);
           setExecutives(users.filter((u: any) => u.role === 'user'));
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to fetch executives", error);
-          toast.error("Failed to load executive accounts");
+          const errMessage = error.response?.data?.message || "Failed to load executive accounts";
+          toast.error(errMessage);
         } finally {
           setLoadingUsers(false);
         }
@@ -94,7 +106,7 @@ export function NavUser({
       const token = getCookie("token");
       
       // Save admin session before impersonating
-      if (role === 'admin' && !isAdminImpersonating) {
+      if (canImpersonate && !isAdminImpersonating) {
         setCookie('admin_user_id', getCookie('user_id') as string);
         setCookie('admin_profile_id', getCookie('profile_id') as string);
         setCookie('admin_organization', getCookie('organization') as string);
@@ -145,6 +157,8 @@ export function NavUser({
       setCookie('role', getCookie('admin_role') as string);
       setCookie('permissions', getCookie('admin_permissions') as string);
       
+      const originalRole = getCookie('admin_role');
+      
       // Clear admin cache cookies
       document.cookie = "admin_user_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       document.cookie = "admin_profile_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
@@ -155,8 +169,8 @@ export function NavUser({
       document.cookie = "admin_role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       document.cookie = "admin_permissions=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       
-      toast.success("Returned to Master View");
-      window.location.href = "/master_dashboard";
+      toast.success(originalRole === 'admin' ? "Returned to Master View" : "Returned to Management View");
+      window.location.href = originalRole === 'admin' ? "/master_dashboard" : "/management_dashboard";
     } else {
       // Normal logout
       deleteAllAuthCookies();
@@ -210,7 +224,7 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              {role === 'admin' && (
+              {canImpersonate && (
                 <DropdownMenuItem 
                   onSelect={() => {
                     setOpen(false)

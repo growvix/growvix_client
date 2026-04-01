@@ -1,14 +1,15 @@
-import { useEffect } from "react"
+import * as React from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import * as React from "react"
-import axios from "axios"
-import { API } from "@/config/api"
 import {
     type ColumnDef,
 } from "@tanstack/react-table"
-
+import { gql } from "@apollo/client"
+import { useQuery } from "@apollo/client/react"
+import type { ProjectSummary, BookedItem, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables } from "@/types"
+import LoaderScreen, { HorizontalLoader } from "@/components/ui/loader-screen"
 import { ArrowUpDown, Ban, Info, MoreHorizontal, Pencil, LayoutGrid, List, Building2, MapPin, Layers, X } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -28,37 +29,70 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import type { projects } from "@/types"
 import { DataTable } from "@/components/ui/data-table"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { Tabs, TabsContent,TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+const GET_ALL_PROJECTS = gql`
+  query GetAllProjects($organization: String!) {
+    getAllProjects(organization: $organization) {
+      product_id
+      name
+      location
+      property
+      img_location {
+        logo
+        banner
+        brochure
+        post
+        videos
+      }
+      blockCount
+      totalUnits
+      bookedCount
+      bookedUnits {
+        id
+        label
+        type
+        bookedBy {
+          leadName
+          leadUuid
+          profileId
+          phone
+          userId
+          userName
+          bookedAt
+        }
+        project_name
+        project_id
+      }
+      createdAt
+    }
+  }
+`;
 
 
 export default function ProjectListing() {
     const { setBreadcrumbs } = useBreadcrumb()
-    const [data, setData] = React.useState<projects[]>([])
-    const [loading, setLoading] = React.useState(true)
-    const [error, setError] = React.useState('')
-    const [viewMode, setViewMode] = React.useState<"table" | "grid">(() => {
+    const [data, setData] = useState<ProjectSummary[]>([])
+    const [viewMode, setViewMode] = useState<"table" | "grid">(() => {
         const saved = sessionStorage.getItem("projectListingViewMode")
         return (saved === "grid" || saved === "table") ? saved : "grid"
     })
-    const [gridSearch, setGridSearch] = React.useState("")
+    const [gridSearch, setGridSearch] = useState("")
 
     // Persist viewMode to sessionStorage
-    React.useEffect(() => {
+    useEffect(() => {
         sessionStorage.setItem("projectListingViewMode", viewMode)
     }, [viewMode])
 
     // Booked Units State
-    const [bookedUnitsOpen, setBookedUnitsOpen] = React.useState(false)
-    const [bookedUnitsData, setBookedUnitsData] = React.useState<any[]>([])
-    const [bookedUnitsLoading, setBookedUnitsLoading] = React.useState(false)
-    const [bookedProjectName, setBookedProjectName] = React.useState('')
-    const [bookedProjectId, setBookedProjectId] = React.useState<number>(0)
-    const [searchBookedQuery, setSearchBookedQuery] = React.useState('')
+    const [bookedUnitsOpen, setBookedUnitsOpen] = useState(false)
+    const [bookedUnitsData, setBookedUnitsData] = useState<BookedItem[]>([])
+    const [bookedProjectName, setBookedProjectName] = useState('')
+    const [bookedProjectId, setBookedProjectId] = useState<number>(0)
+    const [searchBookedQuery, setSearchBookedQuery] = useState('')
 
-    const filteredBookedUnitsData = React.useMemo(() => {
+    const filteredBookedUnitsData = useMemo(() => {
         if (!searchBookedQuery) return bookedUnitsData;
         const queryLower = searchBookedQuery.toLowerCase();
         return bookedUnitsData.filter((unit) => {
@@ -69,6 +103,25 @@ export default function ProjectListing() {
     }, [bookedUnitsData, searchBookedQuery]);
 
     const navigate = useNavigate()
+    const permissions = getPermissions()
+    const canViewInventory = permissions.includes("view_inventory")
+    const org = getCookie('organization') || ''
+
+    const { loading: projectsLoading, error: projectsError, data: projectsData } = useQuery<GetAllProjectsQueryResponse, GetAllProjectsQueryVariables>(
+        GET_ALL_PROJECTS,
+        {
+            variables: { organization: org },
+            skip: !org || !canViewInventory
+        }
+    );
+
+
+
+    useEffect(() => {
+        if (projectsData) {
+            setData(projectsData.getAllProjects as ProjectSummary[]);
+        }
+    }, [projectsData]);
 
     useEffect(() => {
         setBreadcrumbs([
@@ -90,40 +143,9 @@ export default function ProjectListing() {
         ]);
     }, [setBreadcrumbs]);
 
-    const fetchProjects = React.useCallback(async () => {
-        const permissions = getPermissions()
-        if (!permissions.includes("view_inventory")) {
-            setLoading(false)
-            return
-        }
+    const errorMsg = projectsError?.message;
 
-        try {
-            setLoading(true)
-            const org = getCookie('organization')
-            if (!org) {
-                setError('Organization not found in cookies')
-                setLoading(false)
-                return
-            }
-            const response = await axios.get(`${API.PROJECTS}?organization=${org}`)
-            setData(response.data.data || [])
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to fetch projects')
-        } finally {
-            setLoading(false)
-        }
-    }, [])
-
-    const permissions = getPermissions()
-    const canViewInventory = permissions.includes("view_inventory")
-
-    // Fetch projects from API on mount
-    React.useEffect(() => {
-        if (canViewInventory) fetchProjects()
-        else setLoading(false)
-    }, [fetchProjects, canViewInventory])
-
-    const handleEditProject = React.useCallback((e: React.MouseEvent, project: projects) => {
+    const handleEditProject = useCallback((e: React.MouseEvent, project: ProjectSummary) => {
         e.stopPropagation() 
         const permissions = getPermissions()
         if (!permissions.includes("edit_inventory")) {
@@ -134,27 +156,15 @@ export default function ProjectListing() {
         navigate(`/edit_project/${encodedId}`)
     }, [navigate])
 
-    const handleBookedUnitsClick = async (e: React.MouseEvent, project: projects) => {
+    const handleBookedUnitsClick = (e: React.MouseEvent, project: ProjectSummary) => {
         e.stopPropagation()
         setBookedProjectName(project.name)
         setBookedProjectId(project.product_id)
+        setBookedUnitsData(project.bookedUnits || [])
         setBookedUnitsOpen(true)
-        setBookedUnitsLoading(true)
-
-        try {
-            const org = getCookie('organization')
-            const response = await axios.get(API.getProjectBookedUnits(project.product_id) + `?organization=${org}`)
-            setBookedUnitsData(response.data.data || [])
-        } catch (err: any) {
-            console.error("Error fetching booked units:", err)
-            toast.error(err.response?.data?.message || "Failed to fetch booked units")
-            setBookedUnitsData([])
-        } finally {
-            setBookedUnitsLoading(false)
-        }
     }
 
-    const columns: ColumnDef<projects>[] = React.useMemo(() => [
+    const columns: ColumnDef<ProjectSummary>[] = React.useMemo(() => [
         {
             accessorKey: "product_id",
             header: ({ column }) => {
@@ -314,7 +324,7 @@ export default function ProjectListing() {
         },
     ], [handleEditProject])
 
-    const handleRowClick = async (project: projects) => {
+    const handleRowClick = async (project: ProjectSummary) => {
         const encodedId = encodeProjectId(project.product_id)
         navigate(`/project_showcase?id=${encodedId}`)
     }
@@ -343,6 +353,9 @@ export default function ProjectListing() {
             (p.location && p.location.toLowerCase().includes(q))
         )
     }, [data, gridSearch])
+    if (projectsLoading && data.length === 0) {
+        return <LoaderScreen />
+    }
 
     return (
         <div className="px-6 sm:px-6 mt-2 pb-6">
@@ -380,129 +393,134 @@ export default function ProjectListing() {
             </div>
 
             {/* Content */}
-            {loading ? (
-                <div className="flex items-center justify-center py-20">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                </div>
-            ) : error ? (
-                <div className="w-full text-center py-10 text-red-500">{error}</div>
-            ) : viewMode === "table" ? (
-                /* ── List / Table View ── no Card wrapper, clean flat look */
-                <DataTable
-                    columns={columns}
-                    data={data}
-                    initialPageSize={15}
-                    filterColumn="name"
-                    filterPlaceholder="Filter by name..."
-                    onRowClick={handleRowClick}
-                />
-            ) : (
-                /* ── Grid View ── */
-                <div className="w-full">
-                    {/* Filter bar – same position as DataTable's filter */}
-                    <div className="flex justify-between gap-4 py-4 w-full">
-                        <div className="relative w-full max-w-sm">
-                            <Input
-                                type="text"
-                                placeholder="Filter by name..."
-                                value={gridSearch}
-                                onChange={(e) => setGridSearch(e.target.value)}
-                                className="w-full pr-8 bg-input/30 dark:bg-input/50"
-                            />
-                            {gridSearch && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setGridSearch("")}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                    {filteredGridData.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                            {filteredGridData.map((project) => (
-                                <Card
-                                    key={project.product_id}
-                                    className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30 relative flex flex-col"
-                                    onClick={() => handleRowClick(project)}
-                                >
-                                    <CardHeader className="px-3.5 py-0">
-                                        <div className="flex items-start justify-between">
-                                            <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                                                {project.property === 'plots' ? <Layers className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
-                                            </div>
-                                            <Badge variant="outline" className="capitalize text-xs">
-                                                {project.property || "—"}
-                                            </Badge>
-                                        </div>
-                                        <CardTitle className="text-base mt-1 group-hover:text-primary transition-colors truncate">
-                                            {project.name}
-                                        </CardTitle>
-                                        {project.location && (
-                                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                                                <MapPin className="h-3 w-3 shrink-0" />
-                                                <span className="truncate">{project.location}</span>
-                                            </div>
-                                        )}
-                                    </CardHeader>
-                                    <CardContent className="px-4 pt-0">
-                                        <div className="flex items-center justify-between pt-3 border-t">
-                                            <div className="flex items-center gap-3">
-                                                <div className="text-xs">
-                                                    <span className="font-semibold text-foreground">{project.totalUnits || 0}</span>
-                                                    <span className="text-muted-foreground ml-1">units</span>
-                                                </div>
-                                                {(project.blockCount != null && project.blockCount > 0) && (
-                                                    <div className="text-xs">
-                                                        <span className="font-semibold text-foreground">{project.blockCount}</span>
-                                                        <span className="text-muted-foreground ml-1">blocks</span>
-                                                    </div>
-                                                )}
-                                                {(project.bookedCount != null && project.bookedCount > 0) && (
-                                                    <Badge className="ml-auto text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 hover:bg-orange-200">
-                                                        {project.bookedCount} booked
-                                                    </Badge>
-                                                )}
-                                            </div>
+            <div className="w-full">
+                {projectsLoading && <HorizontalLoader />}
+            </div>
 
-                                            {/* Three dots menu */}
-                                            <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" className="h-6 w-6 p-0 text-muted-foreground transition-colors hover:text-foreground">
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRowClick(project); }}>
-                                                            View Project
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={(e) => handleEditProject(e, project)}>
-                                                            <Pencil className="mr-2 h-4 w-4" />
-                                                            Edit Project
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem>Download Brochure</DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+            {errorMsg ? (
+                <div className="w-full text-center py-10 text-red-500">{errorMsg}</div>
+            ) : viewMode === "table" ? (
+                    /* ── List / Table View ── no Card wrapper, clean flat look */
+                    <DataTable
+                        columns={columns}
+                        data={data}
+                        initialPageSize={15}
+                        filterColumn="name"
+                        filterPlaceholder="Filter by name..."
+                        onRowClick={handleRowClick}
+                    />
+                ) : (
+                    /* ── Grid View ── */
+                    <div className="w-full">
+                        {/* Filter bar – same position as DataTable's filter */}
+                        <div className="flex justify-between gap-4 py-4 w-full">
+                            <div className="relative w-full max-w-sm">
+                                <Input
+                                    type="text"
+                                    placeholder="Filter by name..."
+                                    value={gridSearch}
+                                    onChange={(e) => setGridSearch(e.target.value)}
+                                    className="w-full pr-8 bg-input/30 dark:bg-input/50"
+                                />
+                                {gridSearch && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setGridSearch("")}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                        {filteredGridData.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                                {filteredGridData.map((project) => (
+                                    <Card
+                                        key={project.product_id}
+                                        className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30 relative flex flex-col"
+                                        onClick={() => handleRowClick(project)}
+                                    >
+                                        <CardHeader className="px-3.5 py-0">
+                                            <div className="flex items-start justify-between">
+                                                <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                                    {project.property === 'plots' ? <Layers className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
+                                                </div>
+                                                <Badge variant="outline" className="capitalize text-xs">
+                                                    {project.property || "—"}
+                                                </Badge>
                                             </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="col-span-full py-12 text-center text-muted-foreground">
-                            No projects match your search "{gridSearch}".
-                        </div>
-                    )}
-                </div>
-            )}
+                                            <CardTitle className="text-base mt-1 group-hover:text-primary transition-colors truncate">
+                                                {project.name}
+                                            </CardTitle>
+                                            {project.location && (
+                                                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                                    <MapPin className="h-3 w-3 shrink-0" />
+                                                    <span className="truncate">{project.location}</span>
+                                                </div>
+                                            )}
+                                        </CardHeader>
+                                        <CardContent className="px-4 pt-0">
+                                            <div className="flex items-center justify-between pt-3 border-t">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="text-xs">
+                                                        <span className="font-semibold text-foreground">{project.totalUnits || 0}</span>
+                                                        <span className="text-muted-foreground ml-1">units</span>
+                                                    </div>
+                                                    {(project.blockCount != null && project.blockCount > 0) && (
+                                                        <div className="text-xs">
+                                                            <span className="font-semibold text-foreground">{project.blockCount}</span>
+                                                            <span className="text-muted-foreground ml-1">blocks</span>
+                                                        </div>
+                                                    )}
+                                                    {(project.bookedCount != null && project.bookedCount > 0) && (
+                                                        <Badge className="ml-auto text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 hover:bg-orange-200" onClick={(e) => handleBookedUnitsClick(e, project)}>
+                                                            {project.bookedCount} booked
+                                                        </Badge>
+                                                    )}
+                                                </div>
+
+                                                {/* Three dots menu */}
+                                                <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-6 w-6 p-0 text-muted-foreground transition-colors hover:text-foreground">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRowClick(project); }}>
+                                                                View Project
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={(e) => handleEditProject(e, project)}>
+                                                                <Pencil className="mr-2 h-4 w-4" />
+                                                                Edit Project
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem>Download Brochure</DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="col-span-full py-12 text-center text-muted-foreground">
+                                No projects match your search "{gridSearch}".
+                            </div>
+                        )}
+                    </div>
+                )}
+            
+            <div className="w-full mt-2">
+                {projectsLoading && <HorizontalLoader />}
+            </div>
+
 
             <Sheet open={bookedUnitsOpen} onOpenChange={setBookedUnitsOpen}>
                 <SheetContent side="right" className="w-[400px] sm:w-[540px] px-0 flex flex-col">
@@ -524,12 +542,7 @@ export default function ProjectListing() {
 
                     <ScrollArea className="h-[calc(100vh-140px)] px-6 overflow-y-auto">
                         <div className="py-2 space-y-2 pr-1">
-                            {bookedUnitsLoading ? (
-                                <div className="flex flex-col items-center justify-center py-10 space-y-4">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                                    <p className="text-sm text-muted-foreground">Loading booked units...</p>
-                                </div>
-                            ) : filteredBookedUnitsData.length === 0 ? (
+                            {filteredBookedUnitsData.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
                                     <div className="bg-muted/50 p-4 rounded-full mb-4">
                                         <Ban className="h-8 w-8 text-muted-foreground/60" />

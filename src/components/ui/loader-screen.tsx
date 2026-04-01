@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { cn } from "@/lib/utils";
 
 const PATTERNS = [
   // Pattern A: [1,1,1,1] | [2,2] | [1,3]
@@ -95,4 +96,24 @@ const LoaderScreen = () => {
   );
 };
 
+const HorizontalLoader = () => {
+  return (
+    <div className="w-full py-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 px-4">
+        {[...Array(6)].map((_, i) => (
+          <div 
+            key={i} 
+            className={cn(
+              "h-8 bg-gray-200 dark:bg-muted/40 rounded-md animate-pulse",
+              i >= 2 && "hidden md:block",
+              i >= 4 && "hidden lg:block"
+            )} 
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export { HorizontalLoader };
 export default LoaderScreen;

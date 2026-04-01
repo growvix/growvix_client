@@ -7,7 +7,7 @@ import { format } from "date-fns"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { DataTable } from "@/components/ui/data-table"
-import LoaderScreen from "@/components/ui/loader-screen"
+import LoaderScreen, { HorizontalLoader } from "@/components/ui/loader-screen"
 import { getCookie } from "@/utils/cookies"
 import axios from "axios"
 import { API, API_URL } from "@/config/api"
@@ -406,7 +406,7 @@ export default function AllLeads() {
   const totalPages = Math.max(1, Math.ceil(totalLeads / PAGE_SIZE))
 
 
-  if (loading) {
+  if (loading && leads.length === 0) {
     return <LoaderScreen />
   }
 
@@ -531,7 +531,7 @@ export default function AllLeads() {
                   <CommandList>
                     <CommandEmpty>No status found.</CommandEmpty>
                     <CommandGroup>
-                      {["all", "Hot", "Warm", "Cold"].map((s) => (
+                      {["all", "No Activity", "Hot", "Warm", "Cold"].map((s) => (
                         <CommandItem key={s} value={s} onSelect={() => { handleChange("status", s); setStatusOpen(false) }}>
                           <Check className={cn("mr-2 h-4 w-4", filters.status === s ? "opacity-100" : "opacity-0")} />
                           {s === "all" ? "All" : s}
@@ -592,12 +592,44 @@ export default function AllLeads() {
         </form>
       </div>
       <div>
+        {loading && <HorizontalLoader />}
         <DataTable
           data={leads}
           columns={columns}
           initialPageSize={PAGE_SIZE}
           hidePagination
+          topLeftContent={
+            <p className="text-sm text-muted-foreground shrink-0 pl-1">
+              Showing {leads.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalLeads)} of {totalLeads} leads
+            </p>
+          }
+          topRightContent={
+            <div className="flex items-center gap-2 pr-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1 || loading}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              <span className="text-sm font-medium whitespace-nowrap">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages || loading}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          }
         />
+        {loading && <HorizontalLoader />}
 
         {/* Server-side Pagination Controls */}
         <div className="flex items-center justify-between px-2 py-3">

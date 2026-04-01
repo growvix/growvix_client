@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, } from "@/components/ui/carousel"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue, } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, } from "@/components/ui/dialog"
 import {
     MapPinCheck,
     CalendarSync,
@@ -47,7 +48,13 @@ import {
     CheckCircle,
     Clock,
     Star,
+    Share2,
     Loader2,
+    Edit3,
+    Paperclip,
+    X,
+    ArrowLeft,
+    Image as ImageIcon
 } from "lucide-react";
 import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables, GetLeadStagesQueryResponse, GetLeadStagesQueryVariables, GetOrganizationUsersQueryResponse, GetOrganizationUsersQueryVariables } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
@@ -57,6 +64,43 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+    GripVertical,
+    RectangleHorizontal,
+    Type,
+    AlignLeft,
+    AlignCenter,
+    AlignRight,
+    Minus,
+} from "lucide-react";
+
+// dnd-kit imports
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+
+// ─── Visual Editor Types ──────────────────────────────
+type DesignBlockType = "text" | "image" | "divider" | "button" | "spacer"
+interface DesignBlock {
+    id: string
+    type: DesignBlockType
+    content: string
+    styles: Record<string, string>
+}
 import {
     Tabs,
     TabsList,
@@ -354,6 +398,361 @@ const StageStatCard = ({ value, label, currentStageColor }: StageStatCardProps) 
     </div>
 );
 
+// ─── Button Controls (Label + Link + Alignment) ───────────
+function ButtonControls({
+    block,
+    onUpdate,
+}: {
+    block: DesignBlock
+    onUpdate: (block: DesignBlock) => void
+}) {
+    const currentAlign = block.styles.align || "center"
+
+    return (
+        <div className="flex flex-col gap-2 mt-2">
+            <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-md border flex-wrap">
+                <div className="flex items-center gap-2">
+                    <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Label</Label>
+                    <Input
+                        value={block.content || ""}
+                        onChange={(e) => onUpdate({ ...block, content: e.target.value })}
+                        placeholder="Click me"
+                        className="h-7 w-24 text-[10px]"
+                    />
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Link</Label>
+                    <Input
+                        value={block.styles.href || ""}
+                        onChange={(e) => onUpdate({ ...block, styles: { ...block.styles, href: e.target.value } })}
+                        placeholder="https://..."
+                        className="h-7 w-32 text-[10px]"
+                    />
+                </div>
+
+                <div className="flex items-center gap-2 ml-auto">
+                    <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Align</Label>
+                    <div className="flex gap-1">
+                        {[
+                            { value: "left", icon: AlignLeft, label: "Left" },
+                            { value: "center", icon: AlignCenter, label: "Center" },
+                            { value: "right", icon: AlignRight, label: "Right" },
+                        ].map(({ value, icon: Icon, label }) => (
+                            <Button
+                                key={value}
+                                type="button"
+                                variant={currentAlign === value ? "default" : "outline"}
+                                size="sm"
+                                className="h-6 w-7 p-0"
+                                title={label}
+                                onClick={() =>
+                                    onUpdate({
+                                        ...block,
+                                        styles: { ...block.styles, align: value },
+                                    })
+                                }
+                            >
+                                <Icon className="h-3 w-3" />
+                            </Button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Size</Label>
+                    <Select
+                        value={block.styles.size || "md"}
+                        onValueChange={(val) => onUpdate({ ...block, styles: { ...block.styles, size: val } })}
+                    >
+                        <SelectTrigger className="h-7 w-16 text-[10px]">
+                            <SelectValue placeholder="Size" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="sm">S</SelectItem>
+                            <SelectItem value="md">M</SelectItem>
+                            <SelectItem value="lg">L</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-4 p-2 bg-muted/50 rounded-md border flex-wrap">
+                <div className="flex items-center gap-2">
+                    <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Text</Label>
+                    <div className="flex items-center gap-1">
+                        <input
+                            type="color"
+                            value={block.styles.color || "#ffffff"}
+                            onChange={(e) => onUpdate({ ...block, styles: { ...block.styles, color: e.target.value } })}
+                            className="h-6 w-8 p-0.5 cursor-pointer bg-background border rounded"
+                        />
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <Label className="text-[10px] text-muted-foreground whitespace-nowrap">BG</Label>
+                    <div className="flex items-center gap-1">
+                        <input
+                            type="color"
+                            value={block.styles.backgroundColor || "#0f172a"}
+                            onChange={(e) => onUpdate({ ...block, styles: { ...block.styles, backgroundColor: e.target.value } })}
+                            className="h-6 w-8 p-0.5 cursor-pointer bg-background border rounded"
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ─── Image Controls (Resize + Alignment) ────────────────
+function ImageControls({
+    block,
+    onUpdate,
+}: {
+    block: DesignBlock
+    onUpdate: (block: DesignBlock) => void
+}) {
+    const currentWidth = block.styles.width || "100"
+    const currentAlign = block.styles.align || "center"
+
+    return (
+        <div className="flex flex-col gap-2 mt-2">
+            <div className="flex items-center gap-2 p-1.5 bg-muted/50 rounded-md border">
+                <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Align</Label>
+                <div className="flex gap-1">
+                    {[
+                        { value: "left", icon: AlignLeft, label: "Left" },
+                        { value: "center", icon: AlignCenter, label: "Center" },
+                        { value: "right", icon: AlignRight, label: "Right" },
+                    ].map(({ value, icon: Icon, label }) => (
+                        <Button
+                            key={value}
+                            type="button"
+                            variant={currentAlign === value ? "default" : "outline"}
+                            size="sm"
+                            className="h-6 w-7"
+                            title={label}
+                            onClick={() =>
+                                onUpdate({
+                                    ...block,
+                                    styles: { ...block.styles, align: value },
+                                })
+                            }
+                        >
+                            <Icon className="h-3 w-3" />
+                        </Button>
+                    ))}
+                </div>
+
+                <Separator orientation="vertical" className="h-5 mx-1" />
+
+                <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Width</Label>
+                <Input
+                    type="number"
+                    min="10"
+                    max="100"
+                    value={currentWidth}
+                    onChange={(e) => {
+                        const val = Math.min(100, Math.max(10, parseInt(e.target.value) || 100))
+                        onUpdate({
+                            ...block,
+                            styles: { ...block.styles, width: String(val) },
+                        })
+                    }}
+                    className="h-7 w-12 text-[10px]"
+                />
+                <div className="flex gap-1">
+                    {[50, 75, 100].map((w) => (
+                        <Button
+                            key={w}
+                            type="button"
+                            variant={currentWidth === String(w) ? "default" : "outline"}
+                            size="sm"
+                            className="h-6 px-1.5 text-[10px]"
+                            onClick={() =>
+                                onUpdate({
+                                    ...block,
+                                    styles: { ...block.styles, width: String(w) },
+                                })
+                            }
+                        >
+                            {w}%
+                        </Button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ─── Sortable Design Block Component ──────────────────── 
+function SortableDesignBlockItem({
+    block,
+    isSelected,
+    onSelect,
+    onUpdate,
+    onDelete,
+}: {
+    block: DesignBlock
+    isSelected: boolean
+    onSelect: () => void
+    onUpdate: (block: DesignBlock) => void
+    onDelete: () => void
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: block.id })
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 50 : "auto" as const,
+    }
+
+    const imgWidth = block.styles.width || "100"
+    const imgAlign = block.styles.align || "center"
+    const alignClass = imgAlign === "left" ? "mr-auto" : imgAlign === "right" ? "ml-auto" : "mx-auto"
+
+    const renderBlock = () => {
+        switch (block.type) {
+            case "text":
+                return (
+                    <div className="w-full relative z-10">
+                        <RichTextEditor
+                            value={block.content}
+                            onChange={(val) => onUpdate({ ...block, content: val })}
+                            minHeight="80px"
+                        />
+                    </div>
+                )
+            case "image":
+                return block.content ? (
+                    <div style={{ width: `${imgWidth}%` }} className={alignClass}>
+                        <img
+                            src={block.content}
+                            alt="Template image"
+                            className="w-full h-auto rounded"
+                        />
+                    </div>
+                ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                        <ImageIcon className="h-6 w-6 text-muted-foreground mb-1" />
+                        <span className="text-[10px] text-muted-foreground text-center">
+                            Click to upload image
+                        </span>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) {
+                                    const reader = new FileReader()
+                                    reader.onload = (ev) => {
+                                        onUpdate({
+                                            ...block,
+                                            content: ev.target?.result as string,
+                                        })
+                                    }
+                                    reader.readAsDataURL(file)
+                                }
+                            }}
+                        />
+                    </label>
+                )
+            case "divider":
+                return <hr className="border-t border-gray-300 my-1" />
+            case "button": {
+                const align = block.styles.align || "center"
+                const alignClass = align === "left" ? "text-left" : align === "right" ? "text-right" : "text-center"
+                const href = block.styles.href || "#"
+                const btnColor = block.styles.color || "#ffffff"
+                const btnBg = block.styles.backgroundColor || "#0f172a"
+                const btnSize = block.styles.size || "md"
+                const sizeStyles = {
+                    sm: "px-2 py-1 text-[10px]",
+                    md: "px-3 py-1.5 text-xs",
+                    lg: "px-4 py-2 text-sm"
+                }[btnSize] || "px-3 py-1.5 text-xs"
+
+                return (
+                    <div className={alignClass}>
+                        <a
+                            href={href}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={cn("inline-block rounded-md font-medium transition-colors opacity-90 hover:opacity-100", sizeStyles)}
+                            style={{ backgroundColor: btnBg, color: btnColor }}
+                        >
+                            {block.content || "Click me"}
+                        </a>
+                    </div>
+                )
+            }
+            case "spacer":
+                return <div className="h-4" />
+            default:
+                return null
+        }
+    }
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            data-block-id={block.id}
+            onClick={onSelect}
+            className={cn(
+                "group relative p-2 rounded-lg border transition-all mb-2",
+                isDragging && "shadow-lg bg-background",
+                isSelected
+                    ? "border-primary ring-1 ring-primary/20 bg-primary/5"
+                    : "border-transparent hover:border-muted-foreground/20 hover:bg-muted/30"
+            )}
+        >
+            <div className="flex items-start gap-1">
+                <div
+                    {...attributes}
+                    {...listeners}
+                    className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity pt-1 cursor-grab active:cursor-grabbing"
+                >
+                    <GripVertical className="h-3 w-3 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    {renderBlock()}
+                    {/* Show button controls when button is selected */}
+                    {isSelected && block.type === "button" && (
+                        <ButtonControls block={block} onUpdate={onUpdate} />
+                    )}
+                    {/* Show image controls when image is selected */}
+                    {isSelected && block.type === "image" && block.content && (
+                        <ImageControls block={block} onUpdate={onUpdate} />
+                    )}
+                </div>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                    onClick={(e) => {
+                        e.stopPropagation()
+                        onDelete()
+                    }}
+                >
+                    <Trash2 className="h-3 w-3" />
+                </Button>
+            </div>
+        </div>
+    )
+}
+
 export default function LeadDetail() {
     const [loading, setLoading] = useState(true)
     const [togglingImportantId, setTogglingImportantId] = useState<string | null>(null)
@@ -397,8 +796,114 @@ export default function LeadDetail() {
     const [mailSheetOpen, setMailSheetOpen] = useState(false)
     const [mailSubject, setMailSubject] = useState('')
     const [mailBody, setMailBody] = useState('')
-    const [mailAttachments, setMailAttachments] = useState<File[]>([])
+    type MailAttachment = { type: 'file', file: File } | { type: 'template', filename: string, url: string };
+    const [mailAttachments, setMailAttachments] = useState<MailAttachment[]>([])
     const [mailLoading, setMailLoading] = useState(false)
+
+    // Mail template state
+    interface MailTemplate {
+        _id: string;
+        templateName: string;
+        subject: string;
+        body: string;
+        attachments: { filename: string; url: string; type: string }[];
+        projectId?: { _id: string; name: string } | string;
+        description?: string;
+    }
+    const [mailTemplates, setMailTemplates] = useState<MailTemplate[]>([])
+    const [mailTemplatesLoading, setMailTemplatesLoading] = useState(false)
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
+    const [selectedTemplate, setSelectedTemplate] = useState<MailTemplate | null>(null)
+    const [templateEditModalOpen, setTemplateEditModalOpen] = useState(false)
+
+    // Visual Editor State
+    const [designBlocks, setDesignBlocks] = useState<DesignBlock[]>([])
+    const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null)
+
+    // dnd-kit sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    )
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event
+        if (over && active.id !== over.id) {
+            setDesignBlocks((items) => {
+                const oldIndex = items.findIndex((item) => item.id === active.id)
+                const newIndex = items.findIndex((item) => item.id === over.id)
+                return arrayMove(items, oldIndex, newIndex)
+            })
+        }
+    }
+
+    const addBlock = (type: DesignBlockType) => {
+        const newBlock: DesignBlock = {
+            id: `block-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            type,
+            content: type === "text" ? "Type your text here..." : type === "button" ? "Click me" : "",
+            styles: {},
+        }
+        setDesignBlocks((prev) => [...prev, newBlock])
+        setSelectedBlockId(newBlock.id)
+    }
+
+    const deleteBlock = (id: string) => {
+        setDesignBlocks(prev => prev.filter(b => b.id !== id))
+        if (selectedBlockId === id) setSelectedBlockId(null)
+    }
+
+    const updateBlock = (updated: DesignBlock) => {
+        setDesignBlocks(prev => prev.map(b => b.id === updated.id ? updated : b))
+    }
+
+    const generateHtmlFromBlocks = (blocks: DesignBlock[]) => {
+        let html = '<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; background-color: #ffffff; text-align: left;">'
+
+        blocks.forEach((block) => {
+            const align = block.styles?.align || 'left'
+            const textAlign = `text-align: ${align};`
+            
+            if (block.type === 'text') {
+                html += `<div style="margin-bottom: 20px; ${textAlign} line-height: 1.6; font-size: 14px; color: #374151;">${block.content || ''}</div>`
+            } else if (block.type === 'image' && block.content) {
+                const width = block.styles?.width || '100'
+                let imgSrc = block.content
+                if (imgSrc.startsWith('/uploads')) {
+                    imgSrc = `${API_URL}${imgSrc}`
+                } else if (!imgSrc.startsWith('http') && !imgSrc.startsWith('data:')) {
+                    imgSrc = `${API_URL}/${imgSrc.startsWith('/') ? imgSrc.slice(1) : imgSrc}`
+                }
+                
+                const marginStyle = align === 'center' ? 'margin: 0 auto;' : align === 'right' ? 'margin-left: auto;' : 'margin-right: auto;'
+                html += `<div style="margin-bottom: 20px; ${textAlign}">
+                    <img src="${imgSrc}" style="max-width: ${width}%; height: auto; display: block; border-radius: 8px; ${marginStyle}" alt="Image" />
+                </div>`
+            } else if (block.type === 'divider') {
+                html += '<div style="margin: 24px 0; border-top: 1px solid #e5e7eb;"></div>'
+            } else if (block.type === 'button') {
+                const href = block.styles?.href || '#'
+                const btnColor = block.styles?.color || '#ffffff'
+                const btnBg = block.styles?.backgroundColor || '#0f172a'
+                const btnSize = block.styles?.size || 'md'
+                const padding = btnSize === 'sm' ? '8px 16px' : btnSize === 'lg' ? '14px 28px' : '11px 22px'
+                const fontSize = btnSize === 'sm' ? '12px' : btnSize === 'lg' ? '16px' : '14px'
+
+                html += `<div style="margin-bottom: 20px; ${textAlign}">
+                    <a href="${href}" target="_blank" rel="noopener noreferrer" 
+                       style="display: inline-block; padding: ${padding}; background-color: ${btnBg}; color: ${btnColor}; 
+                              text-decoration: none; border-radius: 6px; font-weight: 600; font-size: ${fontSize}; font-family: inherit;">
+                        ${block.content || 'Click Now'}
+                    </a>
+                </div>`
+            } else if (block.type === 'spacer') {
+                html += '<div style="height: 30px;"></div>'
+            }
+        })
+
+        html += '</div>'
+        return html
+    }
 
     // Reassign state
     const [reassignSheetOpen, setReassignSheetOpen] = useState(false)
@@ -698,7 +1203,15 @@ export default function LeadDetail() {
             formData.append('to', toEmail)
             formData.append('subject', mailSubject)
             formData.append('html', mailBody)
-            mailAttachments.forEach((file) => formData.append('attachments', file))
+            
+            mailAttachments.forEach((att) => {
+                if (att.type === 'file') {
+                    formData.append('attachments', att.file)
+                } else if (att.type === 'template') {
+                    // Send template attachment info (backend must be updated to handle this if needed)
+                    formData.append('templateAttachments', JSON.stringify({ filename: att.filename, url: att.url }))
+                }
+            })
 
             await axios.post(`${API_URL}/api/mail/send`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
@@ -1033,7 +1546,25 @@ export default function LeadDetail() {
                                 </div>
 
                                 <div className="flex justify-center">
-                                    <Sheet open={mailSheetOpen} onOpenChange={setMailSheetOpen}>
+                                    <Sheet open={mailSheetOpen} onOpenChange={(open) => {
+                                        setMailSheetOpen(open)
+                                        if (open && mailTemplates.length === 0) {
+                                            // Fetch templates when opening
+                                            setMailTemplatesLoading(true)
+                                            const org = getCookie('organization')
+                                            if (org) {
+                                                axios.get(`${API_URL}/api/mail/templates?organization=${org}`)
+                                                    .then(res => setMailTemplates(res.data?.data || []))
+                                                    .catch(() => { /* silently fail – user can still compose manually */ })
+                                                    .finally(() => setMailTemplatesLoading(false))
+                                            } else {
+                                                setMailTemplatesLoading(false)
+                                            }
+                                        }
+                                        if (!open) {
+                                            setSelectedTemplateId('')
+                                        }
+                                    }}>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
@@ -1055,82 +1586,208 @@ export default function LeadDetail() {
                                             </SheetHeader>
                                             <div className="flex-1 overflow-y-auto px-1 py-4 px-5">
                                                 <form id="mail-compose-form" onSubmit={handleSendMail} className="space-y-4">
-                                                    {/* To */}
+                                                    {/* Template selector */}
                                                     <div className="space-y-1.5">
-                                                        <Label htmlFor="mailTo">To</Label>
-                                                        <Input
-                                                            id="mailTo"
-                                                            value={leadDetail?.profile?.email || ''}
-                                                            readOnly
-                                                            className="bg-muted/40 cursor-not-allowed"
-                                                        />
-                                                    </div>
-
-                                                    {/* Subject */}
-                                                    <div className="space-y-1.5">
-                                                        <Label htmlFor="mailSubject">Subject</Label>
-                                                        <Input
-                                                            id="mailSubject"
-                                                            placeholder="Email subject…"
-                                                            value={mailSubject}
-                                                            onChange={(e) => setMailSubject(e.target.value)}
-                                                            required
-                                                        />
-                                                    </div>
-
-                                                    {/* Body — Tiptap rich-text editor */}
-                                                    <div className="space-y-1.5">
-                                                        <Label>Message</Label>
-                                                        <RichTextEditor
-                                                            value={mailBody}
-                                                            onChange={setMailBody}
-                                                            placeholder="Write your email here…"
-                                                            minHeight="220px"
-                                                        />
-                                                    </div>
-
-                                                    {/* Attachments */}
-                                                    <div className="space-y-1.5">
-                                                        <Label htmlFor="mailAttachments">Attachments</Label>
-                                                        <Input
-                                                            id="mailAttachments"
-                                                            type="file"
-                                                            multiple
-                                                            accept="image/*,.pdf"
-                                                            className="cursor-pointer file:cursor-pointer"
-                                                            onChange={(e) => {
-                                                                const files = Array.from(e.target.files || [])
-                                                                setMailAttachments(files)
+                                                        <Label>Template</Label>
+                                                        <Select
+                                                            value={selectedTemplateId}
+                                                            onValueChange={(value) => {
+                                                                setSelectedTemplateId(value)
+                                                                if (value === '__none__') {
+                                                                    setSelectedTemplate(null)
+                                                                    setMailSubject('')
+                                                                    setMailBody('')
+                                                                    return
+                                                                }
+                                                                const tpl = mailTemplates.find(t => t._id === value)
+                                                                if (tpl) {
+                                                                    setSelectedTemplate(tpl)
+                                                                    setMailSubject(tpl.subject || '')
+                                                                    // Convert design blocks JSON to HTML
+                                                                    let bodyHtml = ''
+                                                                    let blocks: DesignBlock[] = []
+                                                                    try {
+                                                                        const parsed = JSON.parse(tpl.body)
+                                                                        if (Array.isArray(parsed)) {
+                                                                            blocks = parsed
+                                                                            bodyHtml = generateHtmlFromBlocks(blocks)
+                                                                        } else {
+                                                                            // Simple text body
+                                                                            bodyHtml = tpl.body || ''
+                                                                            blocks = [{ id: `block-${Date.now()}`, type: 'text', content: bodyHtml, styles: {} }]
+                                                                        }
+                                                                    } catch {
+                                                                        bodyHtml = tpl.body || ''
+                                                                        blocks = [{ id: `block-${Date.now()}`, type: 'text', content: bodyHtml, styles: {} }]
+                                                                    }
+                                                                    setMailBody(bodyHtml)
+                                                                    setDesignBlocks(blocks)
+                                                                    // Load template attachments
+                                                                    if (tpl.attachments && Array.isArray(tpl.attachments)) {
+                                                                        const tplAtts = tpl.attachments.map((att: any): MailAttachment => ({
+                                                                            type: 'template',
+                                                                            filename: att.filename,
+                                                                            url: att.url
+                                                                        }));
+                                                                        setMailAttachments(tplAtts);
+                                                                    } else {
+                                                                        setMailAttachments([]);
+                                                                    }
+                                                                }
                                                             }}
-                                                        />
-                                                        {mailAttachments.length > 0 && (
-                                                            <ul className="mt-1 space-y-1">
-                                                                {mailAttachments.map((f, i) => (
-                                                                    <li key={i} className="flex items-center justify-between text-xs text-muted-foreground rounded border px-2 py-1">
-                                                                        <span className="truncate max-w-[80%]">{f.name}</span>
-                                                                        <button
-                                                                            type="button"
-                                                                            className="text-destructive hover:text-destructive/80"
-                                                                            onClick={() => setMailAttachments(prev => prev.filter((_, idx) => idx !== i))}
-                                                                        >
-                                                                            ✕
-                                                                        </button>
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        )}
-                                                        <p className="text-xs text-muted-foreground">Images and PDF brochures (max 10 MB each)</p>
+                                                        >
+                                                            <SelectTrigger className="w-full">
+                                                                <SelectValue placeholder={mailTemplatesLoading ? 'Loading templates…' : 'Choose a template (optional)'} />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectGroup>
+                                                                    <SelectLabel>Templates</SelectLabel>
+                                                                    <SelectItem value="__none__">— No template —</SelectItem>
+                                                                    {mailTemplates.map(t => (
+                                                                        <SelectItem key={t._id} value={t._id}>{t.templateName}</SelectItem>
+                                                                    ))}
+                                                                </SelectGroup>
+                                                            </SelectContent>
+                                                        </Select>
                                                     </div>
+
+                                                    {/* Template Preview Section */}
+                                                    {selectedTemplate && (
+                                                        <Card className="border shadow-none bg-muted/20">
+                                                            <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
+                                                                <div>
+                                                                    <CardTitle className="text-sm font-semibold">Template Preview</CardTitle>
+                                                                    <CardDescription className="text-[10px]">Read-only preview of {selectedTemplate.templateName}</CardDescription>
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-8 text-xs gap-1.5"
+                                                                    onClick={() => setTemplateEditModalOpen(true)}
+                                                                >
+                                                                    <Edit3 className="h-3.5 w-3.5" />
+                                                                    Edit Content
+                                                                </Button>
+                                                            </CardHeader>
+                                                            <CardContent className="py-2 px-4 space-y-3">
+                                                                <div className="space-y-1">
+                                                                    <span className="text-[10px] font-medium text-muted-foreground uppercase">Subject</span>
+                                                                    <p className="text-sm border rounded-md p-2 bg-background">{mailSubject || "(No subject)"}</p>
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <span className="text-[10px] font-medium text-muted-foreground uppercase">Body Preview</span>
+                                                                    <div
+                                                                        className="text-sm border rounded-md p-3 bg-background max-h-[150px] overflow-y-auto prose prose-sm dark:prose-invert max-w-none"
+                                                                        dangerouslySetInnerHTML={{ __html: mailBody }}
+                                                                    />
+                                                                </div>
+                                                                {mailAttachments.length > 0 && (
+                                                                    <div className="space-y-1">
+                                                                        <span className="text-[10px] font-medium text-muted-foreground uppercase">Attachments</span>
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {mailAttachments.map((att, idx) => (
+                                                                                <div key={idx} className={cn(
+                                                                                    "flex items-center gap-2 border rounded p-1.5 bg-background text-[10px]",
+                                                                                    att.type === 'template' ? "border-blue-200" : "border-emerald-200"
+                                                                                )}>
+                                                                                    <Paperclip className={cn("h-3 w-3", att.type === 'template' ? "text-blue-500" : "text-emerald-500")} />
+                                                                                    <span className="truncate max-w-[120px]">
+                                                                                        {att.type === 'template' ? att.filename : att.file.name}
+                                                                                    </span>
+                                                                                    {att.type === 'template' && <Badge variant="outline" className="text-[7px] h-3 py-0 px-1 border-blue-100 text-blue-500 bg-white">TPL</Badge>}
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </CardContent>
+                                                        </Card>
+                                                    )}
+                                                       {!selectedTemplate && (
+                                                        <div className="space-y-4 pt-2">
+                                                            <Separator />
+                                                            {/* Manual Email Fields */}
+                                                            <div className="space-y-1.5 mt-2">
+                                                                <Label htmlFor="mailSubject">Subject</Label>
+                                                                <Input
+                                                                    id="mailSubject"
+                                                                    placeholder="Enter email subject"
+                                                                    value={mailSubject}
+                                                                    onChange={(e) => setMailSubject(e.target.value)}
+                                                                />
+                                                            </div>
+
+                                                            <div className="space-y-1.5">
+                                                                <div className="flex items-center justify-between">
+                                                                    <Label htmlFor="mailBody">Message</Label>
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-7 text-[10px] gap-1"
+                                                                        onClick={() => {
+                                                                            // If body has content but blocks are empty, maybe wrap it in a text block
+                                                                            if (mailBody && designBlocks.length === 0) {
+                                                                                setDesignBlocks([{ id: `block-${Date.now()}`, type: 'text', content: mailBody, styles: {} }]);
+                                                                            }
+                                                                            setTemplateEditModalOpen(true);
+                                                                        }}
+                                                                    >
+                                                                        <LayoutGrid className="h-3 w-3" />
+                                                                        Use Visual Designer
+                                                                    </Button>
+                                                                </div>
+                                                                <RichTextEditor
+                                                                    value={mailBody}
+                                                                    onChange={setMailBody}
+                                                                    minHeight="200px"
+                                                                />
+                                                            </div>
+
+                                                            <div className="space-y-1.5">
+                                                                <Label>Attachments</Label>
+                                                                <Input
+                                                                    type="file"
+                                                                    multiple
+                                                                    className="text-xs"
+                                                                    onChange={(e) => {
+                                                                        const files = e.target.files
+                                                                        if (files) {
+                                                                            const newAtts = Array.from(files).map((f): MailAttachment => ({ type: 'file', file: f }))
+                                                                            setMailAttachments(prev => [...prev, ...newAtts])
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                                    {mailAttachments.map((att, i) => (
+                                                                        <div key={i} className="flex items-center gap-2 border rounded-md p-1.5 bg-muted/30 max-w-[200px] overflow-hidden group">
+                                                                            <Paperclip className="h-3 w-3 text-muted-foreground" />
+                                                                            <span className="text-[10px] truncate font-medium">
+                                                                                {att.type === 'file' ? att.file.name : att.filename}
+                                                                            </span>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100"
+                                                                                onClick={() => setMailAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                                                                            >
+                                                                                <X className="h-2 w-2" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </form>
                                             </div>
-                                            <Separator />
 
-                                            {/* Footer */}
-                                            <div className=" flex gap-4 p-7 m-3 justify-end rounded-lg">
+                                            {/* Sheet Footer */}
+                                            <div className="p-4 border-t bg-muted/30 flex justify-end gap-3 mt-auto">
                                                 <Button
                                                     type="submit"
                                                     form="mail-compose-form"
-                                                    className="px-2.5"
                                                     disabled={mailLoading}
                                                 >
                                                     {mailLoading ? 'Sending…' : 'Send Email'}
@@ -1139,11 +1796,118 @@ export default function LeadDetail() {
                                                     type="button"
                                                     variant="outline"
                                                     onClick={() => setMailSheetOpen(false)}
-                                                    className="py-2"
                                                 >
                                                     Cancel
                                                 </Button>
                                             </div>
+
+                                            {/* Unified Visual Editor Modal */}
+                                            <Dialog open={templateEditModalOpen} onOpenChange={setTemplateEditModalOpen}>
+                                                <DialogContent className="min-w-[85vw] max-w-[95vw] h-[95vh] overflow-hidden flex flex-col p-0 gap-0">
+                                                    <DialogHeader className="p-4 border-b">
+                                                        <DialogTitle>Edit Email Content</DialogTitle>
+                                                        <DialogDescription>Modify the content using visual design blocks.</DialogDescription>
+                                                    </DialogHeader>
+
+                                                    <div className="flex-1 overflow-y-auto">
+                                                        <div className="p-4 space-y-4">
+                                                            <div className="space-y-1.5">
+                                                                <Label className="text-xs font-medium">Subject</Label>
+                                                                <Input
+                                                                    placeholder="Email subject..."
+                                                                    value={mailSubject}
+                                                                    onChange={(e) => setMailSubject(e.target.value)}
+                                                                />
+                                                            </div>
+
+                                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pt-2">
+                                                                <div className="md:col-span-3 space-y-4">
+                                                                    <div className="p-3 border rounded-lg bg-muted/30">
+                                                                        <h4 className="text-[10px] font-semibold text-muted-foreground uppercase mb-2">Add Blocks</h4>
+                                                                        <div className="grid grid-cols-2 gap-2">
+                                                                            <Button variant="outline" className="flex flex-col h-14 text-[10px] gap-1" onClick={() => addBlock("text")}>
+                                                                                <Type className="h-4 w-4" /> Rich Text
+                                                                            </Button>
+                                                                            <Button variant="outline" className="flex flex-col h-14 text-[10px] gap-1" onClick={() => addBlock("image")}>
+                                                                                <ImageIcon className="h-4 w-4" /> Image
+                                                                            </Button>
+                                                                            <Button variant="outline" className="flex flex-col h-14 text-[10px] gap-1" onClick={() => addBlock("button")}>
+                                                                                <RectangleHorizontal className="h-4 w-4" /> Button
+                                                                            </Button>
+                                                                            <Button variant="outline" className="flex flex-col h-14 text-[10px] gap-1" onClick={() => addBlock("divider")}>
+                                                                                <Minus className="h-4 w-4" /> Divider
+                                                                            </Button>
+                                                                            <Button variant="outline" className="flex flex-col h-14 text-[10px] gap-1" onClick={() => addBlock("spacer")}>
+                                                                                <Plus className="h-4 w-4" /> Spacer
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="md:col-span-9">
+                                                                    <div className="border rounded-lg bg-card p-4 min-h-[400px]">
+                                                                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                                                            <SortableContext items={designBlocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+                                                                                {designBlocks.length === 0 ? (
+                                                                                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-20 border-2 border-dashed rounded-lg">
+                                                                                        <Plus className="h-8 w-8 mb-2 opacity-20" />
+                                                                                        <p className="text-sm">Start building your email</p>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    designBlocks.map((block) => (
+                                                                                        <SortableDesignBlockItem
+                                                                                            key={block.id}
+                                                                                            block={block}
+                                                                                            isSelected={selectedBlockId === block.id}
+                                                                                            onSelect={() => setSelectedBlockId(block.id)}
+                                                                                            onUpdate={updateBlock}
+                                                                                            onDelete={() => deleteBlock(block.id)}
+                                                                                        />
+                                                                                    ))
+                                                                                )}
+                                                                            </SortableContext>
+                                                                        </DndContext>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="space-y-3 pt-4 border-t">
+                                                                <Label className="text-xs font-semibold uppercase text-muted-foreground">Attachments</Label>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {mailAttachments.map((att, i) => (
+                                                                        <div key={i} className="flex items-center gap-2 border rounded-md p-1.5 bg-muted/30 max-w-[200px] overflow-hidden group">
+                                                                            <Paperclip className="h-3 w-3 text-muted-foreground" />
+                                                                            <span className="text-[10px] truncate font-medium">{att.type === 'file' ? att.file.name : att.filename}</span>
+                                                                            <Button
+                                                                                variant="ghost" size="icon" className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100"
+                                                                                onClick={() => setMailAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                                                                            >
+                                                                                <X className="h-2 w-2" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    ))}
+                                                                    <Input type="file" multiple className="text-xs h-8 w-auto inline-flex" onChange={(e) => {
+                                                                        const files = e.target.files
+                                                                        if (files) {
+                                                                            const newAtts = Array.from(files).map((f): MailAttachment => ({ type: 'file', file: f }))
+                                                                            setMailAttachments(prev => [...prev, ...newAtts])
+                                                                        }
+                                                                    }} />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="p-4 border-t bg-muted/20 flex justify-end gap-2">
+                                                        <Button variant="outline" onClick={() => setTemplateEditModalOpen(false)}>Cancel</Button>
+                                                        <Button onClick={() => {
+                                                            setMailBody(generateHtmlFromBlocks(designBlocks))
+                                                            setTemplateEditModalOpen(false)
+                                                            toast.success('Email content updated')
+                                                        }}>Done Editing</Button>
+                                                    </div>
+                                                </DialogContent>
+                                            </Dialog>
                                         </SheetContent>
                                     </Sheet>
                                 </div>
@@ -1773,10 +2537,10 @@ export default function LeadDetail() {
                                         <SelectContent>
                                             <SelectGroup>
                                                 <SelectLabel>status</SelectLabel>
+                                                <SelectItem value="No Activity">No Activity</SelectItem>
                                                 <SelectItem value="Hot">Hot</SelectItem>
                                                 <SelectItem value="Warm">Warm</SelectItem>
                                                 <SelectItem value="Cold">Cold</SelectItem>
-
                                             </SelectGroup>
                                         </SelectContent>
                                     </Select>

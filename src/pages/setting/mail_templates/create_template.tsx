@@ -611,6 +611,11 @@ export default function CreateTemplate() {
                 formData.append("attachments", file)
             })
 
+            // Include existing attachments during update
+            if (isEditing) {
+                formData.append("existingAttachments", JSON.stringify(existingAttachments))
+            }
+
             if (isEditing && id) {
                 await axios.put(API.getMailTemplate(id), formData, {
                     headers: {

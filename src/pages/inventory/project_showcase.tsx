@@ -66,6 +66,7 @@ interface Plot {
 interface Floor {
     floorNumber: number
     floorName: string
+    floorChartImages?: string[]
     units: Unit[]
 }
 
@@ -132,7 +133,7 @@ export default function ProjectShowcase() {
             if (project?.property === 'plots') {
                 images = project.layoutImages || []
             } else {
-                images = selectedBlock?.floorPlanImages || []
+                images = (selectedFloor?.floorChartImages?.length ? selectedFloor.floorChartImages : selectedBlock?.floorPlanImages) || []
             }
 
             if (images.length === 0) return
@@ -148,7 +149,7 @@ export default function ProjectShowcase() {
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [isGalleryOpen, selectedBlock?.floorPlanImages, project?.layoutImages, project?.property])
+    }, [isGalleryOpen, selectedBlock?.floorPlanImages, selectedFloor?.floorChartImages, project?.layoutImages, project?.property])
 
     const { setBreadcrumbs } = useBreadcrumb()
 
@@ -276,7 +277,7 @@ export default function ProjectShowcase() {
     // Determine which images to show in gallery
     const galleryImages = project.property === 'plots'
         ? (project.layoutImages || [])
-        : (selectedBlock?.floorPlanImages || [])
+        : ((selectedFloor?.floorChartImages?.length ? selectedFloor.floorChartImages : selectedBlock?.floorPlanImages) || [])
 
     const minSwipeDistance = 50
 
@@ -436,7 +437,7 @@ export default function ProjectShowcase() {
                         <CardTitle className="text-sm flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <ImageIcon className="h-4 w-4" />
-                                {project.property === 'plots' ? 'Site Layout / Masters' : `Floor Plan - ${selectedBlock?.blockName || 'Select Block'}`}
+                                {project.property === 'plots' ? 'Site Layout / Masters' : `Floor Plan - ${selectedFloor ? selectedFloor.floorName : selectedBlock?.blockName || 'Select Block'}`}
                             </div>
                             {galleryImages.length > 0 && (
                                 <Button
@@ -520,7 +521,7 @@ export default function ProjectShowcase() {
                             <div className="text-center text-muted-foreground">
                                 <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
                                 <p>{project.property === 'plots' ? 'No layout images' : 'No floor plan images'}</p>
-                                <p className="text-xs">{project.property === 'plots' ? 'Upload layout images in project edit' : 'Select a block to view'}</p>
+                                <p className="text-xs">{project.property === 'plots' ? 'Upload layout images in project edit' : (selectedFloor ? 'Upload floor chart images in block edit' : 'Select a block or floor to view')}</p>
                             </div>
                         )}
                     </CardContent>

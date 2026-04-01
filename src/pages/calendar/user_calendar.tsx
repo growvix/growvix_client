@@ -488,12 +488,18 @@ export default function UserCalendar() {
       ) : (
         <CalendarProvider className="p-3 border rounded-lg shadow-sm bg-white dark:bg-zinc-900">
           <CalendarDate>
-            <CalendarDatePicker className="flex-wrap gap-2">
-              <CalendarMonthPicker />
-              <CalendarYearPicker start={earliestYear} end={latestYear} />
-
-              <div className="hidden h-6 w-px bg-border md:block mx-1"></div>
-
+            <CalendarDatePicker className="flex-wrap gap-4 flex-1">
+              {/* Date Pickers */}
+              <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-muted-foreground">Month</label>
+                  <CalendarMonthPicker />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-muted-foreground">Year</label>
+                  <CalendarYearPicker start={earliestYear} end={latestYear} />
+                </div>
+              </div>
               {/* Team Filter */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-muted-foreground">Team</label>
@@ -603,20 +609,23 @@ export default function UserCalendar() {
                 </Popover>
               </div>
 
-              {hasFilters && (
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 gap-1 text-muted-foreground hover:text-foreground">
-                  <X className="h-3.5 w-3.5" />
-                  Clear
-                </Button>
-              )}
-
               {!isAdmin && (
-                <span className="text-xs text-muted-foreground italic ml-2 hidden lg:inline-block">
+                <span className="text-xs text-muted-foreground italic ml-2 mt-auto mb-2 hidden lg:inline-block">
                   Showing your team data only
                 </span>
               )}
             </CalendarDatePicker>
-            <CalendarDatePagination />
+
+            {/* Pagination and Clear Button on the right padding */}
+            <div className="flex flex-col items-end gap-1 ml-4 shrink-0 min-h-[58px] justify-between pl-4">
+               {hasFilters ? (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 gap-1 text-xs px-2 mb-1 text-muted-foreground hover:text-foreground">
+                  <X className="h-3.5 w-3.5" />
+                  Clear
+                </Button>
+              ) : <div className="h-6 mb-1" />}
+              <CalendarDatePagination className="mt-auto" />
+            </div>
           </CalendarDate>
           <CalendarHeader />
           <CalendarBody features={calendarFeatures}>

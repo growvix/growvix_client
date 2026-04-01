@@ -16,7 +16,6 @@ import LeadDetail from "@/pages/lead_management/lead_detail"
 import NewLead from "./pages/lead_management/new_lead";
 import UserCalendar from "@/pages/calendar/user_calendar"
 import ProfilePage from "@/pages/profile"
-
 import ProjectListing from "./pages/inventory/project_listing";
 import ProjectShowcase from "./pages/inventory/project_showcase";
 import NewProject from "./pages/inventory/new_project";
@@ -32,6 +31,7 @@ import TeamDetailPage from "./pages/setting/team/team_detail";
 import CpTeamManagement from "./pages/setting/cp_team/cp_team_management";
 import CpTeamDetailPage from "./pages/setting/cp_team/cp_team_detail";
 import ImportLeads from "./pages/setting/import_data/import_leads";
+import NewLeadUpload from "./pages/setting/import_data/new_lead_upload";
 import CpLoginPage from "./pages/cp/cp_login";
 import CpLayout from "./pages/cp/cp_layout";
 import CpDashboard from "./pages/cp/cp_dashboard";
@@ -41,6 +41,8 @@ import EditProject from "./pages/inventory/edit_project";
 import Mail from "./pages/setting/mail";
 import MailTemplatesListing from "./pages/setting/mail_templates/mail_listing";
 import CreateTemplate from "./pages/setting/mail_templates/create_template";
+import Automation from "./pages/tools/automation";
+import ThirdPartyIntegration from "./pages/tools/third_party_integration";
 
 // Searchable pages index
 function ScrollToTop() {
@@ -62,6 +64,7 @@ const RoleBasedRedirect = () => {
   const role = getCookie('role');
   if (role === 'admin') return <Navigate to="/master_dashboard" replace />;
   if (role === 'manager') return <Navigate to="/management_dashboard" replace />;
+  if (role === 'cp' || role === 'channel_partner' || role === 'cp_user') return <Navigate to="/cp/dashboard" replace />;
   return <Navigate to="/executive_dashboard" replace />;
 };
 
@@ -76,16 +79,16 @@ export default function App() {
           <Route path="/cp/login" element={<CpLoginPage />} />
 
           {/* CP Routes — no sidebar */}
-          <Route element={<ProtectedRoute><CpLayout /></ProtectedRoute>}>
+          <Route element={<ProtectedRoute allowedRoles={['cp', 'channel_partner', 'cp_user']}><CpLayout /></ProtectedRoute>}>
             <Route path="/cp/dashboard" element={<CpDashboard />} />
             <Route path="/cp/project" element={<CpProjectShowcase />} />
           </Route>
-          <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>
+          <Route element={<ProtectedRoute blockCpFromApp><SidebarLayout /></ProtectedRoute>}>
             <Route path="/" element={<RoleBasedRedirect />} />
             <Route path="/executive_dashboard" element={<Dashboard />} />
-            <Route path="/master_dashboard" element={<MasterDashboard />} />
-            <Route path="/management_dashboard" element={<ManagementDashboard />} />
-            <Route path="/admin_dashboard" element={<Dashboard />} />
+            <Route path="/master_dashboard" element={<ProtectedRoute allowedRoles={['admin']}><MasterDashboard /></ProtectedRoute>} />
+            <Route path="/management_dashboard" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ManagementDashboard /></ProtectedRoute>} />
+            <Route path="/admin_dashboard" element={<ProtectedRoute allowedRoles={['admin']}><Dashboard /></ProtectedRoute>} />
 
             <Route path="/all_leads" element={<AllLeads />} />
             <Route path="/NewLead" element={<NewLead />} />
@@ -97,6 +100,7 @@ export default function App() {
             <Route path="/project_showcase" element={<ProjectShowcase />} />
             <Route path="/new_project" element={<NewProject />} />
             <Route path="/edit_project/:id" element={<EditProject />} />
+            <Route path="tools/automation" element={<Automation />} />
             <Route path="/settings" element={<GeneralSetting />} />
             <Route path="/setting/user_management" element={<UserManagement />} />
             <Route path="/setting/lead_stage_setting" element={<LeadStageSetting />} />
@@ -111,10 +115,12 @@ export default function App() {
             <Route path="/setting/cp_teams/:id" element={<CpTeamDetailPage />} />
             <Route path="/setting/channel_partner" element={<CPManagement />} />
             <Route path="/setting/import_leads" element={<ImportLeads />} />
+            <Route path="/setting/import_leads/new" element={<NewLeadUpload />} />
             <Route path="/setting/mail" element={<Mail />} />
             <Route path="/setting/mail_templates" element={<MailTemplatesListing />} />
             <Route path="/setting/mail_templates/create" element={<CreateTemplate />} />
             <Route path="/setting/mail_templates/edit/:id" element={<CreateTemplate />} />
+            <Route path="/tools/third_party_integration" element={<ThirdPartyIntegration />} />
 
           </Route>
         </Routes>

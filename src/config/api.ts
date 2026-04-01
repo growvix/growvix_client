@@ -4,7 +4,7 @@
  */
 
 // Get API URL from environment, fallback to localhost for development
-export const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.7:5000';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://[IP_ADDRESS]';
 
 // API endpoints
 export const API = {
