@@ -60,6 +60,7 @@ export const API = {
     // Upload endpoints
     UPLOAD: {
         FLOOR_PLANS: `${API_URL}/api/upload/floor-plans`,
+        PROFILE_PICTURE: `${API_URL}/api/upload/profile-picture`,
     },
     MAIL: `${API_URL}/api/mail`,
     MAIL_TEMPLATES: `${API_URL}/api/mail/templates`,
