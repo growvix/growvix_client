@@ -15,16 +15,8 @@ import { leadClient } from "@/grpc/leadClient"
 import type { Lead as GrpcLead } from "@/grpc/types"
 import type { Stage } from "@/types"
 import { useNavigate, useLocation } from "react-router-dom"
-import { ArrowUpDown, MoreHorizontal, Info, ChevronsUpDown, Check, ChevronLeft, ChevronRight } from "lucide-react"
+import { ArrowUpDown, Info, ChevronsUpDown, Check } from "lucide-react"
 import { type ColumnDef } from "@tanstack/react-table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
 import {
   Popover,
@@ -216,7 +208,7 @@ export default function AllLeads() {
   const [stages, setStages] = useState<Stage[]>([])
 
   // Pagination state
-  const PAGE_SIZE = 50
+  const [pageSize, setPageSize] = useState(15)
   const [page, setPage] = useState(1)
   const [totalLeads, setTotalLeads] = useState(0)
 
@@ -245,7 +237,10 @@ export default function AllLeads() {
     async function fetchStages() {
       if (!organization) return
       try {
-        const response = await axios.get(`${API_URL}/api/leads/stages/${organization}`)
+        const token = getCookie("token")
+        const response = await axios.get(`${API_URL}/api/leads/stages/${organization}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
         if (response.data.success && response.data.data.stages) {
           setStages(response.data.data.stages)
         }
@@ -351,12 +346,12 @@ export default function AllLeads() {
         }
         if (appliedFilters?.receivedOn) filterPayload.receivedOn = appliedFilters.receivedOn
 
-        const offset = (page - 1) * PAGE_SIZE
+        const offset = (page - 1) * pageSize
 
         const { leads: grpcLeads, total } = await leadClient.getAllLeads({
           organization,
           offset,
-          limit: PAGE_SIZE,
+          limit: pageSize,
           filters: Object.keys(filterPayload).length > 0 ? filterPayload : undefined,
         })
 
@@ -384,7 +379,7 @@ export default function AllLeads() {
     }
 
     fetchLeads()
-  }, [organization, appliedFilters, page])
+  }, [organization, appliedFilters, page, pageSize])
 
   function handleChange<K extends keyof Filters>(key: K, value: string) {
     setFilters((s) => ({ ...s, [key]: value }))
@@ -403,7 +398,7 @@ export default function AllLeads() {
     setAppliedFilters(empty)
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalLeads / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(totalLeads / pageSize))
 
 
   if (loading && leads.length === 0) {
@@ -596,70 +591,17 @@ export default function AllLeads() {
         <DataTable
           data={leads}
           columns={columns}
-          initialPageSize={PAGE_SIZE}
-          hidePagination
-          topLeftContent={
-            <p className="text-sm text-muted-foreground shrink-0 pl-1">
-              Showing {leads.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalLeads)} of {totalLeads} leads
-            </p>
-          }
-          topRightContent={
-            <div className="flex items-center gap-2 pr-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1 || loading}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
-              </Button>
-              <span className="text-sm font-medium whitespace-nowrap">
-                Page {page} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages || loading}
-              >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-          }
+          manualPagination
+          totalCount={totalLeads}
+          pageIndex={page - 1}
+          pageSize={pageSize}
+          pageCount={totalPages}
+          onPaginationChange={(pagination) => {
+            setPage(pagination.pageIndex + 1)
+            setPageSize(pagination.pageSize)
+          }}
         />
         {loading && <HorizontalLoader />}
-
-        {/* Server-side Pagination Controls */}
-        <div className="flex items-center justify-between px-2 py-3">
-          <p className="text-sm text-muted-foreground">
-            Showing {leads.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalLeads)} of {totalLeads} leads
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1 || loading}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
-            </Button>
-            <span className="text-sm font-medium">
-              Page {page} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages || loading}
-            >
-              Next
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
-        </div>
       </div>
     </div>
   )

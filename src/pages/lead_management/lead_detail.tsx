@@ -863,7 +863,7 @@ export default function LeadDetail() {
         blocks.forEach((block) => {
             const align = block.styles?.align || 'left'
             const textAlign = `text-align: ${align};`
-            
+
             if (block.type === 'text') {
                 html += `<div style="margin-bottom: 20px; ${textAlign} line-height: 1.6; font-size: 14px; color: #374151;">${block.content || ''}</div>`
             } else if (block.type === 'image' && block.content) {
@@ -874,7 +874,7 @@ export default function LeadDetail() {
                 } else if (!imgSrc.startsWith('http') && !imgSrc.startsWith('data:')) {
                     imgSrc = `${API_URL}/${imgSrc.startsWith('/') ? imgSrc.slice(1) : imgSrc}`
                 }
-                
+
                 const marginStyle = align === 'center' ? 'margin: 0 auto;' : align === 'right' ? 'margin-left: auto;' : 'margin-right: auto;'
                 html += `<div style="margin-bottom: 20px; ${textAlign}">
                     <img src="${imgSrc}" style="max-width: ${width}%; height: auto; display: block; border-radius: 8px; ${marginStyle}" alt="Image" />
@@ -1097,7 +1097,7 @@ export default function LeadDetail() {
             return true;
         }
 
-        return false;
+        return false;                               
     }, [leadDetail?.exe_user, leadDetail?.exe_user_name, currentUserId, currentUserName]);
 
     const handleFollowUps = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -1203,7 +1203,7 @@ export default function LeadDetail() {
             formData.append('to', toEmail)
             formData.append('subject', mailSubject)
             formData.append('html', mailBody)
-            
+
             mailAttachments.forEach((att) => {
                 if (att.type === 'file') {
                     formData.append('attachments', att.file)
@@ -1704,7 +1704,7 @@ export default function LeadDetail() {
                                                             </CardContent>
                                                         </Card>
                                                     )}
-                                                       {!selectedTemplate && (
+                                                    {!selectedTemplate && (
                                                         <div className="space-y-4 pt-2">
                                                             <Separator />
                                                             {/* Manual Email Fields */}
@@ -1959,13 +1959,15 @@ export default function LeadDetail() {
                                                         const response = await axios.post(`${API_URL}/api/ivr-call`, {
                                                             organization,
                                                             userId: currentUserId,
-                                                            assignedUser,
-                                                            clientPhone,
                                                             leadId: leadDetail?._id,
-                                                            leadName,
                                                         });
                                                         console.log('IVR Call Response:', response.data);
-                                                        toast.success('IVR call request sent');
+                                                        const vendorData = response.data?.data?.vendorResponse;
+                                                        if (vendorData?.status === 'success' || response.data?.success) {
+                                                            toast.success(`Call initiated successfully`);
+                                                        } else {
+                                                            toast.info(`Call request sent. Status: ${vendorData?.status || 'pending'}`);
+                                                        }
                                                     } catch (err: any) {
                                                         console.error('IVR Call Error:', err);
                                                         toast.error(err.response?.data?.message || 'Failed to initiate IVR call');
@@ -2209,7 +2211,7 @@ export default function LeadDetail() {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="my-2 bg-cyan-50 text-white hover:bg-cyan-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-cyan-400">
+                                                    <Button variant="outline" size="icon" disabled={!canEdit} className="my-2 bg-cyan-50 text-white hover:bg-cyan-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-cyan-400">
                                                         <CalendarSync className="size-4 sm:size-5 text-cyan-500 dark:text-cyan-300 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors" />
                                                     </Button>
                                                 </SheetTrigger>
@@ -2288,7 +2290,7 @@ export default function LeadDetail() {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="my-2 bg-slate-50 text-white hover:bg-slate-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-400">
+                                                    <Button variant="outline" size="icon" disabled={!canEdit} className="my-2 bg-slate-50 text-white hover:bg-slate-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-400">
                                                         <Smartphone className="size-4 sm:size-5 text-slate-500 dark:text-slate-300 hover:text-slate-600 dark:hover:text-slate-400 transition-colors" />
                                                     </Button>
                                                 </SheetTrigger>
@@ -2340,7 +2342,7 @@ export default function LeadDetail() {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <SheetTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="my-2 bg-indigo-50 text-white hover:bg-indigo-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                                                    <Button variant="outline" size="icon" disabled={!canEdit} className="my-2 bg-indigo-50 text-white hover:bg-indigo-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-indigo-400">
                                                         <Shuffle className="size-4 sm:size-5 text-indigo-500 dark:text-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" />
                                                     </Button>
                                                 </SheetTrigger>

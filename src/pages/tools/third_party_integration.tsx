@@ -7,11 +7,11 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { 
-    Search, 
-    ArrowLeft, 
-    Globe, 
-    Facebook, 
+import {
+    Search,
+    ArrowLeft,
+    Globe,
+    Facebook,
     MessageCircle,
     Plug2,
     Info,
@@ -53,7 +53,6 @@ export default function ThirdPartyIntegration() {
             title: "Google Workspace",
             description: "Sync your Google Contacts, Calendar, and Drive with the CRM.",
             icon: Globe,
-            status: "Connected",
             colorClass: "text-blue-600 dark:text-blue-400",
             bgClass: "bg-blue-100 dark:bg-blue-900/40",
             hoverBorder: "hover:border-blue-300 dark:hover:border-blue-800",
@@ -63,7 +62,6 @@ export default function ThirdPartyIntegration() {
             title: "Meta (Facebook/Instagram)",
             description: "Import leads directly from Facebook Lead Ads and Instagram.",
             icon: Facebook,
-            status: "Not Connected",
             colorClass: "text-indigo-600 dark:text-indigo-400",
             bgClass: "bg-indigo-100 dark:bg-indigo-900/40",
             hoverBorder: "hover:border-indigo-300 dark:hover:border-indigo-800",
@@ -73,7 +71,6 @@ export default function ThirdPartyIntegration() {
             title: "WhatsApp",
             description: "Enable two-way communication and automated messages.",
             icon: MessageCircle,
-            status: "Not Connected",
             colorClass: "text-green-600 dark:text-green-400",
             bgClass: "bg-green-100 dark:bg-green-900/40",
             hoverBorder: "hover:border-green-300 dark:hover:border-green-800",
@@ -117,26 +114,12 @@ export default function ThirdPartyIntegration() {
                                     <CardTitle className="text-lg group-hover:text-primary transition-colors font-bold">
                                         {card.title}
                                     </CardTitle>
-                                    <div className="flex items-center gap-2">
-                                        <div className={`h-2 w-2 rounded-full ${card.status === 'Connected' ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600 animate-pulse'}`} />
-                                        <span className={`text-[10px] uppercase font-bold tracking-wider ${card.status === 'Connected' ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
-                                            {card.status}
-                                        </span>
-                                    </div>
                                 </div>
                             </CardHeader>
                             <CardContent className="z-1 pb-6 pt-4 flex-1 flex flex-col justify-between gap-6 ">
                                 <CardDescription className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 font-medium">
                                     {card.description}
                                 </CardDescription>
-                                
-                                <Button 
-                                    className="w-full font-bold shadow-sm"
-                                    variant={card.status === 'Connected' ? "secondary" : "default"}
-                                >
-                                    {card.status === 'Connected' ? "Manage Settings" : "Configure Connection"}
-                                    <ExternalLink className="ml-2 h-4 w-4" />
-                                </Button>
                             </CardContent>
                         </Card>
                     )

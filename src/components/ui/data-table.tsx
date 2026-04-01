@@ -58,6 +58,13 @@ interface DataTableProps<TData, TValue> {
     hidePagination?: boolean
     topLeftContent?: React.ReactNode
     topRightContent?: React.ReactNode
+    // Server-side pagination props
+    manualPagination?: boolean
+    totalCount?: number
+    pageIndex?: number
+    pageSize?: number
+    pageCount?: number
+    onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
 }
 
 export function DataTable<TData, TValue>({
@@ -70,15 +77,40 @@ export function DataTable<TData, TValue>({
     hidePagination = false,
     topLeftContent,
     topRightContent,
+    manualPagination = false,
+    totalCount = 0,
+    pageIndex,
+    pageSize,
+    pageCount,
+    onPaginationChange,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
     const [pagination, setPagination] = React.useState<PaginationState>({
-        pageIndex: 0,
-        pageSize: initialPageSize,
+        pageIndex: pageIndex ?? 0,
+        pageSize: pageSize ?? initialPageSize,
     })
+
+    // Handle external pagination updates
+    React.useEffect(() => {
+        if (manualPagination && (pageIndex !== undefined || pageSize !== undefined)) {
+            setPagination({
+                pageIndex: pageIndex ?? 0,
+                pageSize: pageSize ?? initialPageSize,
+            })
+        }
+    }, [manualPagination, pageIndex, pageSize, initialPageSize])
+
+    const handlePaginationChange = React.useCallback(
+        (updater: any) => {
+            const nextPagination = typeof updater === "function" ? updater(pagination) : updater
+            setPagination(nextPagination)
+            onPaginationChange?.(nextPagination)
+        },
+        [pagination, onPaginationChange]
+    )
 
     const table = useReactTable({
         data,
@@ -86,9 +118,12 @@ export function DataTable<TData, TValue>({
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
         getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
+        getPaginationRowModel: manualPagination ? undefined : getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
-        onPaginationChange: setPagination,
+        onPaginationChange: handlePaginationChange,
+        manualPagination: manualPagination,
+        pageCount: pageCount,
+        autoResetPageIndex: !manualPagination,
         getFilteredRowModel: getFilteredRowModel(),
         onColumnVisibilityChange: setColumnVisibility,
         onRowSelectionChange: setRowSelection,
@@ -266,7 +301,15 @@ export function DataTable<TData, TValue>({
             {!hidePagination && (
                 <div className="flex items-center justify-between space-x-2 py-4">
                     <div className="text-sm text-muted-foreground">
-                        Showing {table.getRowModel().rows.length} of {data.length} entries
+                        {manualPagination ? (
+                            totalCount === 0 ? (
+                                "Showing 0 of 0 entries"
+                            ) : (
+                                `Showing ${pagination.pageIndex * pagination.pageSize + 1}–${Math.min((pagination.pageIndex + 1) * pagination.pageSize, totalCount || 0)} of ${totalCount || 0} entries`
+                            )
+                        ) : (
+                            `Showing ${table.getRowModel().rows.length} of ${data.length} entries`
+                        )}
                     </div>
                     <div className="flex items-center space-x-2">
                         <Pagination>

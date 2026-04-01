@@ -8,6 +8,7 @@ import {
   Users,
   Loader2,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Link } from "react-router-dom"
 import axios from "axios"
 import { API } from "@/config/api"
@@ -193,7 +194,7 @@ export function NavUser({
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8 rounded-lg">
+              <Avatar className={cn("h-8 w-8 rounded-lg", isAdminImpersonating && "border-2 border-red-500 shadow-sm shadow-red-500/50")}>
                 <AvatarImage src={user.avatar} alt={user.name} />
                 <AvatarFallback className="rounded-lg">CN</AvatarFallback>
               </Avatar>
@@ -212,7 +213,7 @@ export function NavUser({
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
+                <Avatar className={cn("h-8 w-8 rounded-lg", isAdminImpersonating && "border-2 border-red-500")}>
                   <AvatarImage src={user.avatar} alt={user.name} />
                   <AvatarFallback className="rounded-lg"></AvatarFallback>
                 </Avatar>

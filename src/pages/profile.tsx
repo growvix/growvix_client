@@ -1,59 +1,152 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, } from "@/components/ui/card"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useState, useRef, useEffect } from "react";
 import { Label } from "@/components/ui/label"
-import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Edit, X } from "lucide-react";
+import { Edit, X, Loader2 } from "lucide-react";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-const defaultUser = {
-  name: "John Doe",
-  icon: "👤"
-};
-
 import { useNavigate } from "react-router-dom";
+import { getCookie } from "@/utils/cookies";
+import { API } from "@/config/api";
+import axios from "axios";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(defaultUser);
-  const [name] = useState(user.name);
-  const [icon] = useState(user.icon);
-  const [_editing, setEditing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(localStorage.getItem("userAvatar"));
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  
+  const userId = getCookie("user_id");
+  const token = getCookie("token");
+  const isAdminImpersonating = !!getCookie("admin_token");
+
+  useEffect(() => {
+    // Fetch user data
+    if (!userId) {
+        setLoading(false);
+        return;
+    }
+
+    const fetchUser = async () => {
+      try {
+        const response = await axios.get(API.getUser(userId as string), {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const profile = response.data.data.profile;
+        setFirstName(profile.firstName || "");
+        setLastName(profile.lastName || "");
+        setEmail(profile.email || "");
+        setPhone(profile.phone || "");
+        if (profile.profileImagePath) {
+          setAvatarUrl(profile.profileImagePath);
+          localStorage.setItem("userAvatar", profile.profileImagePath);
+        }
+      } catch (err) {
+        console.error("Failed to fetch user data", err);
+        toast.error("Failed to load profile data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
+  }, [userId, token]);
+
   const handleCancel = () => {
-    setFirstName("");
-    setLastName("");
-    setEmail("");
-    setPhone("");
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
   };
 
-  const handleSave = () => {
-    setUser({ name, icon });
-    setEditing(false);
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        profile: {
+          firstName,
+          lastName,
+          email,
+          phone,
+          profileImagePath: avatarUrl
+        }
+      };
+      await axios.put(API.updateUser(userId as string), payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Profile updated successfully");
+      if (avatarUrl) localStorage.setItem("userAvatar", avatarUrl);
+      window.location.reload(); // To refresh sidebar avatar and name
+    } catch (err) {
+      toast.error("Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
   };
+
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleShowPassword = () => {
-    setShowPassword(!showPassword);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const response = await axios.post(API.UPLOAD.PROFILE_PICTURE, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const url = response.data.data.url;
+      setAvatarUrl(url);
+      localStorage.setItem("userAvatar", url);
+      
+      // Automatically save the updated avatar URL to the user profile
+      await axios.put(API.updateUser(userId as string), {
+        profile: { firstName, lastName, email, phone, profileImagePath: url }
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Profile picture updated");
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to upload profile picture");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-[calc(100vh-100px)]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -81,14 +174,31 @@ export default function ProfilePage() {
             </TabsList>
             <TabsContent value="account">
               <div className="flex justify-center">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept="image/*" 
+                  onChange={handleFileChange} 
+                />
                 <div className="relative group w-35 h-35">
-                  <Avatar className="w-35 h-35 ring-1 ring-offset-1 ring-ring border-x">
-                    <AvatarFallback className="text-4xl">{user.icon}</AvatarFallback>
+                  <Avatar className={cn("w-35 h-35 ring-1 ring-offset-1 ring-ring border-x", isAdminImpersonating && "border-2 border-red-500 shadow-sm shadow-red-500/50")}>
+                    {avatarUrl ? (
+                        <AvatarImage src={avatarUrl} alt="Avatar" />
+                    ) : (
+                        <AvatarFallback className="text-4xl">👤</AvatarFallback>
+                    )}
                   </Avatar>
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full">
+                  <div 
+                    onClick={() => !uploading && fileInputRef.current?.click()}
+                    className={cn(
+                        "absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full",
+                        uploading && "opacity-100 cursor-not-allowed"
+                    )}
+                  >
                     <span className="flex items-center gap-2 text-white">
-                      <Edit />
-                      <span>Edit</span>
+                      {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Edit />}
+                      <span>{uploading ? "Uploading" : "Edit"}</span>
                     </span>
                   </div>
                 </div>
@@ -205,7 +315,10 @@ export default function ProfilePage() {
         </CardContent>
         <CardFooter className="flex justify-end gap-3">
           <Button variant={"ghost"} onClick={handleCancel}>Reset</Button>
-          <Button variant="default" className="" onClick={handleSave}>Save Changes</Button>
+          <Button variant="default" className="" disabled={saving} onClick={handleSave}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Save Changes
+          </Button>
         </CardFooter>
       </Card>
     </div>

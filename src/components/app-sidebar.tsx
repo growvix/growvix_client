@@ -142,12 +142,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // Get user info from cookies
   const userName = getCookie('userName') || 'User'
   const email = getCookie('email') || 'user@example.com'
-
+  const avatar = localStorage.getItem('userAvatar') || "/user_icon.png"
 
   const user = {
     name: userName,
     email: email,
-    avatar: "/user_icon.png",
+    avatar: avatar,
   }
 
   const rawRole = getCookie('role') || 'user';

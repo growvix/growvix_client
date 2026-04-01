@@ -106,10 +106,12 @@ export default function AddLeadPage() {
         }
 
         try {
+            const currentUserId = getCookie('user_id')
             // Format acquired as array with received timestamp
             const payload = {
                 ...lead,
                 organization,
+                exe_user: currentUserId,
                 acquired: [{
                     campaign: lead.acquired.campaign,
                     source: lead.acquired.source,
@@ -119,7 +121,12 @@ export default function AddLeadPage() {
                     created_at: new Date().toISOString(),
                 }]
             }
-            const response = await axios.post(API.LEADS, payload)
+            const token = getCookie('token')
+            const response = await axios.post(API.LEADS, payload, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            })
             toast.success(response.data.message || 'Lead added successfully!')
             setLead({ ...initialLead, organization })
         } catch (error: any) {
@@ -205,7 +212,7 @@ export default function AddLeadPage() {
                                 <div className="flex items-center gap-2 mb-2">
                                     <span className="w-2 h-2 rounded-full bg-purple-500 shadow-sm"></span>
                                     <h3 className="text-md font-bold uppercase text-purple-500">Requirements</h3>
-                                    
+
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <Field>
