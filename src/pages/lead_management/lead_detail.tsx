@@ -1959,13 +1959,15 @@ export default function LeadDetail() {
                                                         const response = await axios.post(`${API_URL}/api/ivr-call`, {
                                                             organization,
                                                             userId: currentUserId,
-                                                            assignedUser,
-                                                            clientPhone,
                                                             leadId: leadDetail?._id,
-                                                            leadName,
                                                         });
                                                         console.log('IVR Call Response:', response.data);
-                                                        toast.success('IVR call request sent');
+                                                        const vendorData = response.data?.data?.vendorResponse;
+                                                        if (vendorData?.status === 'success' || response.data?.success) {
+                                                            toast.success(`Call initiated successfully`);
+                                                        } else {
+                                                            toast.info(`Call request sent. Status: ${vendorData?.status || 'pending'}`);
+                                                        }
                                                     } catch (err: any) {
                                                         console.error('IVR Call Error:', err);
                                                         toast.error(err.response?.data?.message || 'Failed to initiate IVR call');
