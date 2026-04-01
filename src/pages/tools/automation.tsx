@@ -40,6 +40,16 @@ export default function Automation() {
 
     const settingsCards = [
         {
+            title: "Campaigns",
+            description: "Manage campaigns for your business.",
+            icon: Phone,
+            colorClass: "text-blue-600 dark:text-blue-400",
+            bgClass: "bg-blue-100 dark:bg-blue-900/40",
+            hoverBorder: "hover:border-blue-300 dark:hover:border-blue-800",
+            hoverGradient: "from-blue-50/50 dark:from-blue-950/20",
+            path: "/automation/campaigns",
+        },
+        {
             title: "Virtual Number",
             description: "Manage virtual numbers for your business.",
             icon: Phone,

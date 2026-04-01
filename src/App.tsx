@@ -42,6 +42,7 @@ import Mail from "./pages/setting/mail";
 import MailTemplatesListing from "./pages/setting/mail_templates/mail_listing";
 import CreateTemplate from "./pages/setting/mail_templates/create_template";
 import Automation from "./pages/tools/automation";
+import Campaigns from "./pages/tools/campaigns";
 import ThirdPartyIntegration from "./pages/tools/third_party_integration";
 
 // Searchable pages index
@@ -101,6 +102,7 @@ export default function App() {
             <Route path="/new_project" element={<NewProject />} />
             <Route path="/edit_project/:id" element={<EditProject />} />
             <Route path="tools/automation" element={<Automation />} />
+            <Route path="automation/campaigns" element={<Campaigns />} />
             <Route path="/settings" element={<GeneralSetting />} />
             <Route path="/setting/user_management" element={<UserManagement />} />
             <Route path="/setting/lead_stage_setting" element={<LeadStageSetting />} />
