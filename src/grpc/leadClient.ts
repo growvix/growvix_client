@@ -2,16 +2,20 @@
 import { API_URL } from '@/config/api';
 import type { Lead, GetAllLeadsRequest, GetAllLeadsResponse } from './types';
 
+import { getCookie } from '@/utils/cookies';
+
 const GRPC_BASE_URL = `${API_URL}/grpc`;
 
 /**
  * Fetch leads with pagination using gRPC/Connect protocol
  */
 export async function getAllLeads(request: GetAllLeadsRequest): Promise<{ leads: Lead[]; total: number }> {
+    const token = getCookie('token');
     const response = await fetch(`${GRPC_BASE_URL}/lead/GetAllLeads`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : '',
         },
         body: JSON.stringify(request),
     });

@@ -9,6 +9,11 @@ import "./App.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { apolloClient } from "@/lib/apolloClient";
 
+import { setupAxios } from "./config/axios-setup";
+
+// Initialize global axios configuration
+setupAxios();
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
 
   <ApolloProvider client={apolloClient}>
