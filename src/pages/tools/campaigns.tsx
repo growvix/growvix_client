@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
-import { gql } from "@apollo/client"
-import { useQuery, useMutation } from "@apollo/client/react"
 import { getCookie } from "@/utils/cookies"
 import {
     Card,
@@ -20,73 +18,55 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-    DialogFooter,
-} from "@/components/ui/dialog"
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/components/ui/tabs"
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import LoaderScreen, { HorizontalLoader } from "@/components/ui/loader-screen"
-import { Plus, ListFilter, Search } from "lucide-react"
+import { Plus, Search, Trash2 } from "lucide-react"
+import axios from "axios"
+import { API } from "@/config/api"
 
-const GET_ALL_CAMPAIGNS = gql`
-    query GetAllCampaigns($organization: String!) {
-        getAllCampaigns(organization: $organization) {
-            _id
-            uuid
-            campaignName
-            project {
-                projectId
-                projectName
-            }
-        }
-    }
-`
-
-const GET_ALL_PROJECTS = gql`
-    query GetAllProjects($organization: String!) {
-        getAllProjects(organization: $organization) {
-            product_id
-            name
-        }
-    }
-`
-
-const CREATE_CAMPAIGN = gql`
-    mutation CreateCampaign(
-        $organization: String!, 
-        $campaignName: String!, 
-        $projectId: String!, 
-        $projectName: String!
-    ) {
-        createCampaign(
-            organization: $organization,
-            campaignName: $campaignName,
-            projectId: $projectId,
-            projectName: $projectName
-        ) {
-            _id
-            uuid
-            campaignName
-            project {
-                projectId
-                projectName
-            }
-        }
-    }
-`
+type InputChannel = {
+    id: string
+    publisher: string
+    source: string
+    subSource: string
+    medium: string
+    campaignType: string
+    integrationType: string
+    redirectionUrl: string
+}
 
 type Campaign = {
     _id: string
     uuid: string
     campaignName: string
-    project: {
+    project?: {
         projectId: string
         projectName: string
     }
+    inputChannels: InputChannel[]
+    createdAt: string
 }
 
 type ProjectSummary = {
@@ -94,22 +74,42 @@ type ProjectSummary = {
     name: string
 }
 
-interface GetCampaignsResponse {
-    getAllCampaigns: Campaign[]
-}
-
-interface GetProjectsResponse {
-    getAllProjects: ProjectSummary[]
+type Source = {
+    _id: string
+    name: string
 }
 
 export default function Campaigns() {
     const { setBreadcrumbs } = useBreadcrumb()
     const organization = getCookie("organization") || ""
 
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+    // UI States
+    const [isSheetOpen, setIsSheetOpen] = useState(false)
+    const [activeTab, setActiveTab] = useState("details")
+    
     const [newCampaignName, setNewCampaignName] = useState("")
-    const [selectedProjectId, setSelectedProjectId] = useState<string>("")
+    const [selectedProjectId, setSelectedProjectId] = useState<string>("none")
+    const [inputChannels, setInputChannels] = useState<InputChannel[]>([])
+
+    // New Channel form state
+    const [newChannel, setNewChannel] = useState<Omit<InputChannel, "id">>({
+        publisher: "",
+        source: "",
+        subSource: "",
+        medium: "",
+        campaignType: "",
+        integrationType: "website",
+        redirectionUrl: ""
+    })
+
     const [searchQuery, setSearchQuery] = useState("")
+    const [campaigns, setCampaigns] = useState<Campaign[]>([])
+    const [projects, setProjects] = useState<ProjectSummary[]>([])
+    const [sources, setSources] = useState<Source[]>([])
+    
+    const [loadingCampaigns, setLoadingCampaigns] = useState(true)
+    const [loadingProjects, setLoadingProjects] = useState(true)
+    const [creatingCampaign, setCreatingCampaign] = useState(false)
 
     useEffect(() => {
         setBreadcrumbs([
@@ -118,164 +118,307 @@ export default function Campaigns() {
         ])
     }, [setBreadcrumbs])
 
-    const {
-        loading: loadingCampaigns,
-        data: campaignsData,
-        refetch: refetchCampaigns
-    } = useQuery<GetCampaignsResponse>(GET_ALL_CAMPAIGNS, {
-        variables: { organization },
-        fetchPolicy: "network-only",
-        skip: !organization,
-    })
-
-    const {
-        loading: loadingProjects,
-        data: projectsData
-    } = useQuery<GetProjectsResponse>(GET_ALL_PROJECTS, {
-        variables: { organization },
-        skip: !organization,
-    })
-
-    const [createCampaign, { loading: creatingCampaign }] = useMutation(CREATE_CAMPAIGN, {
-        onCompleted: () => {
-            toast.success("Campaign created successfully")
-            setIsCreateModalOpen(false)
-            setNewCampaignName("")
-            setSelectedProjectId("")
-            refetchCampaigns()
-        },
-        onError: (err: Error) => {
-            toast.error(err.message || "Failed to create campaign")
+    const fetchCampaigns = async () => {
+        if (!organization) return
+        setLoadingCampaigns(true)
+        try {
+            const token = getCookie("token")
+            const response = await axios.get(`${API.CAMPAIGNS}?organization=${organization}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            setCampaigns(response.data.data || [])
+        } catch (err: unknown) {
+            const error = err as any
+            console.error("Failed to fetch campaigns:", error)
+            toast.error(error.response?.data?.message || "Failed to fetch campaigns")
+        } finally {
+            setLoadingCampaigns(false)
         }
-    })
+    }
 
-    const handleCreateCampaign = (e: React.FormEvent) => {
-        e.preventDefault()
+    const fetchProjects = async () => {
+        if (!organization) return
+        setLoadingProjects(true)
+        try {
+            const token = getCookie("token")
+            const response = await axios.get(`${API.PROJECTS}?organization=${organization}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            setProjects(response.data.data || [])
+        } catch (err: unknown) {
+            const error = err as any
+            console.error("Failed to fetch projects:", error)
+        } finally {
+            setLoadingProjects(false)
+        }
+    }
 
-        if (!newCampaignName.trim()) {
-            toast.error("Please enter a campaign name")
+    const fetchSources = async () => {
+        if (!organization) return
+        try {
+            const token = getCookie("token")
+            const response = await axios.get(`${API.SOURCES}?organization=${organization}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            setSources(response.data.data || [])
+        } catch (err: unknown) {
+            const error = err as any
+            console.error("Failed to fetch sources:", error)
+        }
+    }
+
+    useEffect(() => {
+        fetchCampaigns()
+        fetchProjects()
+        fetchSources()
+    }, [organization])
+
+    const handleAddChannelToLocal = () => {
+        if (!newChannel.publisher || !newChannel.medium) {
+            toast.error("Please fill required channel fields (Publisher, Medium)")
             return
         }
-
-        if (!selectedProjectId) {
-            toast.error("Please select a project")
-            return
+        
+        const channel: InputChannel = {
+            ...newChannel,
+            id: Math.random().toString(36).substr(2, 9)
         }
-
-        const project = projectsData?.getAllProjects.find(
-            (p: ProjectSummary) => p.product_id.toString() === selectedProjectId
-        )
-
-        if (!project) {
-            toast.error("Invalid project selected")
-            return
-        }
-
-        createCampaign({
-            variables: {
-                organization,
-                campaignName: newCampaignName.trim(),
-                projectId: project.product_id.toString(),
-                projectName: project.name
-            }
+        
+        setInputChannels([...inputChannels, channel])
+        setNewChannel({
+            publisher: "",
+            source: "",
+            subSource: "",
+            medium: "",
+            campaignType: "",
+            integrationType: "website",
+            redirectionUrl: ""
         })
     }
 
-    const campaigns: Campaign[] = campaignsData?.getAllCampaigns || []
-    const projects: ProjectSummary[] = projectsData?.getAllProjects || []
+    const handleSaveCampaign = async () => {
+        if (!newCampaignName.trim()) {
+            toast.error("Campaign name is required")
+            setActiveTab("details")
+            return
+        }
+
+        const project = projects.find(p => p.product_id.toString() === selectedProjectId)
+
+        setCreatingCampaign(true)
+        try {
+            const token = getCookie("token")
+            const response = await axios.post(`${API.CAMPAIGNS}?organization=${organization}`, {
+                campaignName: newCampaignName.trim(),
+                projectId: project ? project.product_id.toString() : undefined,
+                projectName: project ? project.name : undefined,
+                inputChannels: inputChannels.map(({ id, ...rest }) => rest) // eslint-disable-line @typescript-eslint/no-unused-vars
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+
+            if (response.data.success) {
+                toast.success("Campaign created successfully")
+                setIsSheetOpen(false)
+                resetForm()
+                fetchCampaigns()
+            }
+        } catch (err: unknown) {
+            const error = err as any
+            toast.error(error.response?.data?.message || "Failed to create campaign")
+        } finally {
+            setCreatingCampaign(false)
+        }
+    }
+
+    const resetForm = () => {
+        setNewCampaignName("")
+        setSelectedProjectId("none")
+        setInputChannels([])
+        setActiveTab("details")
+    }
 
     const filteredCampaigns = campaigns.filter(c => 
         c.campaignName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        c.project.projectName.toLowerCase().includes(searchQuery.toLowerCase())
+        (c.project && c.project.projectName.toLowerCase().includes(searchQuery.toLowerCase()))
     )
 
-    if (loadingCampaigns && !campaignsData) {
+    if (loadingCampaigns && campaigns.length === 0) {
         return <LoaderScreen />
     }
 
     return (
-        <div className="flex flex-col h-full space-y-4 p-6 pt-2">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col h-full space-y-4 p-8">
+            <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Campaigns</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Manage lead generation campaigns and their associated projects.
+                    <p className="text-muted-foreground text-sm mt-1">
+                        Manage marketing campaigns and lead source tracking.
                     </p>
                 </div>
 
-                <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-                    <DialogTrigger asChild>
+                <Sheet open={isSheetOpen} onOpenChange={(open) => {
+                    if (!open) resetForm()
+                    setIsSheetOpen(open)
+                }}>
+                    <SheetTrigger asChild>
                         <Button className="gap-2">
                             <Plus className="h-4 w-4" />
                             Create Campaign
                         </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Create New Campaign</DialogTitle>
-                            <DialogDescription>
-                                Add a new campaign and associate it with an existing project.
-                            </DialogDescription>
-                        </DialogHeader>
-                        
-                        <form onSubmit={handleCreateCampaign} className="space-y-4 py-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="campaignName">Campaign Name</Label>
-                                <Input
-                                    id="campaignName"
-                                    placeholder="Enter campaign name (e.g., Summer Sale 2024)"
-                                    value={newCampaignName}
-                                    onChange={(e) => setNewCampaignName(e.target.value)}
-                                    autoComplete="off"
-                                />
-                            </div>
+                    </SheetTrigger>
+                    
+                    <SheetContent side="right" className="sm:max-w-xl md:max-w-2xl w-full flex flex-col p-6">
+                        <SheetHeader className="mb-4">
+                            <SheetTitle>New Campaign</SheetTitle>
+                            <SheetDescription>Configure a new campaign and specify its integration sources.</SheetDescription>
+                        </SheetHeader>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="project">Project</Label>
-                                <Select
-                                    value={selectedProjectId}
-                                    onValueChange={setSelectedProjectId}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder={loadingProjects ? "Loading projects..." : "Select a project"} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {projects.map((project) => (
-                                            <SelectItem key={project.product_id} value={project.product_id.toString()}>
-                                                {project.name}
-                                            </SelectItem>
-                                        ))}
-                                        {projects.length === 0 && !loadingProjects && (
-                                            <div className="p-2 text-sm text-muted-foreground text-center">
-                                                No projects available
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="details">Campaign Details</TabsTrigger>
+                                <TabsTrigger value="channels" disabled={!newCampaignName}>Input Channels</TabsTrigger>
+                            </TabsList>
+                            
+                            <div className="flex-1 overflow-y-auto py-4">
+                                <TabsContent value="details" className="space-y-6 m-0 border-0 p-0">
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="campaignName">Campaign Name <span className="text-destructive">*</span></Label>
+                                            <Input 
+                                                id="campaignName"
+                                                placeholder="e.g. Summer Sale 2024" 
+                                                value={newCampaignName}
+                                                onChange={e => setNewCampaignName(e.target.value)}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="projectSelect">Project (Optional)</Label>
+                                            <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                                                <SelectTrigger id="projectSelect">
+                                                    <SelectValue placeholder="Select a project" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="none">No Project</SelectItem>
+                                                    {projects.map(p => (
+                                                        <SelectItem key={p.product_id} value={p.product_id.toString()}>
+                                                            {p.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <p className="text-xs text-muted-foreground">Select a project if this campaign is tied to specific inventory.</p>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="channels" className="space-y-6 m-0 border-0 p-0">
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle className="text-base">Add Source Channel</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Publisher <span className="text-destructive">*</span></Label>
+                                                    <Input placeholder="e.g. Google Maps" value={newChannel.publisher} onChange={e => setNewChannel({...newChannel, publisher: e.target.value})} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Medium <span className="text-destructive">*</span></Label>
+                                                    <Input placeholder="e.g. organic" value={newChannel.medium} onChange={e => setNewChannel({...newChannel, medium: e.target.value})} />
+                                                </div>
                                             </div>
-                                        )}
-                                    </SelectContent>
-                                </Select>
-                            </div>
 
-                            <DialogFooter className="pt-4">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => setIsCreateModalOpen(false)}
-                                    disabled={creatingCampaign}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button type="submit" disabled={creatingCampaign || loadingProjects}>
-                                    {creatingCampaign ? "Creating..." : "Create Campaign"}
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Source</Label>
+                                                    <Select value={newChannel.source} onValueChange={(v) => setNewChannel({...newChannel, source: v})}>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select source..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {sources.map(s => (
+                                                                <SelectItem key={s._id} value={s.name}>{s.name}</SelectItem>
+                                                            ))}
+                                                            {sources.length === 0 && (
+                                                                <div className="text-xs p-2 text-muted-foreground">No sources available. Create one in Source Management.</div>
+                                                            )}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Sub Source</Label>
+                                                    <Input placeholder="e.g. landing-page-2" value={newChannel.subSource} onChange={e => setNewChannel({...newChannel, subSource: e.target.value})} />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label>Integration Type</Label>
+                                                <Select value={newChannel.integrationType} onValueChange={v => setNewChannel({...newChannel, integrationType: v})}>
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="website">Website</SelectItem>
+                                                        <SelectItem value="api">API / Webhook</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <Button type="button" variant="secondary" onClick={handleAddChannelToLocal} className="w-full">
+                                                Add Channel
+                                            </Button>
+                                        </CardContent>
+                                    </Card>
+
+                                    {inputChannels.length > 0 && (
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Publisher</TableHead>
+                                                    <TableHead>Source</TableHead>
+                                                    <TableHead>Medium</TableHead>
+                                                    <TableHead className="w-[50px]"></TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {inputChannels.map(ch => (
+                                                    <TableRow key={ch.id}>
+                                                        <TableCell className="font-medium">{ch.publisher}</TableCell>
+                                                        <TableCell>
+                                                            {ch.source}
+                                                            {ch.subSource && <span className="text-muted-foreground text-xs ml-1">({ch.subSource})</span>}
+                                                        </TableCell>
+                                                        <TableCell>{ch.medium}</TableCell>
+                                                        <TableCell>
+                                                            <Button variant="ghost" size="icon" onClick={() => setInputChannels(inputChannels.filter(x => x.id !== ch.id))}>
+                                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    )}
+                                </TabsContent>
+                            </div>
+                        </Tabs>
+
+                        <div className="flex justify-end gap-3 pt-4 border-t mt-auto">
+                            <Button variant="outline" onClick={() => setIsSheetOpen(false)}>Cancel</Button>
+                            <Button disabled={creatingCampaign} onClick={handleSaveCampaign}>
+                                {creatingCampaign ? "Saving..." : "Save Campaign"}
+                            </Button>
+                        </div>
+                    </SheetContent>
+                </Sheet>
             </div>
 
-            <Card className="border shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden">
-                <CardHeader className="py-4 border-b flex flex-row items-center justify-between space-y-0 bg-muted/20">
-                    <CardTitle className="text-lg font-medium">All Campaigns</CardTitle>
-                    <div className="relative w-64">
+            <Card className="flex-1 flex flex-col min-h-0">
+                <CardHeader className="py-4 border-b flex flex-row items-center justify-between space-y-0">
+                    <CardTitle className="text-lg">Campaign Directory</CardTitle>
+                    <div className="relative w-72">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
                             placeholder="Search campaigns..."
@@ -285,43 +428,45 @@ export default function Campaigns() {
                         />
                     </div>
                 </CardHeader>
-                <CardContent className="p-0 overflow-auto flex-1 h-[calc(100vh-280px)]">
-                    {loadingCampaigns && <HorizontalLoader />}
-                    
+                <CardContent className="p-0 overflow-auto flex-1 h-[calc(100vh-250px)] relative">
+                    {loadingCampaigns && <div className="absolute inset-x-0 top-0"><HorizontalLoader /></div>}
                     {!loadingCampaigns && filteredCampaigns.length === 0 ? (
                         <div className="flex flex-col items-center justify-center p-12 text-center h-full">
-                            <div className="bg-muted p-4 rounded-full mb-4">
-                                <ListFilter className="h-8 w-8 text-muted-foreground" />
-                            </div>
-                            <h3 className="text-lg font-semibold">No campaigns found</h3>
-                            <p className="text-muted-foreground max-w-sm mt-2">
-                                {searchQuery 
-                                    ? "We couldn't find any campaigns matching your search. Try different keywords." 
-                                    : "You haven't created any campaigns yet. Click the button above to create one."}
-                            </p>
+                            <p className="text-muted-foreground text-sm">No campaigns found.</p>
                         </div>
                     ) : (
-                        <div className="divide-y relative">
-                            {filteredCampaigns.map((campaign) => (
-                                <div key={campaign._id} className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
-                                    <div className="flex flex-col gap-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-semibold text-base">{campaign.campaignName}</span>
-                                            <span className="px-2 py-0.5 text-xs rounded-full bg-secondary text-secondary-foreground border">
-                                                ID: {campaign.uuid.substring(0, 8)}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center text-sm text-muted-foreground mt-0.5">
-                                            <span className="font-medium mr-1.5">Project:</span>
-                                            {campaign.project.projectName}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        {/* Future actions could go here */}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <Table>
+                            <TableHeader className="bg-muted/50 sticky top-0 z-10">
+                                <TableRow>
+                                    <TableHead className="font-semibold">Campaign Name</TableHead>
+                                    <TableHead className="font-semibold">Project</TableHead>
+                                    <TableHead className="font-semibold">Channels</TableHead>
+                                    <TableHead className="font-semibold">Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredCampaigns.map((c) => (
+                                    <TableRow key={c._id}>
+                                        <TableCell className="font-medium">
+                                            {c.campaignName}
+                                        </TableCell>
+                                        <TableCell>
+                                            {c.project ? (
+                                                <span>{c.project.projectName}</span>
+                                            ) : (
+                                                <span className="text-muted-foreground italic text-sm">No Project</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="secondary">{c.inputChannels?.length || 0} Channels</Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600">Active</Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
                     )}
                 </CardContent>
             </Card>

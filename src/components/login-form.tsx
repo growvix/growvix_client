@@ -46,7 +46,7 @@ export function LoginForm({
     }
   }, [navigate]);
   const validateForm = (emailVal: string, passwordVal: string) => {
-    let newErrors: any = {}
+    const newErrors: any = {}
 
     if (!emailVal) {
       newErrors.email = "Email is required"

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import * as React from "react"
 import { BreadcrumbProvider } from "@/context/breadcrumb-context"
 import { getCookie } from '@/utils/cookies';
@@ -44,6 +44,7 @@ import CreateTemplate from "./pages/setting/mail_templates/create_template";
 import Automation from "./pages/tools/automation";
 import Campaigns from "./pages/tools/campaigns";
 import ThirdPartyIntegration from "./pages/tools/third_party_integration";
+import TrackSourceSubsource from "./pages/tools/track_source_subsource";
 
 // Searchable pages index
 function ScrollToTop() {
@@ -103,6 +104,7 @@ export default function App() {
             <Route path="/edit_project/:id" element={<EditProject />} />
             <Route path="tools/automation" element={<Automation />} />
             <Route path="automation/campaigns" element={<Campaigns />} />
+            <Route path="automation/track_source_subsource" element={<TrackSourceSubsource />} />
             <Route path="/settings" element={<GeneralSetting />} />
             <Route path="/setting/user_management" element={<UserManagement />} />
             <Route path="/setting/lead_stage_setting" element={<LeadStageSetting />} />
