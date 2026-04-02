@@ -26,7 +26,7 @@ export default function Automation() {
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Info className="h-4.5 w-4.5" />
+                                <Info className="h-4.5 w-4.5 " />
                             </TooltipTrigger>
                             <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
                                 <p className="font-medium">Automation</p>

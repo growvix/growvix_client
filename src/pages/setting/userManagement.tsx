@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { encryptPassword } from "@/utils/encryption"
 
 const PERMISSION_OPTIONS = [
     { key: "create_project", label: "Create Project" },
@@ -674,6 +675,7 @@ export default function UserManagement() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         try {
+            const encryptedPwd = await encryptPassword(formData.password)
             const payload = {
                 phoneNumber: formData.phoneNumber || "0000000000",
                 organization: org,
@@ -683,7 +685,7 @@ export default function UserManagement() {
                     email: formData.email,
                     phone: formData.phoneNumber || "0000000000",
                 },
-                password: formData.password,
+                password: encryptedPwd,
                 role: formData.role || "user",
                 department: formData.department || undefined,
                 permissions: formData.permissions,

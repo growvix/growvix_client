@@ -86,6 +86,7 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+    const [globalFilter, setGlobalFilter] = React.useState("")
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
     const [pagination, setPagination] = React.useState<PaginationState>({
@@ -125,11 +126,14 @@ export function DataTable<TData, TValue>({
         pageCount: pageCount,
         autoResetPageIndex: !manualPagination,
         getFilteredRowModel: getFilteredRowModel(),
+        onGlobalFilterChange: setGlobalFilter,
+        globalFilterFn: "includesString",
         onColumnVisibilityChange: setColumnVisibility,
         onRowSelectionChange: setRowSelection,
         state: {
             sorting,
             columnFilters,
+            globalFilter,
             columnVisibility,
             rowSelection,
             pagination,
@@ -163,24 +167,34 @@ export function DataTable<TData, TValue>({
     return (
         <div className="w-full">
             <div className="flex justify-between items-center gap-4 py-4 w-full flex-wrap">
-                <div className="flex items-center gap-4 flex-1">
-                    {filterColumn && (
+                <div className="flex items-center gap-4 flex-1 pl-4">
+                    {(filterColumn || filterPlaceholder) && (
                         <div className="relative w-full max-w-sm">
                             <Input
                                 placeholder={filterPlaceholder}
-                                value={(table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""}
+                                value={((filterColumn ? table.getColumn(filterColumn)?.getFilterValue() : globalFilter) as string) ?? ""}
                                 onChange={(event) => {
-                                    table.getColumn(filterColumn)?.setFilterValue(event.target.value)
+                                    if (filterColumn) {
+                                        table.getColumn(filterColumn)?.setFilterValue(event.target.value)
+                                    } else {
+                                        setGlobalFilter(event.target.value)
+                                    }
                                 }}
-                                className="w-full pr-8 bg-input/30 dark:bg-input/50"
+                                className="w-full pr-8 bg-input/30 dark:bg-input/50 border-slate-200 dark:border-white/10"
                             />
 
-                            {(table.getColumn(filterColumn)?.getFilterValue() as string) && (
+                            {((filterColumn ? table.getColumn(filterColumn)?.getFilterValue() : globalFilter) as string) && (
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => table.getColumn(filterColumn)?.setFilterValue("")}
+                                    onClick={() => {
+                                        if (filterColumn) {
+                                            table.getColumn(filterColumn)?.setFilterValue("")
+                                        } else {
+                                            setGlobalFilter("")
+                                        }
+                                    }}
                                     className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
                                 >
                                     <X className="h-4 w-4" />
@@ -246,7 +260,7 @@ export function DataTable<TData, TValue>({
                     
                 </div>
             </div>
-            <div className="overflow-hidden rounded-md border">
+            <div className="overflow-hidden rounded-md border border-slate-200 dark:border-white/10">
                 <Table>
                     <TableHeader className="bg-gray-900/10 dark:bg-muted/70">
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -300,7 +314,7 @@ export function DataTable<TData, TValue>({
             </div>
             {!hidePagination && (
                 <div className="flex items-center justify-between space-x-2 py-4">
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground pl-3">
                         {manualPagination ? (
                             totalCount === 0 ? (
                                 "Showing 0 of 0 entries"

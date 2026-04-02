@@ -44,7 +44,7 @@ import { Popover,
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import LoaderScreen, { HorizontalLoader } from "@/components/ui/loader-screen"
-import { Plus, Search, Trash2, MoreHorizontal } from "lucide-react"
+import { Plus, Search, Trash2, MoreHorizontal, CircleCheck, CircleX } from "lucide-react"
 import axios from "axios"
 import { API } from "@/config/api"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -75,6 +75,7 @@ type Campaign = {
     }
     inputChannels: InputChannel[]
     createdAt: string
+    status?: boolean
 }
 
 type ProjectSummary = {
@@ -88,7 +89,7 @@ type Source = {
 }
 export const getColumns = (
     onEdit: (campaign: Campaign) => void,
-    onDelete: (campaign: Campaign) => void
+    onToggleStatus: (campaign: Campaign) => void
 ): ColumnDef<Campaign>[] => [
     {
         accessorKey: "campaignName",
@@ -130,9 +131,20 @@ export const getColumns = (
         meta: {
             label: "Status"  
         },
-        cell: () => (
-            <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600">Active</Badge>
-        ),
+        cell: ({ row }) => {
+            const isActive = row.original.status !== false; // Default to active if undefined
+            return isActive ? (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full outline outline-1 outline-green-200 dark:outline-green-800 bg-green-100/50 text-green-700 dark:text-green-400 dark:bg-green-900/20 w-fit">
+                    <CircleCheck className="h-3.5 w-3.5" />
+                    <span className="text-[11px] font-bold uppercase tracking-tight">Active</span>
+                </div>
+            ) : (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full outline outline-1 outline-red-200 dark:outline-red-800 bg-red-100/50 text-red-600 dark:text-red-400 dark:bg-red-900/20 w-fit">
+                    <CircleX className="h-3.5 w-3.5" />
+                    <span className="text-[11px] font-bold uppercase tracking-tight">Inactive</span>
+                </div>
+            )
+        },
     },
     {
         id: "actions",
@@ -169,10 +181,10 @@ export const getColumns = (
                             </Button>
                             <Button 
                                 variant="ghost" 
-                                className="w-full justify-start font-normal h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => onDelete(campaign)}
+                                className={`w-full justify-start font-normal h-8 px-2 ${campaign.status !== false ? 'text-orange-600 hover:text-orange-700 hover:bg-orange-100 dark:hover:bg-orange-950/50' : 'text-green-600 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-950/50'}`}
+                                onClick={() => onToggleStatus(campaign)}
                             >
-                                Delete
+                                {campaign.status !== false ? "Set Inactive" : "Set Active"}
                             </Button>
                         </div>
                     </PopoverContent>
@@ -198,21 +210,22 @@ export default function Campaigns() {
         setIsSheetOpen(true)
     }
 
-    const handleDeleteCampaign = async (campaign: Campaign) => {
-        if (!confirm(`Are you sure you want to delete campaign "${campaign.campaignName}"?`)) return
+    const handleToggleStatus = async (campaign: Campaign) => {
+        const newStatus = campaign.status === false ? true : false;
         try {
             const token = getCookie("token")
-            await axios.delete(`${API.CAMPAIGNS}/${campaign._id}?organization=${organization}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            })
-            toast.success("Campaign deleted successfully")
+            await axios.put(`${API.CAMPAIGNS}/${campaign._id}?organization=${organization}`, 
+                { status: newStatus },
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+            toast.success(`Campaign marked as ${newStatus ? 'Active' : 'Inactive'}`)
             fetchCampaigns()
         } catch (err: any) {
-            toast.error(err.response?.data?.message || "Failed to delete campaign")
+            toast.error(err.response?.data?.message || "Failed to update campaign status")
         }
     }
 
-    const columns = getColumns(handleEditCampaign, handleDeleteCampaign)
+    const columns = getColumns(handleEditCampaign, handleToggleStatus)
     
     const [newCampaignName, setNewCampaignName] = useState("")
     const [selectedProjectId, setSelectedProjectId] = useState<string>("none")
