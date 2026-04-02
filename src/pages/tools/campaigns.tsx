@@ -4,8 +4,6 @@ import { getCookie } from "@/utils/cookies"
 import {
     Card,
     CardContent,
-    CardHeader,
-    CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -56,13 +54,15 @@ import { type ColumnDef } from "@tanstack/react-table"
 
 type InputChannel = {
     id: string
-    publisher: string
+    publisher?: string
     source: string
     subSource: string
-    medium: string
+    medium?: string
     campaignType: string
     integrationType: string
     redirectionUrl: string
+    projectName?: string
+    projectId?: string
 }
 
 type Campaign = {
@@ -88,7 +88,7 @@ type Source = {
 }
 export const getColumns = (
     onEdit: (campaign: Campaign) => void,
-    onDeactivate: (campaign: Campaign) => void
+    onDelete: (campaign: Campaign) => void
 ): ColumnDef<Campaign>[] => [
     {
         accessorKey: "campaignName",
@@ -170,9 +170,9 @@ export const getColumns = (
                             <Button 
                                 variant="ghost" 
                                 className="w-full justify-start font-normal h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => onDeactivate(campaign)}
+                                onClick={() => onDelete(campaign)}
                             >
-                                Deactivate
+                                Delete
                             </Button>
                         </div>
                     </PopoverContent>
@@ -190,18 +190,35 @@ export default function Campaigns() {
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [activeTab, setActiveTab] = useState("details")
 
-    const columns = getColumns(
-        (campaign) => {
-            toast.info(`Edit campaign: ${campaign.campaignName}`)
-        },
-        (campaign) => {
-            toast.warning(`Deactivate campaign: ${campaign.campaignName}`)
+    const handleEditCampaign = (campaign: Campaign) => {
+        setEditingCampaign(campaign)
+        setNewCampaignName(campaign.campaignName)
+        setInputChannels(campaign.inputChannels)
+        setSelectedProjectId(campaign.project?.projectId || "none") // Optional top-level project
+        setIsSheetOpen(true)
+    }
+
+    const handleDeleteCampaign = async (campaign: Campaign) => {
+        if (!confirm(`Are you sure you want to delete campaign "${campaign.campaignName}"?`)) return
+        try {
+            const token = getCookie("token")
+            await axios.delete(`${API.CAMPAIGNS}/${campaign._id}?organization=${organization}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            toast.success("Campaign deleted successfully")
+            fetchCampaigns()
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to delete campaign")
         }
-    )
+    }
+
+    const columns = getColumns(handleEditCampaign, handleDeleteCampaign)
     
     const [newCampaignName, setNewCampaignName] = useState("")
     const [selectedProjectId, setSelectedProjectId] = useState<string>("none")
     const [inputChannels, setInputChannels] = useState<InputChannel[]>([])
+    const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
+    const [editingChannelId, setEditingChannelId] = useState<string | null>(null)
 
     // New Channel form state
     const [newChannel, setNewChannel] = useState<Omit<InputChannel, "id">>({
@@ -211,7 +228,9 @@ export default function Campaigns() {
         medium: "",
         campaignType: "",
         integrationType: "website",
-        redirectionUrl: ""
+        redirectionUrl: "",
+        projectId: "none",
+        projectName: ""
     })
 
     const [searchQuery, setSearchQuery] = useState("")
@@ -298,17 +317,26 @@ export default function Campaigns() {
     }, [organization])
 
     const handleAddChannelToLocal = () => {
-        if (!newChannel.publisher || !newChannel.medium) {
-            toast.error("Please fill required channel fields (Publisher, Medium)")
+        if (!newChannel.source || !newChannel.subSource || newChannel.projectId === "none") {
+            toast.error("Please fill required channel fields (Project, Source, Sub Source)")
             return
         }
         
-        const channel: InputChannel = {
-            ...newChannel,
-            id: Math.random().toString(36).substr(2, 9)
+        if (editingChannelId) {
+            setInputChannels(prev => prev.map(ch => 
+                ch.id === editingChannelId ? { ...newChannel, id: ch.id } : ch
+            ))
+            setEditingChannelId(null)
+            toast.success("Channel updated")
+        } else {
+            const channel: InputChannel = {
+                ...newChannel,
+                id: Math.random().toString(36).substr(2, 9)
+            }
+            setInputChannels([...inputChannels, channel])
+            toast.success("Channel added")
         }
         
-        setInputChannels([...inputChannels, channel])
         setNewChannel({
             publisher: "",
             source: "",
@@ -316,8 +344,28 @@ export default function Campaigns() {
             medium: "",
             campaignType: "",
             integrationType: "website",
-            redirectionUrl: ""
+            redirectionUrl: "",
+            projectId: "none",
+            projectName: ""
         })
+    }
+
+    const editLocalChannel = (channel: InputChannel) => {
+        setEditingChannelId(channel.id)
+        setNewChannel({
+            publisher: channel.publisher || "",
+            source: channel.source,
+            subSource: channel.subSource,
+            medium: channel.medium || "",
+            campaignType: channel.campaignType,
+            integrationType: channel.integrationType,
+            redirectionUrl: channel.redirectionUrl,
+            projectId: channel.projectId || "none",
+            projectName: channel.projectName || ""
+        })
+        // Scroll to top of form
+         const sheetContent = document.querySelector('[data-radix-scroll-area-viewport]');
+         if (sheetContent) sheetContent.scrollTop = 0;
     }
 
     const handleSaveCampaign = async () => {
@@ -327,29 +375,38 @@ export default function Campaigns() {
             return
         }
 
-        const project = projects.find(p => p.product_id.toString() === selectedProjectId)
+        const topProject = projects.find(p => p.product_id.toString() === selectedProjectId)
 
         setCreatingCampaign(true)
         try {
             const token = getCookie("token")
-            const response = await axios.post(`${API.CAMPAIGNS}?organization=${organization}`, {
+            const payload = {
                 campaignName: newCampaignName.trim(),
-                projectId: project ? project.product_id.toString() : undefined,
-                projectName: project ? project.name : undefined,
-                inputChannels: inputChannels.map(({ id, ...rest }) => rest) // eslint-disable-line @typescript-eslint/no-unused-vars
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            })
+                projectId: topProject ? topProject.product_id.toString() : undefined,
+                projectName: topProject ? topProject.name : undefined,
+                inputChannels: inputChannels.map(({ id, ...rest }) => rest)
+            }
+
+            let response;
+            if (editingCampaign) {
+                response = await axios.put(`${API.CAMPAIGNS}/${editingCampaign._id}?organization=${organization}`, payload, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+            } else {
+                response = await axios.post(`${API.CAMPAIGNS}?organization=${organization}`, payload, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+            }
 
             if (response.data.success) {
-                toast.success("Campaign created successfully")
+                toast.success(editingCampaign ? "Campaign updated successfully" : "Campaign created successfully")
                 setIsSheetOpen(false)
                 resetForm()
                 fetchCampaigns()
             }
         } catch (err: unknown) {
             const error = err as any
-            toast.error(error.response?.data?.message || "Failed to create campaign")
+            toast.error(error.response?.data?.message || "Failed to save campaign")
         } finally {
             setCreatingCampaign(false)
         }
@@ -359,7 +416,20 @@ export default function Campaigns() {
         setNewCampaignName("")
         setSelectedProjectId("none")
         setInputChannels([])
+        setEditingCampaign(null)
+        setEditingChannelId(null)
         setActiveTab("details")
+        setNewChannel({
+            publisher: "",
+            source: "",
+            subSource: "",
+            medium: "",
+            campaignType: "",
+            integrationType: "website",
+            redirectionUrl: "",
+            projectId: "none",
+            projectName: ""
+        })
     }
 
     const filteredCampaigns = campaigns.filter(c => 
@@ -394,8 +464,10 @@ export default function Campaigns() {
                     
                     <SheetContent side="right" className="sm:max-w-xl md:max-w-2xl w-full flex flex-col p-6">
                         <SheetHeader className="mb-4">
-                            <SheetTitle>New Campaign</SheetTitle>
-                            <SheetDescription>Configure a new campaign and specify its integration sources.</SheetDescription>
+                            <SheetTitle>{editingCampaign ? "Edit Campaign" : "New Campaign"}</SheetTitle>
+                            <SheetDescription>
+                                {editingCampaign ? "Modify your campaign settings and sources." : "Configure a new campaign and specify its integration sources."}
+                            </SheetDescription>
                         </SheetHeader>
 
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
@@ -406,12 +478,12 @@ export default function Campaigns() {
                             
                             <div className="flex-1 overflow-y-auto py-1">
                                 <TabsContent value="details" className="space-y-6 m-0 border-0 p-0">
-                                    <div className="space-y-4">
+                                    <div className="space-y-4 pt-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="campaignName">Campaign Name <span className="text-destructive">*</span></Label>
                                             <Input 
                                                 id="campaignName"
-                                                placeholder="e.g. Summer Sale 2024" 
+                                                placeholder="e.g. Online or Offline" 
                                                 value={newCampaignName}
                                                 onChange={e => setNewCampaignName(e.target.value)}
                                             />
@@ -419,7 +491,14 @@ export default function Campaigns() {
 
                                         <div className="space-y-2">
                                             <Label htmlFor="projectSelect">Project (Optional)</Label>
-                                            <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                                            <Select value={selectedProjectId} onValueChange={(v) => {
+                                                setSelectedProjectId(v)
+                                                // Pre-fill the channel project if it's currently empty/none
+                                                if (newChannel.projectId === "none" && v !== "none") {
+                                                     const p = projects.find(x => x.product_id.toString() === v)
+                                                     setNewChannel(prev => ({...prev, projectId: v, projectName: p?.name || ""}))
+                                                }
+                                            }}>
                                                 <SelectTrigger id="projectSelect">
                                                     <SelectValue placeholder="Select a project" />
                                                 </SelectTrigger>
@@ -438,50 +517,68 @@ export default function Campaigns() {
                                 </TabsContent>
 
                                 <TabsContent value="channels" className="space-y-6 m-0 border-0 p-0">
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle className="text-base">Add Source Channel</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label>Publisher <span className="text-destructive">*</span></Label>
-                                                    <Input placeholder="e.g. Google Maps" value={newChannel.publisher} onChange={e => setNewChannel({...newChannel, publisher: e.target.value})} />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Medium <span className="text-destructive">*</span></Label>
-                                                    <Input placeholder="e.g. organic" value={newChannel.medium} onChange={e => setNewChannel({...newChannel, medium: e.target.value})} />
-                                                </div>
+                                    <div className="grid gap-4 py-4">
+                                        <div className="font-semibold text-lg border-b pb-2">
+                                            {editingChannelId ? "Edit Source Channel" : "Add Source Channel"}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid gap-2">
+                                                <Label>Project <span className="text-destructive">*</span></Label>
+                                                <Select 
+                                                    value={newChannel.projectId} 
+                                                    onValueChange={(v) => {
+                                                        const p = projects.find(x => x.product_id.toString() === v)
+                                                        setNewChannel({...newChannel, projectId: v, projectName: p?.name || ""})
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Select a project" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {projects.map(p => (
+                                                            <SelectItem key={p.product_id} value={p.product_id.toString()}>
+                                                                {p.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
-
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label>Source</Label>
-                                                    <Select value={newChannel.source} onValueChange={(v) => setNewChannel({...newChannel, source: v})}>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select source..." />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {sources.map(s => (
-                                                                <SelectItem key={s._id} value={s.name}>{s.name}</SelectItem>
-                                                            ))}
-                                                            {sources.length === 0 && (
-                                                                <div className="text-xs p-2 text-muted-foreground">No sources available. Create one in Source Management.</div>
-                                                            )}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Sub Source</Label>
-                                                    <Input placeholder="e.g. landing-page-2" value={newChannel.subSource} onChange={e => setNewChannel({...newChannel, subSource: e.target.value})} />
-                                                </div>
+                                            <div className="grid gap-2">
+                                                <Label>Source <span className="text-destructive">*</span></Label>
+                                                <Select value={newChannel.source} onValueChange={(v) => setNewChannel({...newChannel, source: v})}>
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Select source..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {sources.map(s => (
+                                                            <SelectItem key={s._id} value={s.name}>{s.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
+                                        </div>
 
-                                            <div className="space-y-2">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid gap-2">
+                                                <Label>Sub Source <span className="text-destructive">*</span></Label>
+                                                <Input placeholder="e.g. landing-page-2" value={newChannel.subSource} onChange={e => setNewChannel({...newChannel, subSource: e.target.value})} />
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label>Publisher <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                                                <Input placeholder="e.g. Google Maps" value={newChannel.publisher} onChange={e => setNewChannel({...newChannel, publisher: e.target.value})} />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid gap-2">
+                                                <Label>Medium <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                                                <Input placeholder="e.g. organic" value={newChannel.medium} onChange={e => setNewChannel({...newChannel, medium: e.target.value})} />
+                                            </div>
+                                            <div className="grid gap-2">
                                                 <Label>Integration Type</Label>
                                                 <Select value={newChannel.integrationType} onValueChange={v => setNewChannel({...newChannel, integrationType: v})}>
-                                                    <SelectTrigger>
-                                                        <SelectValue />
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Select integration type" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="website">Website</SelectItem>
@@ -489,41 +586,89 @@ export default function Campaigns() {
                                                     </SelectContent>
                                                 </Select>
                                             </div>
+                                        </div>
 
-                                            <Button type="button" variant="secondary" onClick={handleAddChannelToLocal} className="w-full">
-                                                Add Channel
+                                        <div className="flex gap-4 mt-2">
+                                            {editingChannelId && (
+                                                <Button type="button" variant="outline" onClick={() => {
+                                                    setEditingChannelId(null)
+                                                    setNewChannel({
+                                                        publisher: "",
+                                                        source: "",
+                                                        subSource: "",
+                                                        medium: "",
+                                                        campaignType: "",
+                                                        integrationType: "website",
+                                                        redirectionUrl: "",
+                                                        projectId: "none",
+                                                        projectName: ""
+                                                    })
+                                                }} className="flex-1 w-full">
+                                                    Cancel
+                                                </Button>
+                                            )}
+                                            <Button type="button" onClick={handleAddChannelToLocal} className="flex-1 w-full font-semibold">
+                                                {editingChannelId ? "Update Channel" : "Add Channel"}
                                             </Button>
-                                        </CardContent>
-                                    </Card>
+                                        </div>
+                                    </div>
 
                                     {inputChannels.length > 0 && (
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Publisher</TableHead>
-                                                    <TableHead>Source</TableHead>
-                                                    <TableHead>Medium</TableHead>
-                                                    <TableHead className="w-[50px]"></TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {inputChannels.map(ch => (
-                                                    <TableRow key={ch.id}>
-                                                        <TableCell className="font-medium">{ch.publisher}</TableCell>
-                                                        <TableCell>
-                                                            {ch.source}
-                                                            {ch.subSource && <span className="text-muted-foreground text-xs ml-1">({ch.subSource})</span>}
-                                                        </TableCell>
-                                                        <TableCell>{ch.medium}</TableCell>
-                                                        <TableCell>
-                                                            <Button variant="ghost" size="icon" onClick={() => setInputChannels(inputChannels.filter(x => x.id !== ch.id))}>
-                                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                                            </Button>
-                                                        </TableCell>
+                                        <div className="rounded-xl border bg-card/50 overflow-hidden">
+                                            <Table>
+                                                <TableHeader className="bg-muted/50">
+                                                    <TableRow>
+                                                        <TableHead className="font-semibold">Source/Sub</TableHead>
+                                                        <TableHead className="font-semibold">Project</TableHead>
+                                                        <TableHead className="font-semibold">Medium</TableHead>
+                                                        <TableHead className="w-[50px]"></TableHead>
                                                     </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {inputChannels.map(ch => (
+                                                        <TableRow key={ch.id} className="hover:bg-muted/30">
+                                                            <TableCell>
+                                                                <div className="font-medium">{ch.source}</div>
+                                                                <div className="text-xs text-muted-foreground">{ch.subSource}</div>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Badge variant="outline" className="font-normal border-primary/20 text-primary">
+                                                                    {ch.projectName || "No Project"}
+                                                                </Badge>
+                                                            </TableCell>
+                                                            <TableCell className="text-sm font-medium">{ch.medium || "—"}</TableCell>
+                                                            <TableCell>
+                                                                <Popover>
+                                                                    <PopoverTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                                            <MoreHorizontal className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </PopoverTrigger>
+                                                                    <PopoverContent align="end" className="w-32 p-1">
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="sm" 
+                                                                            className="w-full justify-start text-xs h-8"
+                                                                            onClick={() => editLocalChannel(ch)}
+                                                                        >
+                                                                            <Plus className="h-3 w-3 mr-2" /> Edit
+                                                                        </Button>
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="sm" 
+                                                                            className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                            onClick={() => setInputChannels(inputChannels.filter(x => x.id !== ch.id))}
+                                                                        >
+                                                                            <Trash2 className="h-3 w-3 mr-2" /> Delete
+                                                                        </Button>
+                                                                    </PopoverContent>
+                                                                </Popover>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
                                     )}
                                 </TabsContent>
                             </div>

@@ -34,6 +34,11 @@ import {
     DrawerClose,
 } from '@/components/ui/drawer'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
 
 // Helper function to get cookie value
 const getCookie = (name: string): string => {
@@ -54,6 +59,7 @@ interface Unit {
     facing: string
     status: 'available' | 'booked' | 'sold'
     position: { row: number; col: number }
+    unitPlanImages?: string[]
 }
 
 // Unit type configuration
@@ -186,6 +192,7 @@ export default function NewProject() {
     const [editingFloor, setEditingFloor] = useState<{ blockId: string; floorNumber: number } | null>(null)
     const [copyToFloors, setCopyToFloors] = useState<number[]>([])
     const [floorImageUploading, setFloorImageUploading] = useState(false)
+    const [unitImageUploading, setUnitImageUploading] = useState<string | null>(null) // Stores unitId being uploaded
     const floorImageInputRef = useRef<HTMLInputElement>(null)
     const [lightboxImageIndex, setLightboxImageIndex] = useState<number | null>(null)
 
@@ -513,6 +520,63 @@ export default function NewProject() {
                 }
             })
         }))
+    }
+
+    // Handle unit plan image upload (multiple images, max 5)
+    const handleUnitImageUpload = async (blockId: string, floorNumber: number, unitId: string, files: FileList | null) => {
+        if (!files || files.length === 0) return
+
+        const fileArray = Array.from(files)
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']
+        const invalidFile = fileArray.find(f => !allowedTypes.includes(f.type))
+        if (invalidFile) {
+            toast.error('Only PNG, JPG, SVG, and WebP images are allowed')
+            return
+        }
+
+        const block = formData.blocks.find(b => b.blockId === blockId)
+        const floor = block?.floors.find(f => f.floorNumber === floorNumber)
+        const unit = floor?.units.find(u => u.unitId === unitId)
+        const currentCount = unit?.unitPlanImages?.length || 0
+
+        if (currentCount + fileArray.length > 5) {
+            toast.error(`Maximum 5 images allowed for each unit. You can add ${5 - currentCount} more.`)
+            return
+        }
+
+        setUnitImageUploading(unitId)
+        const formDataUpload = new FormData()
+        fileArray.forEach(file => formDataUpload.append('images', file))
+
+        try {
+            const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+
+            const newUrls = response.data.data.urls
+            updateSingleUnit(blockId, floorNumber, unitId, {
+                unitPlanImages: [...(unit?.unitPlanImages || []), ...newUrls].slice(0, 5)
+            })
+            toast.success(`${newUrls.length} unit image(s) uploaded successfully`)
+        } catch (error: any) {
+            console.error('Failed to upload unit images:', error)
+            toast.error(error.response?.data?.message || 'Failed to upload unit images')
+        } finally {
+            setUnitImageUploading(null)
+        }
+    }
+
+    // Remove a single unit image by URL
+    const removeUnitImage = (blockId: string, floorNumber: number, unitId: string, imageUrl: string) => {
+        const block = formData.blocks.find(b => b.blockId === blockId)
+        const floor = block?.floors.find(f => f.floorNumber === floorNumber)
+        const unit = floor?.units.find(u => u.unitId === unitId)
+        if (!unit) return
+
+        updateSingleUnit(blockId, floorNumber, unitId, {
+            unitPlanImages: (unit.unitPlanImages || []).filter(url => url !== imageUrl)
+        })
+        toast.success('Unit image removed')
     }
 
     // Add a new unit to a floor
@@ -1421,17 +1485,18 @@ export default function NewProject() {
                                                     Add Unit
                                                 </Button>
                                             </div>
-                                            <div className="grid grid-cols-6 gap-2 text-xs font-medium text-muted-foreground mb-1 px-2">
+                                            <div className="grid grid-cols-7 gap-2 text-xs font-medium text-muted-foreground mb-1 px-2">
                                                 <div>Door No.</div>
                                                 <div>BHK</div>
                                                 <div>Bathrooms</div>
                                                 <div>Size (sqft)</div>
                                                 <div>Facing</div>
+                                                <div className="text-center">Plan Images</div>
                                                 <div></div>
                                             </div>
                                             <div className="space-y-1 max-h-[250px] overflow-auto">
                                                 {floor.units.map((unit) => (
-                                                    <div key={unit.unitId} className="grid grid-cols-6 gap-2 items-center bg-muted/20 p-2 rounded">
+                                                    <div key={unit.unitId} className="grid grid-cols-7 gap-2 items-center bg-muted/20 p-2 rounded">
                                                         <Input
                                                             className="h-8 text-xs font-medium"
                                                             value={unit.unitNumber}
@@ -1452,7 +1517,7 @@ export default function NewProject() {
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {[1, 2, 3, 4, 5].map(n => (
+                                                                {[1, 2, 3, 4, 5, 6].map(n => (
                                                                     <SelectItem key={n} value={String(n)}>{n} BHK</SelectItem>
                                                                 ))}
                                                             </SelectContent>
@@ -1465,8 +1530,8 @@ export default function NewProject() {
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {[1, 2, 3, 4].map(n => (
-                                                                    <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                                                {[1, 2, 3, 4, 5].map(n => (
+                                                                    <SelectItem key={n} value={String(n)}>{n} Bath</SelectItem>
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
@@ -1474,7 +1539,7 @@ export default function NewProject() {
                                                             type="number"
                                                             className="h-8 text-xs"
                                                             value={unit.size}
-                                                            onChange={e => updateSingleUnit(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, { size: parseInt(e.target.value) || 1000 })}
+                                                            onChange={e => updateSingleUnit(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, { size: parseInt(e.target.value) || 0 })}
                                                         />
                                                         <Select
                                                             value={unit.facing}
@@ -1484,22 +1549,116 @@ export default function NewProject() {
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="East">East</SelectItem>
-                                                                <SelectItem value="West">West</SelectItem>
-                                                                <SelectItem value="North">North</SelectItem>
-                                                                <SelectItem value="South">South</SelectItem>
+                                                                {['East', 'West', 'North', 'South', 'North-East', 'South-East', 'North-West', 'South-West'].map(d => (
+                                                                    <SelectItem key={d} value={d}>
+                                                                        {d.length > 5 ? d.split('-').map(s => s[0]).join('') : d}
+                                                                    </SelectItem>
+                                                                ))}
                                                             </SelectContent>
                                                         </Select>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8"
-                                                            onClick={() => removeUnitFromFloor(editingFloor.blockId, editingFloor.floorNumber, unit.unitId)}
-                                                            disabled={floor.units.length <= 1}
-                                                        >
-                                                            <X className="h-3 w-3" />
-                                                        </Button>
+
+                                                        {/* Unit Plan Images Column */}
+                                                        <div className="flex justify-center">
+                                                            <Popover>
+                                                                <PopoverTrigger asChild>
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="icon"
+                                                                        className="h-8 w-8 relative group"
+                                                                        title="Manage Floor Plan Images"
+                                                                    >
+                                                                        <ImagePlus className="h-4 w-4" />
+                                                                        {unit.unitPlanImages && unit.unitPlanImages.length > 0 && (
+                                                                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold border-2 border-background">
+                                                                                {unit.unitPlanImages.length}
+                                                                            </span>
+                                                                        )}
+                                                                    </Button>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="w-80 p-4" side="top" align="center">
+                                                                    <div className="space-y-4">
+                                                                        <div className="flex items-center justify-between">
+                                                                            <h4 className="text-sm font-semibold">Unit Floor Plan Images</h4>
+                                                                            <span className="text-xs text-muted-foreground">
+                                                                                {(unit.unitPlanImages || []).length}/5
+                                                                            </span>
+                                                                        </div>
+
+                                                                        {/* Previews */}
+                                                                        {(unit.unitPlanImages || []).length > 0 && (
+                                                                            <div className="grid grid-cols-3 gap-2">
+                                                                                {unit.unitPlanImages?.map((url, idx) => (
+                                                                                    <div key={idx} className="relative group aspect-square rounded-md overflow-hidden border bg-muted">
+                                                                                        <img src={url} alt={`Unit image ${idx + 1}`} className="w-full h-full object-cover" />
+                                                                                        <Button
+                                                                                            type="button"
+                                                                                            size="icon"
+                                                                                            variant="destructive"
+                                                                                            className="absolute -top-1 -right-1 h-5 w-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                            onClick={() => removeUnitImage(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, url)}
+                                                                                        >
+                                                                                            <X className="h-2 w-2" />
+                                                                                        </Button>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Upload Action */}
+                                                                        {(unit.unitPlanImages || []).length < 5 && (
+                                                                            <div className="relative">
+                                                                                <Button
+                                                                                    type="button"
+                                                                                    variant="outline"
+                                                                                    className="w-full h-20 border-dashed flex flex-col gap-1 text-xs"
+                                                                                    disabled={unitImageUploading === unit.unitId}
+                                                                                    onClick={() => {
+                                                                                        const input = document.getElementById(`unit-img-${unit.unitId}`) as HTMLInputElement
+                                                                                        if (input) input.click()
+                                                                                    }}
+                                                                                >
+                                                                                    {unitImageUploading === unit.unitId ? (
+                                                                                        <>
+                                                                                            <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                                                                            <span>Uploading...</span>
+                                                                                        </>
+                                                                                    ) : (
+                                                                                        <>
+                                                                                            <Plus className="h-4 w-4 text-muted-foreground" />
+                                                                                            <span>Add {(unit.unitPlanImages || []).length === 0 ? 'Images' : 'More'}</span>
+                                                                                        </>
+                                                                                    )}
+                                                                                </Button>
+                                                                                <input
+                                                                                    id={`unit-img-${unit.unitId}`}
+                                                                                    type="file"
+                                                                                    accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+                                                                                    multiple
+                                                                                    className="hidden"
+                                                                                    onChange={(e) => {
+                                                                                        handleUnitImageUpload(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, e.target.files)
+                                                                                        e.target.value = ''
+                                                                                    }}
+                                                                                />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </PopoverContent>
+                                                            </Popover>
+                                                        </div>
+
+                                                        <div className="flex justify-end pr-1">
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                                onClick={() => removeUnitFromFloor(editingFloor.blockId, editingFloor.floorNumber, unit.unitId)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>

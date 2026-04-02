@@ -9,13 +9,12 @@ import { Button } from "@/components/ui/button"
 import { setCookie, getCookie, deleteAllAuthCookies, isAuthenticated } from "@/utils/cookies"
 import {
   Field,
-  FieldDescription,
   FieldGroup,
   FieldLabel,
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent,TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export function LoginForm({
   className,

@@ -1,4 +1,4 @@
- 
+
 import * as React from "react"
 import { BreadcrumbProvider } from "@/context/breadcrumb-context"
 import { getCookie } from '@/utils/cookies';
@@ -45,6 +45,9 @@ import Automation from "./pages/tools/automation";
 import Campaigns from "./pages/tools/campaigns";
 import ThirdPartyIntegration from "./pages/tools/third_party_integration";
 import TrackSourceSubsource from "./pages/tools/track_source_subsource";
+
+import GoogleAdsIntegrationList from "./pages/tools/google_ads_integration_list";
+import GoogleAdsIntegrationTest from "./pages/tools/google_ads_integration_test";
 
 // Searchable pages index
 function ScrollToTop() {
@@ -125,6 +128,8 @@ export default function App() {
             <Route path="/automation/mail_templates/create" element={<CreateTemplate />} />
             <Route path="/automation/mail_templates/edit/:id" element={<CreateTemplate />} />
             <Route path="/tools/third_party_integration" element={<ThirdPartyIntegration />} />
+            <Route path="/tools/third_party_integration/google_ads" element={<GoogleAdsIntegrationList />} />
+            <Route path="/tools/third_party_integration/google_ads/test/:id" element={<GoogleAdsIntegrationTest />} />
 
           </Route>
         </Routes>

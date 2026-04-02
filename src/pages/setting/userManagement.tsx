@@ -71,10 +71,12 @@ const PERMISSION_OPTIONS = [
     { key: "view_inventory", label: "View Project Inventory" },
     { key: "edit_inventory", label: "Edit Project Inventory" },
     { key: "view_users", label: "View Users" },
+    { key: "edit_team_users", label: "Edit Team Users" },
     { key: "edit_users", label: "Edit All Users" },
     { key: "delete_users", label: "Delete Users" },
     { key: "show_user_phone_number", label: "Show User Phone Number" },
     { key: "manage_users", label: "Manage User (Settings Card)" },
+    { key: "edit_team", label: "Edit Team" },
     { key: "manage_teams", label: "Manage Team (Settings Card)" },
 ] as const;
 
@@ -100,6 +102,7 @@ interface UserData {
 // ─── Page Component ──────────────────────────────────────
 export default function UserManagement() {
     const org = getCookie("organization")
+    const currentUserRole = getCookie("role")
     const { setBreadcrumbs } = useBreadcrumb()
 
     useEffect(() => {
@@ -125,7 +128,7 @@ export default function UserManagement() {
 
     const userPermissions = getPermissions()
     const canViewUsers = userPermissions.includes("view_users")
-    const canAddUsers = userPermissions.includes("add_users")
+    const canAddUsers = userPermissions.includes("add_users") && currentUserRole !== "user"
     const canShowUserPhone = userPermissions.includes("show_user_phone_number")
 
     // ── Add-user form state ──
@@ -208,10 +211,29 @@ export default function UserManagement() {
     }, [org, canViewUsers])
 
     // ── Edit handlers ──
-    const handleEditUser = useCallback((user: UserData) => {
+   const handleEditUser = useCallback((user: UserData) => {
         const permissions = getPermissions()
+
         if (!permissions.includes("edit_users")) {
             toast.warning("You do not have permission to edit users.")
+            return
+        }
+
+        // Role-based restrictions:
+        // Admin can edit User and Manager. Manager can edit User only.
+        if (currentUserRole === "admin") {
+            // Admin can edit User, Manager, and Admin
+            if (user.role !== "user" && user.role !== "manager" && user.role !== "admin") {
+                toast.error("You do not have permission to edit this role.")
+                return
+            }
+        } else if (currentUserRole === "manager") {
+            if (user.role !== "user") {
+                toast.error("Managers can only edit users.")
+                return
+            }
+        } else {
+            toast.error("You do not have permission to edit users.")
             return
         }
 
@@ -226,8 +248,7 @@ export default function UserManagement() {
             permissions: user.permissions || [],
         })
         setEditOpen(true)
-    }, [])
-
+    }, [currentUserRole])
     const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target
         const key = id === "edit-first-name" ? "firstName"
@@ -238,10 +259,42 @@ export default function UserManagement() {
         setEditFormData((prev) => ({ ...prev, [key]: value }))
     }
 
-    const handleEditRoleChange = (value: string) => {
-        setEditFormData((prev) => ({ ...prev, role: value }))
+   const handleEditRoleChange = (value: string) => {
+        if (value === "admin") {
+            setEditFormData((prev) => ({
+                ...prev,
+                role: value,
+                permissions: PERMISSION_OPTIONS.map(p => p.key)
+            }))
+        } else if (value === "manager") {
+            setEditFormData((prev) => ({
+                ...prev,
+                role: value,
+                permissions: [
+                    "add_users",
+                    "assign_team_members",
+                    "view_lead_phone",
+                    "view_inventory",
+                    "view_users",
+                    "manage_users",
+                    "edit_team_users",
+                    "edit_team"
+                ]
+            }))
+        } else if (value === "user") {
+            setEditFormData((prev) => ({
+                ...prev,
+                role: value,
+                permissions: ["view_users", "view_inventory"]
+            }))
+        } else {
+            setEditFormData((prev) => ({
+                ...prev,
+                role: value,
+                permissions: []
+            }))
+        }
     }
-
     const toggleEditPermission = (key: string) => {
         setEditFormData((prev) => ({
             ...prev,
@@ -296,9 +349,21 @@ export default function UserManagement() {
             return
         }
 
+        // Role-based restrictions:
+        // Manager can delete User only. Admin can delete anyone.
+        if (currentUserRole === "manager" && user.role !== "user") {
+            toast.error("Managers can only delete users.")
+            return
+        }
+        
+        if (currentUserRole !== "admin" && currentUserRole !== "manager") {
+            toast.error("You do not have permission to delete users.")
+            return
+        }
+
         setDeletingUser(user)
         setDeleteDialogOpen(true)
-    }, [])
+    }, [currentUserRole])
 
     const confirmDeleteUser = async () => {
         if (!deletingUser) return
@@ -445,23 +510,28 @@ export default function UserManagement() {
                                 Copy User ID
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleEditUser(user)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Edit User
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                className="text-red-600 focus:text-red-600"
-                                onClick={() => handleDeleteUser(user)}
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete User
-                            </DropdownMenuItem>
+                            {((currentUserRole === "admin" && (user.role === "user" || user.role === "manager" || user.role === "admin")) || (currentUserRole === "manager" && user.role === "user")) && (
+                                <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit User
+                                </DropdownMenuItem>
+                            )}
+                            {(currentUserRole === "admin" || (currentUserRole === "manager" && user.role === "user")) && (
+    <DropdownMenuItem
+        className="text-red-600"
+        onClick={() => handleDeleteUser(user)}
+    >
+        <Trash2 className="mr-2 h-4 w-4" />
+        Delete User
+    </DropdownMenuItem>
+)}
                         </DropdownMenuContent>
+
                     </DropdownMenu>
                 )
             },
         },
-    ], [handleEditUser, handleDeleteUser])
+    ], [handleEditUser, handleDeleteUser, currentUserRole])
 
     // ── Filter state ──
     const [filters, setFilters] = useState({
@@ -555,8 +625,41 @@ export default function UserManagement() {
         setFormData((prev) => ({ ...prev, [key]: value }))
     }
 
-    const handleSelectChange = (value: string) => {
-        setFormData((prev) => ({ ...prev, role: value }))
+   const handleSelectChange = (value: string) => {
+        if (value === "admin") {
+            setFormData((prev) => ({
+                ...prev,
+                role: value,
+                permissions: PERMISSION_OPTIONS.map(p => p.key) // ✅ select all
+            }))
+        } else if (value === "manager") {
+            setFormData((prev) => ({
+                ...prev,
+                role: value,
+                permissions: [
+                    "add_users",
+                    "assign_team_members",
+                    "view_lead_phone",
+                    "view_inventory",
+                    "view_users",
+                    "manage_users",
+                    "edit_team_users",
+                    "edit_team"
+                ]
+            }))
+        } else if (value === "user") {
+            setFormData((prev) => ({
+                ...prev,
+                role: value,
+                permissions: ["view_users", "view_inventory"]
+            }))
+        } else {
+            setFormData((prev) => ({
+                ...prev,
+                role: value,
+                permissions: [] // optional: clear permissions for non-admin
+            }))
+        }
     }
 
     const togglePermission = (key: string) => {
@@ -935,7 +1038,12 @@ export default function UserManagement() {
                 initialPageSize={15}
                 topRightContent={
                     canAddUsers && (
-                        <Sheet open={open} onOpenChange={setOpen}>
+                        <Sheet open={open} onOpenChange={(isOpen) => {
+                            setOpen(isOpen)
+                            if (!isOpen) {
+                                setFormData({ firstName: "", lastName: "", email: "", phoneNumber: "", password: "", role: "", department: "", permissions: [] })
+                            }
+                        }}>
                             <SheetTrigger asChild>
                                 <Button className="text-xs" size="sm">Add User</Button>
                             </SheetTrigger>
@@ -959,15 +1067,15 @@ export default function UserManagement() {
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="email">Email</Label>
-                                        <Input id="email" type="email" placeholder="john.doe@example.com" value={formData.email} onChange={handleInputChange} required />
+                                        <Input id="email" type="email" placeholder="john.doe@example.com" value={formData.email} onChange={handleInputChange} required autoComplete="off" />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="phone-number">Phone Number</Label>
-                                        <Input id="phone-number" placeholder="+1 234 567 890" value={formData.phoneNumber} onChange={handleInputChange} required />
+                                        <Input id="phone-number" placeholder="+1 234 567 890" value={formData.phoneNumber} onChange={handleInputChange} required autoComplete="off" />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="password">Password</Label>
-                                        <Input id="password" type="password" value={formData.password} onChange={handleInputChange} required />
+                                        <Input id="password" type="password" value={formData.password} onChange={handleInputChange} required autoComplete="new-password" />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="role">Role</Label>
@@ -976,8 +1084,12 @@ export default function UserManagement() {
                                                 <SelectValue placeholder="Select a role" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="admin">Admin</SelectItem>
-                                                <SelectItem value="manager">Manager</SelectItem>
+                                                {currentUserRole === "admin" && (
+                                                    <>
+                                                        <SelectItem value="admin">Admin</SelectItem>
+                                                        <SelectItem value="manager">Manager</SelectItem>
+                                                    </>
+                                                )}
                                                 <SelectItem value="user">User</SelectItem>
                                             </SelectContent>
                                         </Select>
@@ -998,15 +1110,37 @@ export default function UserManagement() {
                                     <div className="grid gap-2">
                                         <Label>Permissions</Label>
                                         <div className="grid grid-cols-2 gap-3 rounded-md border p-3">
-                                            {PERMISSION_OPTIONS.map((perm) => (
-                                                <label key={perm.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                                                    <Checkbox
-                                                        checked={formData.permissions.includes(perm.key)}
-                                                        onCheckedChange={() => togglePermission(perm.key)}
-                                                    />
-                                                    {perm.label}
-                                                </label>
-                                            ))}
+                                            {PERMISSION_OPTIONS.map((perm) => {
+                                                const isUser = formData.role === "user"
+                                                const isManager = formData.role === "manager"
+
+                                                let disabled = false
+                                                if (isUser) {
+                                                    if (perm.key === "view_users" || perm.key === "view_inventory") disabled = true
+                                                    else if (perm.key !== "view_lead_phone") disabled = true
+                                                }
+                                                if (isManager) {
+                                                    if (perm.key === "edit_users") disabled = formData.permissions.includes("edit_team_users")
+                                                    if (perm.key === "manage_teams") disabled = formData.permissions.includes("edit_team")
+                                                }
+
+                                                return (
+                                                    <label
+                                                        key={perm.key}
+                                                        className={cn(
+                                                            "flex items-center gap-2 text-sm cursor-pointer",
+                                                            disabled && "opacity-50 cursor-not-allowed"
+                                                        )}
+                                                    >
+                                                        <Checkbox
+                                                            checked={formData.permissions.includes(perm.key)}
+                                                            onCheckedChange={() => togglePermission(perm.key)}
+                                                            disabled={disabled}
+                                                        />
+                                                        {perm.label}
+                                                    </label>
+                                                )
+                                            })}
                                         </div>
                                     </div>
                                     <Button type="submit" className="mt-4">Create User</Button>
@@ -1064,6 +1198,7 @@ export default function UserManagement() {
                                 value={editFormData.email}
                                 onChange={handleEditInputChange}
                                 required
+                                autoComplete="off"
                             />
                         </div>
                         <div className="grid gap-2">
@@ -1083,8 +1218,12 @@ export default function UserManagement() {
                                     <SelectValue placeholder="Select a role" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                    <SelectItem value="manager">Manager</SelectItem>
+                                    {currentUserRole === "admin" && (
+                                        <>
+                                            <SelectItem value="admin">Admin</SelectItem>
+                                            <SelectItem value="manager">Manager</SelectItem>
+                                        </>
+                                    )}
                                     <SelectItem value="user">User</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -1105,15 +1244,37 @@ export default function UserManagement() {
                         <div className="grid gap-2">
                             <Label>Permissions</Label>
                             <div className="grid grid-cols-2 gap-3 rounded-md border p-3">
-                                {PERMISSION_OPTIONS.map((perm) => (
-                                    <label key={perm.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                                        <Checkbox
-                                            checked={editFormData.permissions.includes(perm.key)}
-                                            onCheckedChange={() => toggleEditPermission(perm.key)}
-                                        />
-                                        {perm.label}
-                                    </label>
-                                ))}
+                                {PERMISSION_OPTIONS.map((perm) => {
+                                    const isUser = editFormData.role === "user"
+                                    const isManager = editFormData.role === "manager"
+
+                                    let disabled = false
+                                    if (isUser) {
+                                        if (perm.key === "view_users" || perm.key === "view_inventory") disabled = true
+                                        else if (perm.key !== "view_lead_phone") disabled = true
+                                    }
+                                    if (isManager) {
+                                        if (perm.key === "edit_users") disabled = editFormData.permissions.includes("edit_team_users")
+                                        if (perm.key === "manage_teams") disabled = editFormData.permissions.includes("edit_team")
+                                    }
+
+                                    return (
+                                        <label
+                                            key={perm.key}
+                                            className={cn(
+                                                "flex items-center gap-2 text-sm cursor-pointer",
+                                                disabled && "opacity-50 cursor-not-allowed"
+                                            )}
+                                        >
+                                            <Checkbox
+                                                checked={editFormData.permissions.includes(perm.key)}
+                                                onCheckedChange={() => toggleEditPermission(perm.key)}
+                                                disabled={disabled}
+                                            />
+                                            {perm.label}
+                                        </label>
+                                    )
+                                })}
                             </div>
                         </div>
                         <Button type="submit" className="mt-4" disabled={editLoading}>
