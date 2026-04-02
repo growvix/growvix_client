@@ -7,7 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { UserRoundCog, Import, UsersRound, Search, SearchX, SearchCode, MailPlus, Phone, Megaphone } from "lucide-react"
+import { UserRoundCog, Import, UsersRound,FileDown, Search, SearchX, SearchCode, MailPlus, Phone, Megaphone } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -20,7 +20,7 @@ export default function Automation() {
 
     useEffect(() => {
         setBreadcrumbs([
-            { label: "Automation" },
+            { label: "Automation", href: "tools/automation" },
             {
                 label: (
                     <TooltipProvider>
@@ -67,12 +67,12 @@ export default function Automation() {
             bgClass: "bg-purple-100 dark:bg-purple-900/40",
             hoverBorder: "hover:border-purple-300 dark:hover:border-purple-800",
             hoverGradient: "from-purple-50/50 dark:from-purple-950/20",
-            path: "/automation/email_templates",
+            path: "/automation/mail_templates",
         },
         {
             title: "Lead Capture Forms",
             description: "Create and manage reusable lead capture forms with simple or design editors.",
-            icon: Import,
+            icon: FileDown,
             colorClass: "text-emerald-600 dark:text-emerald-400",
             bgClass: "bg-emerald-100 dark:bg-emerald-900/40",
             hoverBorder: "hover:border-emerald-300 dark:hover:border-emerald-800",

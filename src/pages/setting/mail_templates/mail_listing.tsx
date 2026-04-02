@@ -122,7 +122,7 @@ export default function MailTemplatesListing() {
 
     useEffect(() => {
         setBreadcrumbs([
-            { label: "Settings", href: "/settings" },
+            { label: "Automation", href: "/tools/automation" },
             { label: "Mail Templates" },
             {
                 label: (
@@ -182,7 +182,7 @@ export default function MailTemplatesListing() {
     }
 
     const handleEdit = (template: MailTemplate) => {
-        navigate(`/setting/mail_templates/edit/${template._id}`)
+        navigate(`/automation/mail_templates/edit/${template._id}`)
     }
 
     const columns = useMemo(() => getColumns(handleDelete, handleEdit), [])
@@ -213,7 +213,7 @@ export default function MailTemplatesListing() {
                 filterPlaceholder="Filter by template name..."
                 topRightContent={
                     canCreate && (
-                        <Button size="sm" className="text-xs" onClick={() => navigate("/setting/mail_templates/create")}>
+                        <Button size="sm" className="text-xs" onClick={() => navigate("/automation/mail_templates/create")}>
                             <Plus className="h-4 w-4 mr-2" />
                             Create Template
                         </Button>

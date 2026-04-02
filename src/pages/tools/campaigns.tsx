@@ -39,12 +39,20 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import { DataTable } from "@/components/ui/data-table"
+import { Popover,
+  PopoverContent,
+  PopoverTrigger,} from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import LoaderScreen, { HorizontalLoader } from "@/components/ui/loader-screen"
-import { Plus, Search, Trash2 } from "lucide-react"
+import { Plus, Search, Trash2, MoreHorizontal } from "lucide-react"
 import axios from "axios"
 import { API } from "@/config/api"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
+import { Info } from "lucide-react"
+import { type ColumnDef } from "@tanstack/react-table"
+
 
 type InputChannel = {
     id: string
@@ -78,6 +86,101 @@ type Source = {
     _id: string
     name: string
 }
+export const getColumns = (
+    onEdit: (campaign: Campaign) => void,
+    onDeactivate: (campaign: Campaign) => void
+): ColumnDef<Campaign>[] => [
+    {
+        accessorKey: "campaignName",
+        header: "Campaign Name",
+        cell: ({ row }) => <div className="font-semibold">{row.getValue("campaignName")}</div>,
+        meta: {
+            label: "Campaign Name"  
+        }
+    },
+    {
+        accessorKey: "project.projectName",
+        header: "Project",
+        meta: {
+            label: "Project"  
+        },
+        cell: ({ row }) => {
+            const project = row.original.project
+            return project ? (
+                <span>{project.projectName}</span>
+            ) : (
+                <span className="text-muted-foreground italic text-sm">No Project</span>
+            )
+        },
+    },
+    {
+        accessorKey: "inputChannels",
+        header: "Channels",
+        meta: {
+            label: "Channels"  
+        },
+        cell: ({ row }) => {
+            const channels = row.original.inputChannels
+            return <Badge variant="secondary">{channels?.length || 0} Channels</Badge>
+        },
+    },
+    {
+        id: "status",
+        header: "Status",
+        meta: {
+            label: "Status"  
+        },
+        cell: () => (
+            <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600">Active</Badge>
+        ),
+    },
+    {
+        id: "actions",
+        meta: {
+            label: "Actions"  
+        },
+        cell: ({ row }) => {
+            const campaign = row.original
+            return (
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-40 p-2">
+                        <div className="flex flex-col gap-1">
+                            <div className="px-2 py-1.5 text-sm font-semibold">Actions</div>
+                            <div className="h-px bg-muted -mx-1 my-1" />
+                            <Button 
+                                variant="ghost" 
+                                className="w-full justify-start font-normal h-8 px-2"
+                                onClick={() => navigator.clipboard.writeText(campaign.uuid || "")}
+                            >
+                                Copy UUID
+                            </Button>
+                            <Button 
+                                variant="ghost" 
+                                className="w-full justify-start font-normal h-8 px-2"
+                                onClick={() => onEdit(campaign)}
+                            >
+                                Edit
+                            </Button>
+                            <Button 
+                                variant="ghost" 
+                                className="w-full justify-start font-normal h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => onDeactivate(campaign)}
+                            >
+                                Deactivate
+                            </Button>
+                        </div>
+                    </PopoverContent>
+                </Popover>
+            )
+        },
+    },
+]
 
 export default function Campaigns() {
     const { setBreadcrumbs } = useBreadcrumb()
@@ -86,6 +189,15 @@ export default function Campaigns() {
     // UI States
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [activeTab, setActiveTab] = useState("details")
+
+    const columns = getColumns(
+        (campaign) => {
+            toast.info(`Edit campaign: ${campaign.campaignName}`)
+        },
+        (campaign) => {
+            toast.warning(`Deactivate campaign: ${campaign.campaignName}`)
+        }
+    )
     
     const [newCampaignName, setNewCampaignName] = useState("")
     const [selectedProjectId, setSelectedProjectId] = useState<string>("none")
@@ -113,8 +225,20 @@ export default function Campaigns() {
 
     useEffect(() => {
         setBreadcrumbs([
-            { label: "Automation" },
-            { label: "Campaigns" },
+            { label: "Automation", href: "tools/automation" },
+            {label: "Campaigns"},
+            { label: (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Info className="h-4 w-4" />
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                            <p>Campaigns</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            ) },
         ])
     }, [setBreadcrumbs])
 
@@ -280,7 +404,7 @@ export default function Campaigns() {
                                 <TabsTrigger value="channels" disabled={!newCampaignName}>Input Channels</TabsTrigger>
                             </TabsList>
                             
-                            <div className="flex-1 overflow-y-auto py-4">
+                            <div className="flex-1 overflow-y-auto py-1">
                                 <TabsContent value="details" className="space-y-6 m-0 border-0 p-0">
                                     <div className="space-y-4">
                                         <div className="space-y-2">
@@ -415,59 +539,24 @@ export default function Campaigns() {
                 </Sheet>
             </div>
 
-            <Card className="flex-1 flex flex-col min-h-0">
-                <CardHeader className="py-4 border-b flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-lg">Campaign Directory</CardTitle>
-                    <div className="relative w-72">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Card className="flex-1 flex flex-col min-h-0 mt-0">
+                <CardContent className="p-0 overflow-auto flex-1 relative ">
+                    {loadingCampaigns && <div className="absolute inset-x-0 top-0"><HorizontalLoader /></div>}
+                    <DataTable 
+                       topLeftContent={
+                        <div className="relative w-72 pl-4">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground ml-5" />
                         <Input
                             placeholder="Search campaigns..."
-                            className="pl-9 h-9"
+                            className="pl-9 bg-input/30 dark:bg-input/50"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                </CardHeader>
-                <CardContent className="p-0 overflow-auto flex-1 h-[calc(100vh-250px)] relative">
-                    {loadingCampaigns && <div className="absolute inset-x-0 top-0"><HorizontalLoader /></div>}
-                    {!loadingCampaigns && filteredCampaigns.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center p-12 text-center h-full">
-                            <p className="text-muted-foreground text-sm">No campaigns found.</p>
-                        </div>
-                    ) : (
-                        <Table>
-                            <TableHeader className="bg-muted/50 sticky top-0 z-10">
-                                <TableRow>
-                                    <TableHead className="font-semibold">Campaign Name</TableHead>
-                                    <TableHead className="font-semibold">Project</TableHead>
-                                    <TableHead className="font-semibold">Channels</TableHead>
-                                    <TableHead className="font-semibold">Status</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredCampaigns.map((c) => (
-                                    <TableRow key={c._id}>
-                                        <TableCell className="font-medium">
-                                            {c.campaignName}
-                                        </TableCell>
-                                        <TableCell>
-                                            {c.project ? (
-                                                <span>{c.project.projectName}</span>
-                                            ) : (
-                                                <span className="text-muted-foreground italic text-sm">No Project</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="secondary">{c.inputChannels?.length || 0} Channels</Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600">Active</Badge>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
+                       }
+                        data={filteredCampaigns} 
+                        columns={columns}
+                    />
                 </CardContent>
             </Card>
         </div>

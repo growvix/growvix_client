@@ -465,8 +465,8 @@ export default function CreateTemplate() {
 
     useEffect(() => {
         setBreadcrumbs([
-            { label: "Settings", href: "/settings" },
-            { label: "Mail Templates", href: "/setting/mail_templates" },
+            { label: "Automation", href: "/tools/automation" },
+            { label: "Mail Templates", href: "/automation/mail_templates" },
             { label: isEditing ? "Edit Template" : "Create Template" },
         ])
     }, [setBreadcrumbs, isEditing])
@@ -534,7 +534,7 @@ export default function CreateTemplate() {
                     toast.error(
                         err.response?.data?.message || "Failed to load template"
                     )
-                    navigate("/setting/mail_templates")
+                    navigate("/automation/mail_templates")
                 })
                 .finally(() => setLoading(false))
         }
@@ -634,7 +634,7 @@ export default function CreateTemplate() {
                 toast.success("Template created successfully")
             }
 
-            navigate("/setting/mail_templates")
+            navigate("/automation/mail_templates")
         } catch (error) {
             if (axios.isAxiosError(error) && error.response) {
                 toast.error(
@@ -698,7 +698,7 @@ export default function CreateTemplate() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => navigate("/setting/mail_templates")}
+                        onClick={() => navigate("/automation/mail_templates")}
                         className="h-8 w-8"
                     >
                         <ArrowLeft className="h-4 w-4" />
@@ -768,7 +768,7 @@ export default function CreateTemplate() {
                     </Dialog>
                     <Button
                         variant="outline"
-                        onClick={() => navigate("/setting/mail_templates")}
+                        onClick={() => navigate("/automation/mail_templates")}
                     >
                         Cancel
                     </Button>
