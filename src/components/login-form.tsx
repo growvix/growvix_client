@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { useNavigate } from "react-router-dom"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { API } from "@/config/api"
+import { encryptPassword } from "@/utils/encryption"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { setCookie, getCookie, deleteAllAuthCookies, isAuthenticated } from "@/utils/cookies"
@@ -81,9 +82,12 @@ export function LoginForm({
     setIsLoading(true)
 
     try {
+      // Encrypt the password before sending
+      const encryptedPassword = await encryptPassword(trimmedPassword);
+
       const response = await axios.post(API.AUTH.LOGIN, {
         email: trimmedEmail,
-        password: trimmedPassword
+        password: encryptedPassword
       })
 
       const data = response.data.data
@@ -96,6 +100,12 @@ export function LoginForm({
       setCookie('token', data.token);
       setCookie('role', data.role);
       setCookie('permissions', JSON.stringify(data.permissions || []));
+
+      // Store avatar keyed by user_id so each user has their own avatar
+      localStorage.removeItem('userAvatar'); // clear old generic key
+      if (data.profileImagePath) {
+        localStorage.setItem(`userAvatar_${data.user_id}`, data.profileImagePath);
+      }
 
       toast.success("Login successful")
       
