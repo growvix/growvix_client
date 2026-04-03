@@ -10,7 +10,7 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import { apolloClient } from '@/lib/apolloClient'
 import { getCookie } from '@/utils/cookies'
-import { API_URL } from '@/config/api'
+import { API_URL, getSanitizedAvatarUrl } from '@/config/api'
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, } from "@/components/ui/card"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, } from "@/components/ui/sheet"
@@ -58,7 +58,7 @@ import {
 } from "lucide-react";
 import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables, GetLeadStagesQueryResponse, GetLeadStagesQueryVariables, GetOrganizationUsersQueryResponse, GetOrganizationUsersQueryVariables } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -169,6 +169,7 @@ const GET_LEAD_BY_ID = gql`
             updatedAt
             exe_user
             exe_user_name
+            exe_user_image
             site_visits_completed
             requirements {
                 _id
@@ -179,6 +180,7 @@ const GET_LEAD_BY_ID = gql`
                 id
                 user_id
                 user_name
+                user_image
                 stage
                 updates
                 reason
@@ -232,6 +234,7 @@ const UPDATE_LEAD = gql`
             status
             exe_user
             exe_user_name
+            exe_user_image
             profile {
                 phone
                 email
@@ -1101,7 +1104,7 @@ export default function LeadDetail() {
             return true;
         }
 
-        return false;                               
+        return false;
     }, [leadDetail?.exe_user, leadDetail?.exe_user_name, currentUserId, currentUserName]);
 
     const handleFollowUps = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -1460,20 +1463,6 @@ export default function LeadDetail() {
                                         <Badge variant="secondary" className="text-[10px] h-5 opacity-70">
                                             #{leadDetail?.profile_id ?? ""}
                                         </Badge>
-                                    </div>
-                                    <div className="flex items-center gap-3 sm:gap-4 mt-1 text-muted-foreground">
-                                        <div className="flex items-center gap-1.2 text-xs sm:text-sm">
-                                            <Mail className="size-3 sm:size-3.5" />
-                                            <span className="truncate max-w-[150px] sm:max-w-[200px]">
-                                                {leadDetail?.profile?.email || 'No email'}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-1.2 text-xs sm:text-sm border-l pl-3 sm:pl-4">
-                                            <Smartphone className="size-3 sm:size-3.5" />
-                                            <span>
-                                                {leadDetail?.profile?.phone || 'No phone'}
-                                            </span>
-                                        </div>
                                     </div>
                                 </div>
                                 {leadDetail?.exe_user_name && (
@@ -3042,29 +3031,63 @@ export default function LeadDetail() {
                 </div>
                 <div className="xl:col-span-1 lg:col-span-2">
                     {(() => {
-                        const exesMap = new Map<string, string>();
-                        // Add current executive first
+                        const nameMap = new Map<string, { mainId: string; name: string; image: string; altIds: string[] }>();
+
+                        // 1. Add current assigned executive
                         if (leadDetail?.exe_user && leadDetail?.exe_user_name) {
-                            exesMap.set(leadDetail.exe_user, leadDetail.exe_user_name);
+                            const name = leadDetail.exe_user_name;
+                            nameMap.set(name, {
+                                mainId: leadDetail.exe_user,
+                                name,
+                                image: leadDetail.exe_user_image || "",
+                                altIds: []
+                            });
                         }
-                        // Add historical executives from activities
+
+                        // 2. Add and merge with historical executives from activities
                         if (leadDetail?.activities) {
                             leadDetail.activities.forEach((activity: any) => {
-                                if (activity.user_id && activity.user_name && (activity.updates === 'reassign' || activity.notes?.includes('Lead reassigned to'))) {
-                                    exesMap.set(activity.user_id, activity.user_name);
+                                if (!activity.user_name) return;
+
+                                const name = activity.user_name;
+                                const existing = nameMap.get(name);
+
+                                if (existing) {
+                                    // If we find an image in an activity but missed it in lead record, use it
+                                    if (!existing.image && activity.user_image) {
+                                        existing.image = activity.user_image;
+                                    }
+                                    // Collect alternative IDs for stat calculation (UUID vs profile_id)
+                                    if (activity.user_id && activity.user_id !== existing.mainId) {
+                                        if (!existing.altIds.includes(activity.user_id)) {
+                                            existing.altIds.push(activity.user_id);
+                                        }
+                                    }
+                                } else {
+                                    nameMap.set(name, {
+                                        mainId: activity.user_id || "",
+                                        name: name,
+                                        image: activity.user_image || "",
+                                        altIds: []
+                                    });
                                 }
                             });
                         }
-                        const executives = Array.from(exesMap.entries()).map(([id, name]) => ({ id, name }));
+
+                        const executives = Array.from(nameMap.values());
                         if (executives.length === 0) {
-                            executives.push({ id: 'unassigned', name: 'Unassigned' });
+                            executives.push({ mainId: 'unassigned', name: 'Unassigned', image: '', altIds: [] });
                         }
 
-                        const renderCardContent = (exe: { id: string, name: string }) => {
+                        const renderCardContent = (exe: { mainId: string; name: string; image: string; altIds: string[] }) => {
+                            const initials = getUserAvatar(exe.name);
                             const exeStats = { whatsapp: 0, mail: 0, call: 0, sms: 0 };
+
+                            // Calculate stats by checking all IDs associated with this name
                             if (leadDetail?.activities) {
                                 leadDetail.activities.forEach(a => {
-                                    if (a.user_id === exe.id) {
+                                    const matchesId = a.user_id === exe.mainId || exe.altIds.includes(a.user_id);
+                                    if (matchesId || a.user_name === exe.name) {
                                         const up = a.updates?.toLowerCase();
                                         if (up === 'whatsapp') exeStats.whatsapp++;
                                         if (up === 'mail') exeStats.mail++;
@@ -3080,8 +3103,9 @@ export default function LeadDetail() {
                                         <div className="grid grid-cols-6 pl-2">
                                             <div className="col-span-1">
                                                 <Avatar className="size-12 ring-2 ring-primary/20 shadow">
+                                                    {exe.image ? <AvatarImage src={getSanitizedAvatarUrl(exe.image)} alt={exe.name} /> : null}
                                                     <AvatarFallback className="text-xl sm:text-2xl font-semibold uppercase">
-                                                        {exe.name !== 'Unassigned' ? exe.name.substring(0, 2) : 'UN'}
+                                                        {exe.name !== 'Unassigned' ? initials : 'UN'}
                                                     </AvatarFallback>
                                                 </Avatar>
                                             </div>
@@ -3090,7 +3114,7 @@ export default function LeadDetail() {
                                                     {exe.name}
                                                 </CardTitle>
                                                 <CardDescription className="text-xs sm:text-sm opacity-70 tracking-wide capitalize">
-                                                    team pre-sales
+                                                    Active Executive
                                                 </CardDescription>
                                             </div>
                                         </div>
@@ -3125,8 +3149,8 @@ export default function LeadDetail() {
                             );
                         };
 
-                        if (executives.length === 1) {
-                            return renderCardContent(executives[0]);
+                        if (executives.length <= 1) {
+                            return renderCardContent(executives[0] || { mainId: 'unassigned', name: 'Unassigned', image: '', altIds: [] });
                         }
 
                         return (
@@ -3136,7 +3160,7 @@ export default function LeadDetail() {
                             >
                                 <CarouselContent className="h-full">
                                     {executives.map((exe, idx) => (
-                                        <CarouselItem key={exe.id + idx.toString()} className="h-full">
+                                        <CarouselItem key={exe.mainId + idx.toString()} className="h-full">
                                             {renderCardContent(exe)}
                                         </CarouselItem>
                                     ))}
@@ -3651,6 +3675,12 @@ export default function LeadDetail() {
                                                                 </div>
                                                                 <div className="flex flex-col items-end gap-1">
                                                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                        <Avatar className="size-5 ring-1 ring-primary/10">
+                                                                            {activity.user_image && <AvatarImage src={getSanitizedAvatarUrl(activity.user_image)} alt={activity.user_name || 'User'} />}
+                                                                            <AvatarFallback className="text-[8px] font-bold">
+                                                                                {(activity.user_name || '?').substring(0, 1).toUpperCase()}
+                                                                            </AvatarFallback>
+                                                                        </Avatar>
                                                                         <span className="hidden sm:inline">{activity.user_name || 'Unknown'}</span>
                                                                         <span className="hidden sm:inline">·</span>
                                                                         <time className="font-medium">{formattedDate}</time>
