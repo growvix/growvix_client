@@ -30,3 +30,4 @@ export const encryptPassword = async (password: string): Promise<string> => {
     }
     return encrypted;
 };
+
