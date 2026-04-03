@@ -156,7 +156,7 @@ export default function SidebarLayout() {
                 <AppSidebar />
                 <SidebarInset >
                     {isAdminImpersonating && (
-                        <div className="bg-red-500/90 text-white text-xs py-1 px-3 flex justify-center items-center gap-1.5 font-medium z-50 animate-in slide-in-from-top-2">
+                        <div className="sticky z-5 top-0 bg-red-500/90 text-white text-xs py-1 px-3 flex justify-center items-center gap-1.5 font-medium  animate-in slide-in-from-top-2">
                             <AlertCircle className="h-3.5 w-3.5" />
                             You are currently viewing the system as {getCookie('userName')}
                         </div>
