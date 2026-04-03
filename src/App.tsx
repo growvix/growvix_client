@@ -134,9 +134,9 @@ export default function App() {
             <Route path="/setting/import_leads" element={<ImportLeads />} />
             <Route path="/setting/import_leads/new" element={<NewLeadUpload />} />
             <Route path="/setting/mail" element={<Mail />} />
-            <Route path="/setting/mail_templates" element={<MailTemplatesListing />} />
-            <Route path="/setting/mail_templates/create" element={<CreateTemplate />} />
-            <Route path="/setting/mail_templates/edit/:id" element={<CreateTemplate />} />
+            <Route path="/automation/mail_templates" element={<MailTemplatesListing />} />
+            <Route path="/automation/mail_templates/create" element={<CreateTemplate />} />
+            <Route path="/automation/mail_templates/edit/:id" element={<CreateTemplate />} />
             <Route path="/tools/third_party_integration" element={<ThirdPartyIntegration />} />
             <Route path="/tools/third_party_integration/google_ads" element={<GoogleAdsIntegrationList />} />
             <Route path="/tools/third_party_integration/google_ads/test/:id" element={<GoogleAdsIntegrationTest />} />

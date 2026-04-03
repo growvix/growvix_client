@@ -30,7 +30,6 @@ export default function ThirdPartyIntegration() {
 
     useEffect(() => {
         setBreadcrumbs([
-            { label: "General Settings", href: "/settings" },
             { label: "Third-Party Integration" },
             {
                 label: (

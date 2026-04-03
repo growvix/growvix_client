@@ -4,7 +4,6 @@ import * as React from "react"
 import {
   Calendar,
   Package,
-  GalleryVerticalEnd,
   PieChart,
   Settings,
   Users,
@@ -29,8 +28,8 @@ const organization = getCookie('organization') || 'org'
 const data = {
   teams: [
     {
-      name: "DESK CRM",
-      logo: GalleryVerticalEnd,
+      name: "Growvix",
+      logo: Package, // placeholder - TeamSwitcher uses actual image imports
       plan: organization.toUpperCase(),
     }
   ],
@@ -142,7 +141,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // Get user info from cookies
   const userName = getCookie('userName') || 'User'
   const email = getCookie('email') || 'user@example.com'
-  const avatar = localStorage.getItem('userAvatar') || "/user_icon.png"
+  const userId = getCookie('user_id')
+  const avatar = (userId ? localStorage.getItem(`userAvatar_${userId}`) : null) || localStorage.getItem('userAvatar') || "/user_icon.png"
 
   const user = {
     name: userName,
