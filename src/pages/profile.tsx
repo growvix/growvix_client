@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/tabs"
 import { useNavigate } from "react-router-dom";
 import { getCookie, setCookie } from "@/utils/cookies";
-import { API } from "@/config/api";
+import { API, getSanitizedAvatarUrl } from "@/config/api";
 import axios from "axios";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -131,11 +131,10 @@ export default function ProfilePage() {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success("Profile picture updated");
-      window.location.reload();
-    } catch (err) {
+      toast.success("Profile picture updated successfully");
+    } catch (err: any) {
       console.error(err);
-      toast.error("Failed to upload profile picture");
+      toast.error(err.response?.data?.message || err.message || "Failed to upload profile picture");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -185,11 +184,10 @@ export default function ProfilePage() {
                 />
                 <div className="relative group w-35 h-35">
                   <Avatar className={cn("w-35 h-35 ring-1 ring-offset-1 ring-ring border-x", isAdminImpersonating && "border-2 border-red-500 shadow-sm shadow-red-500/50")}>
-                    {avatarUrl ? (
-                        <AvatarImage src={avatarUrl} alt="Avatar" />
-                    ) : (
-                        <AvatarFallback className="text-4xl">👤</AvatarFallback>
-                    )}
+                    <AvatarImage src={getSanitizedAvatarUrl(avatarUrl)} alt="Avatar" />
+                    <AvatarFallback className="text-6xl">
+                      {firstName && lastName ? `${firstName[0]}${lastName[0]}`.toUpperCase() : "👤"}
+                    </AvatarFallback>
                   </Avatar>
                   <div 
                     onClick={() => !uploading && fileInputRef.current?.click()}
