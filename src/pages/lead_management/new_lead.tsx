@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { API } from '@/config/api'
 import { toast } from 'sonner'
+import { useNavigate } from 'react-router-dom'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import {
@@ -73,6 +74,7 @@ const initialLead: Lead = {
 export default function AddLeadPage() {
     const [lead, setLead] = useState<Lead>(initialLead)
     const [loading, setLoading] = useState(false)
+    const navigate = useNavigate()
 
     useEffect(() => {
         const org = getCookie('organization')
@@ -129,6 +131,7 @@ export default function AddLeadPage() {
             })
             toast.success(response.data.message || 'Lead added successfully!')
             setLead({ ...initialLead, organization })
+            navigate('/all_leads')
         } catch (error: any) {
             toast.error(error.response?.data?.errors?.[0]?.msg || error.response?.data?.message || 'Failed to add lead')
         } finally {

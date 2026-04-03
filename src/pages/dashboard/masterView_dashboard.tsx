@@ -229,6 +229,7 @@ export default function MasterDashboard() {
                                     selected={date}
                                     onSelect={setDate}
                                     numberOfMonths={2}
+                                    disabled={{ after: new Date() }}
                                 />
                             </PopoverContent>
                         </Popover>

@@ -379,7 +379,7 @@ export default function AllLeads() {
     }
 
     fetchLeads()
-  }, [organization, appliedFilters, page, pageSize])
+  }, [organization, appliedFilters, page, pageSize, location.key])
 
   function handleChange<K extends keyof Filters>(key: K, value: string) {
     setFilters((s) => ({ ...s, [key]: value }))

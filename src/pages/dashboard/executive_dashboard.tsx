@@ -503,6 +503,7 @@ export default function UserDashboard() {
                     selected={date}
                     onSelect={setDate}
                     numberOfMonths={2}
+                    disabled={{ after: new Date() }}
                   />
                 </PopoverContent>
               </Popover>
