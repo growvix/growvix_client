@@ -246,6 +246,7 @@ export default function LeadStageAnalysis() {
                                         selected={date}
                                         onSelect={setDate}
                                         numberOfMonths={2}
+                                        disabled={{ after: new Date() }}
                                     />
                                 </PopoverContent>
                             </Popover>

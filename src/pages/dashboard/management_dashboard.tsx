@@ -173,10 +173,11 @@ export default function ManagementDashboard() {
                                 <Calendar
                                     initialFocus
                                     mode="range"
-                                    defaultMonth={date?.from}
+                                    defaultMonth={date?.to ? new Date(date.to.getFullYear(), date.to.getMonth() - 1) : (date?.from ? new Date(date.from.getFullYear(), date.from.getMonth() - 1) : new Date())}
                                     selected={date}
                                     onSelect={setDate}
                                     numberOfMonths={2}
+                                    disabled={{ after: new Date() }}
                                 />
                             </PopoverContent>
                         </Popover>
