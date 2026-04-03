@@ -41,8 +41,14 @@ import {
     Activity
 } from "lucide-react"
 
-import { format } from "date-fns"
+import { format, subDays, startOfToday, endOfToday, subYears, subMonths } from "date-fns"
+import { useQuery } from "@apollo/client/react"
+import { gql } from "@apollo/client"
+import axios from "axios"
+import { API, API_URL } from "@/config/api"
+import { getCookie } from "@/utils/cookies"
 import { type DateRange } from "react-day-picker"
+import type { GetAllProjectsQueryResponse } from "@/types"
 import { cn } from "@/lib/utils"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Bar, BarChart, Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts"
@@ -85,13 +91,73 @@ const LEAD_BY_STAGE_DATA = [
     { stage: "Lost", count: 5 },
 ]
 
+const GET_PROJECTS_QUERY = gql`
+  query GetAllProjects($organization: String!) {
+    getAllProjects(organization: $organization) {
+      product_id
+      name
+    }
+  }
+`;
+
 export default function MasterDashboard() {
     const { setBreadcrumbs } = useBreadcrumb()
     const navigate = useNavigate()
+    const organization = getCookie("organization") || ""
+    
     const [date, setDate] = useState<DateRange | undefined>({
-        from: new Date(2026, 2, 1),
-        to: new Date(2026, 2, 17),
+        from: startOfToday(),
+        to: endOfToday(),
     })
+
+    const [projects, setProjects] = useState<{ product_id: number; name: string }[]>([])
+    const [sources, setSources] = useState<{ _id: string; source_name: string }[]>([])
+    const [teamMembers, setTeamMembers] = useState<{ _id: string; name: string }[]>([])
+    const [selectedRangeType, setSelectedRangeType] = useState("today")
+
+    // Fetch filters data
+    useEffect(() => {
+        async function fetchFiltersData() {
+            if (!organization) return
+            const token = getCookie("token")
+            const headers = { Authorization: `Bearer ${token}` }
+
+            try {
+                // Fetch Sources/Campaigns
+                const sourceRes = await axios.get(`${API_URL}/api/sources?organization=${organization}`, { headers })
+                if (sourceRes.data.success) {
+                    setSources(sourceRes.data.data)
+                }
+
+                // Fetch Team Members
+                const userRes = await axios.get(`${API.USERS}?organization=${organization}&limit=1000`, { headers })
+                if (userRes.data.success && userRes.data.data.users) {
+                    const mapped = userRes.data.data.users
+                        .filter((u: any) => u.isActive !== false)
+                        .map((u: any) => ({
+                            _id: u._id || u.globalUserId,
+                            name: `${u.profile?.firstName || ''} ${u.profile?.lastName || ''}`.trim()
+                        }))
+                    setTeamMembers(mapped)
+                }
+            } catch (err) {
+                console.error("Failed to fetch dashboard filters:", err)
+            }
+        }
+        fetchFiltersData()
+    }, [organization])
+
+    // Fetch projects via Apollo
+    const { data: projectData } = useQuery<GetAllProjectsQueryResponse>(GET_PROJECTS_QUERY, {
+        variables: { organization },
+        skip: !organization
+    })
+
+    useEffect(() => {
+        if (projectData?.getAllProjects) {
+            setProjects(projectData.getAllProjects)
+        }
+    }, [projectData])
 
     useEffect(() => {
         setBreadcrumbs([
@@ -112,7 +178,44 @@ export default function MasterDashboard() {
             },
         ])
     }, [setBreadcrumbs])
+    const setPredefinedRange = (range: string) => {
+        setSelectedRangeType(range)
+        if (range === "custom") return
 
+        const today = new Date()
+        let from: Date = today
+        let to: Date = today
+
+        switch (range) {
+            case "today":
+                from = startOfToday()
+                to = endOfToday()
+                break
+            case "yesterday":
+                from = startOfToday()
+                from.setDate(from.getDate() - 1)
+                to = endOfToday()
+                to.setDate(to.getDate() - 1)
+                break
+            case "last7days":
+                from = subDays(today, 7)
+                to = today
+                break
+            case "last30days":
+                from = subDays(today, 30)
+                to = today
+                break
+            case "last90days":
+                from = subDays(today, 90)
+                to = today
+                break
+            case "last1year":
+                from = subYears(today, 1)
+                to = today
+                break
+        }
+        setDate({ from, to })
+    }
     // Chart configs
     const trendChartConfig = {
         leads: { label: "Total Leads", color: CHART_COLORS.desktop || "hsl(var(--chart-1))" },
@@ -143,8 +246,9 @@ export default function MasterDashboard() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Projects</SelectItem>
-                                    <SelectItem value="p1">Project Alpha</SelectItem>
-                                    <SelectItem value="p2">Project Beta</SelectItem>
+                                    {projects.map((p) => (
+                                        <SelectItem key={p.product_id} value={String(p.product_id)}>{p.name}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -154,10 +258,10 @@ export default function MasterDashboard() {
                                     <SelectValue placeholder="Source" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Sources</SelectItem>
-                                    <SelectItem value="facebook">Facebook Ads</SelectItem>
-                                    <SelectItem value="google">Google Ads</SelectItem>
-                                    <SelectItem value="organic">Organic</SelectItem>
+                                    <SelectItem value="all">All Campaigns</SelectItem>
+                                    {sources.map((s) => (
+                                        <SelectItem key={s._id} value={s._id}>{s.source_name}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -168,8 +272,9 @@ export default function MasterDashboard() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Team Members</SelectItem>
-                                    <SelectItem value="opt1">Rohit Pune</SelectItem>
-                                    <SelectItem value="opt2">Tejas Sales</SelectItem>
+                                    {teamMembers.map((u) => (
+                                        <SelectItem key={u._id} value={u._id}>{u.name}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -182,7 +287,7 @@ export default function MasterDashboard() {
                 {/* Row 2 */}
                 <div className="flex flex-wrap items-center gap-4">
                     <div className="flex-none w-[180px]">
-                        <Select defaultValue="custom">
+                        <Select value={selectedRangeType} onValueChange={setPredefinedRange}>
                             <SelectTrigger className="w-full bg-background dark:bg-background/80">
                                 <SelectValue placeholder="Custom" />
                             </SelectTrigger>
@@ -191,6 +296,9 @@ export default function MasterDashboard() {
                                 <SelectItem value="today">Today</SelectItem>
                                 <SelectItem value="yesterday">Yesterday</SelectItem>
                                 <SelectItem value="last7days">Last 7 days</SelectItem>
+                                <SelectItem value="last30days">Last 30 days</SelectItem>
+                                <SelectItem value="last90days">Last 90 days</SelectItem>
+                                <SelectItem value="last1year">Last 1 year</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -508,13 +616,13 @@ export default function MasterDashboard() {
                                 <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-auto pb-1.5">
                                     <TabsTrigger
                                         value="site_visits"
-                                        className="rounded-lg border-b-2 ms-1.5 border-transparent data-[state=active]:border-primary data-[state=active]:bg-black px-4 py-3"
+                                        className="rounded-lg border-b-2 ms-1.5 border-transparent data-[state=active]:border-primary data-[state=active]:bg-black px-4 py-3 dark:data-[state=active]:bg-white dark:data-[state=active]:text-black"
                                     >
                                         Site Visits (5)
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="follow_ups"
-                                        className="rounded-lg border-b-2 me-1.5 border-transparent data-[state=active]:border-primary data-[state=active]:bg-black px-4 py-3"
+                                        className="rounded-lg border-b-2 me-1.5 border-transparent data-[state=active]:border-primary data-[state=active]:bg-black px-4 py-3 dark:data-[state=active]:bg-white dark:data-[state=active]:text-black"
                                     >
                                         Follow Ups (12)
                                     </TabsTrigger>

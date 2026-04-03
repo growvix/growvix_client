@@ -138,17 +138,25 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  // Get user info from cookies
-  const userName = getCookie('userName') || 'User'
-  const email = getCookie('email') || 'user@example.com'
-  const userId = getCookie('user_id')
-  const avatar = (userId ? localStorage.getItem(`userAvatar_${userId}`) : null) || localStorage.getItem('userAvatar') || "/user_icon.png"
+  const [user, setUser] = React.useState({
+    name: 'User',
+    email: 'user@example.com',
+    avatar: "/user_icon.png"
+  })
 
-  const user = {
-    name: userName,
-    email: email,
-    avatar: avatar,
-  }
+  // Get user info from cookies and localStorage on mount
+  React.useEffect(() => {
+    const userName = getCookie('userName') || 'User'
+    const email = getCookie('email') || 'user@example.com'
+    const userId = getCookie('user_id')
+    const avatar = (userId ? localStorage.getItem(`userAvatar_${userId}`) : null) || localStorage.getItem('userAvatar') || "/user_icon.png"
+    
+    setUser({
+      name: userName,
+      email: email,
+      avatar: avatar,
+    })
+  }, [])
 
   const rawRole = getCookie('role') || 'user';
   const role = rawRole.toLowerCase();

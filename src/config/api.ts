@@ -6,6 +6,17 @@
 // Get API URL from environment, fallback to localhost for development
 export const API_URL = import.meta.env.VITE_API_URL || 'http://[IP_ADDRESS]';
 
+export const getSanitizedAvatarUrl = (url: string | null | undefined): string => {
+    if (!url || url === "/user_icon.png") return "/user_icon.png";
+    if (url.includes('/uploads/')) {
+        const path = url.substring(url.indexOf('/uploads/'));
+        return `${API_URL}${path}`;
+    }
+    if (url.startsWith('http')) return url;
+    const cleanUrl = url.startsWith('/') ? url.slice(1) : url;
+    return `${API_URL}/${cleanUrl}`;
+};
+
 // API endpoints
 export const API = {
     AUTH: {
