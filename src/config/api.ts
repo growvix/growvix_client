@@ -14,6 +14,7 @@ export const API = {
         LOGOUT: `${API_URL}/api/auth/logout`,
         IMPERSONATE: `${API_URL}/api/auth/impersonate`,
         CP_LOGIN: `${API_URL}/api/auth/Cplogin`,
+        ENCRYPTION_KEY: `${API_URL}/api/auth/encryption-key`,
     },
     USERS: `${API_URL}/api/users`,
 

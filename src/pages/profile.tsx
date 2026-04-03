@@ -12,7 +12,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { useNavigate } from "react-router-dom";
-import { getCookie } from "@/utils/cookies";
+import { getCookie, setCookie } from "@/utils/cookies";
 import { API } from "@/config/api";
 import axios from "axios";
 import { toast } from "sonner";
@@ -26,7 +26,7 @@ export default function ProfilePage() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(localStorage.getItem("userAvatar"));
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -59,7 +59,7 @@ export default function ProfilePage() {
         setPhone(profile.phone || "");
         if (profile.profileImagePath) {
           setAvatarUrl(profile.profileImagePath);
-          localStorage.setItem("userAvatar", profile.profileImagePath);
+          if (userId) localStorage.setItem(`userAvatar_${userId}`, profile.profileImagePath);
         }
       } catch (err) {
         console.error("Failed to fetch user data", err);
@@ -93,8 +93,10 @@ export default function ProfilePage() {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Profile updated successfully");
-      if (avatarUrl) localStorage.setItem("userAvatar", avatarUrl);
-      window.location.reload(); // To refresh sidebar avatar and name
+      if (avatarUrl && userId) localStorage.setItem(`userAvatar_${userId}`, avatarUrl);
+      // Update the userName cookie so the sidebar reflects changes immediately
+      setCookie('userName', `${firstName} ${lastName}`);
+      navigate(-1);
     } catch (err) {
       toast.error("Failed to update profile");
     } finally {
@@ -121,7 +123,7 @@ export default function ProfilePage() {
       });
       const url = response.data.data.url;
       setAvatarUrl(url);
-      localStorage.setItem("userAvatar", url);
+      if (userId) localStorage.setItem(`userAvatar_${userId}`, url);
       
       // Automatically save the updated avatar URL to the user profile
       await axios.put(API.updateUser(userId as string), {

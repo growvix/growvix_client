@@ -26,6 +26,10 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import LeadStageSetting from "./pages/setting/leadStageSetting";
 import LeadStageAnalysis from "./pages/reports/leadStage_analysis";
 import GeneralReports from "./pages/reports/general_reports";
+import CampaignLevelReport from "./pages/reports/campaign_level_report";
+import SourceLevelReport from "./pages/reports/source_level_report";
+import SubSourceLevelReport from "./pages/reports/subSource_level_report";
+import ProjectLevelReport from "./pages/reports/project_level_report";
 import TeamManagement from "./pages/setting/team/team_management";
 import TeamDetailPage from "./pages/setting/team/team_detail";
 import CpTeamManagement from "./pages/setting/cp_team/cp_team_management";
@@ -112,8 +116,14 @@ export default function App() {
             <Route path="/setting/user_management" element={<UserManagement />} />
             <Route path="/setting/lead_stage_setting" element={<LeadStageSetting />} />
             {/* <Route path="/reports/lead_stage_analysis" element={<LeadStageAnalysis />} /> */}
+            <Route path="/reports_template" element={<GeneralReports />} />
+            <Route path="/reports/campaign_level_report" element={<CampaignLevelReport />} />
+            <Route path="/reports/source_level_report" element={<SourceLevelReport />} />
+            <Route path="/reports/sub_source_level_report" element={<SubSourceLevelReport />} />
 
-            <Route path="/general_reports" element={<GeneralReports />} />
+
+            <Route path="/reports/project_level_report" element={<ProjectLevelReport />} />
+            {/* <Route path="/general_reports" element={<GeneralReports />} /> */}
             <Route path="/lead_stage_analysis" element={<LeadStageAnalysis />} />
 
             <Route path="/setting/teams" element={<TeamManagement />} />
@@ -124,9 +134,9 @@ export default function App() {
             <Route path="/setting/import_leads" element={<ImportLeads />} />
             <Route path="/setting/import_leads/new" element={<NewLeadUpload />} />
             <Route path="/setting/mail" element={<Mail />} />
-            <Route path="/setting/mail_templates" element={<MailTemplatesListing />} />
-            <Route path="/setting/mail_templates/create" element={<CreateTemplate />} />
-            <Route path="/setting/mail_templates/edit/:id" element={<CreateTemplate />} />
+            <Route path="/automation/mail_templates" element={<MailTemplatesListing />} />
+            <Route path="/automation/mail_templates/create" element={<CreateTemplate />} />
+            <Route path="/automation/mail_templates/edit/:id" element={<CreateTemplate />} />
             <Route path="/tools/third_party_integration" element={<ThirdPartyIntegration />} />
             <Route path="/tools/third_party_integration/google_ads" element={<GoogleAdsIntegrationList />} />
             <Route path="/tools/third_party_integration/google_ads/test/:id" element={<GoogleAdsIntegrationTest />} />

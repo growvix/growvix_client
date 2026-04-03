@@ -10,9 +10,11 @@ import { gql } from "@apollo/client"
 import { useQuery } from "@apollo/client/react"
 import type { ProjectSummary, BookedItem, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables } from "@/types"
 import LoaderScreen, { HorizontalLoader } from "@/components/ui/loader-screen"
-import { ArrowUpDown, Ban, Info, MoreHorizontal, Pencil, LayoutGrid, List, Building2, MapPin, Layers, X } from "lucide-react"
+import { ArrowUpDown, Ban, Info, MoreHorizontal, Pencil, LayoutGrid, List, Building2, MapPin, Layers, X, Trash2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
+import axios from "axios"
+import { API } from "@/config/api"
 import { getCookie, getPermissions } from "@/utils/cookies"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
@@ -104,14 +106,17 @@ export default function ProjectListing() {
 
     const navigate = useNavigate()
     const permissions = getPermissions()
-    const canViewInventory = permissions.includes("view_inventory")
+    const role = getCookie('role')?.toLowerCase()
+    const canViewInventory = permissions.includes("view_inventory") || role === 'admin' || role === 'manager'
+    const canSetInactive = role === 'admin' || role === 'manager'
     const org = getCookie('organization') || ''
 
-    const { loading: projectsLoading, error: projectsError, data: projectsData } = useQuery<GetAllProjectsQueryResponse, GetAllProjectsQueryVariables>(
+    const { loading: projectsLoading, error: projectsError, data: projectsData, refetch } = useQuery<GetAllProjectsQueryResponse, GetAllProjectsQueryVariables>(
         GET_ALL_PROJECTS,
         {
             variables: { organization: org },
-            skip: !org || !canViewInventory
+            skip: !org || !canViewInventory,
+            fetchPolicy: 'network-only'
         }
     );
 
@@ -155,6 +160,21 @@ export default function ProjectListing() {
         const encodedId = encodeProjectId(project.product_id)
         navigate(`/edit_project/${encodedId}`)
     }, [navigate])
+
+    const handleSetInactive = async (e: React.MouseEvent, project: ProjectSummary) => {
+        e.stopPropagation()
+        if (!org) return;
+        const token = getCookie('token')
+        try {
+            await axios.put(`${API.PROJECTS}/${project.product_id}?organization=${org}`, { status: 'inactive' }, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            toast.success("Project set to inactive")
+            refetch()
+        } catch (error) {
+            toast.error("Failed to set project inactive")
+        }
+    }
 
     const handleBookedUnitsClick = (e: React.MouseEvent, project: ProjectSummary) => {
         e.stopPropagation()
@@ -317,6 +337,15 @@ export default function ProjectListing() {
                                 Edit Project
                             </DropdownMenuItem>
                             <DropdownMenuItem>Download Brochure</DropdownMenuItem>
+                            {canSetInactive && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem className="text-orange-600 focus:bg-orange-50 dark:focus:bg-orange-950/50" onClick={(e) => handleSetInactive(e, project)}>
+                                        <Ban className="mr-2 h-4 w-4" />
+                                        Set Inactive
+                                    </DropdownMenuItem>
+                                </>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 )
@@ -501,6 +530,15 @@ export default function ProjectListing() {
                                                                 Edit Project
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem>Download Brochure</DropdownMenuItem>
+                                                            {canSetInactive && (
+                                                                <>
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuItem className="text-orange-600 focus:bg-orange-50 dark:focus:bg-orange-950/50" onClick={(e) => handleSetInactive(e, project)}>
+                                                                        <Ban className="mr-2 h-4 w-4" />
+                                                                        Set Inactive
+                                                                    </DropdownMenuItem>
+                                                                </>
+                                                            )}
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </div>

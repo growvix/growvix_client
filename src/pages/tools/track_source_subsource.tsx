@@ -23,6 +23,8 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import LoaderScreen, { HorizontalLoader } from "@/components/ui/loader-screen"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
+import { Info } from "lucide-react"
 
 type Source = {
     _id: string
@@ -41,8 +43,22 @@ export default function TrackSourceSubsource() {
 
     useEffect(() => {
         setBreadcrumbs([
-            { label: "Automation" },
-            { label: "Source Management" },
+            { label: "Automation", href: "/tools/automation" },
+            { label: "Source Management"},
+            { 
+                label: (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Info className="h-4.5 w-4.5" />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                                <p className="font-medium">Source Management</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )
+            },
         ])
     }, [setBreadcrumbs])
 

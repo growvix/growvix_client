@@ -156,21 +156,25 @@ export function GoogleAdsStepper({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[600px] p-0 gap-0 overflow-hidden">
-                <DialogHeader className="p-6 bg-slate-50 dark:bg-slate-900/50 border-b">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                            <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <DialogHeader className="p-8 bg-gray-900/10 dark:bg-muted/70 border-b border-slate-200 dark:border-white/10">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-blue-600/20 rounded-xl border border-blue-600/20">
+                                <Globe className="h-5 w-5 text-blue-400" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Google Ads Integration</DialogTitle>
+                                <DialogDescription className="text-slate-500 dark:text-slate-400 text-xs font-medium">
+                                    Connect your Google Ads Lead Form in 4 simple steps
+                                </DialogDescription>
+                            </div>
                         </div>
-                        <DialogTitle className="text-xl">Google Ads Integration</DialogTitle>
                     </div>
-                    <DialogDescription>
-                        Connect your Google Ads Lead Form with the CRM in 4 simple steps.
-                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="px-8 py-6">
                     {/* Stepper Progress */}
-                    <div className="flex items-center justify-between mb-8 relative">
+                    <div className="flex items-center justify-between mb-10 relative">
                          {/* Line background */}
                          <div className="absolute top-5 left-0 w-full h-[2px] bg-slate-100 dark:bg-slate-800 -z-10" />
                         
@@ -180,16 +184,16 @@ export function GoogleAdsStepper({
                             const isCompleted = step > i + 1
                             
                             return (
-                                <div key={i} className="flex flex-col items-center gap-2 group">
+                                <div key={i} className="flex flex-col items-center gap-3 group">
                                     <div className={`
                                         h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300 border-2
-                                        ${isActive ? "bg-primary border-primary text-white shadow-md scale-110" : ""}
-                                        ${isCompleted ? "bg-green-500 border-green-500 text-white" : ""}
+                                        ${isActive ? "bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/20 scale-110" : ""}
+                                        ${isCompleted ? "bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20" : ""}
                                         ${!isActive && !isCompleted ? "bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-400" : ""}
                                     `}>
-                                        {isCompleted ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+                                        <Icon className="h-5 w-5" />
                                     </div>
-                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? "text-primary" : "text-slate-400"}`}>
+                                    <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? "text-primary" : "text-slate-400"}`}>
                                         Step {i + 1}
                                     </span>
                                 </div>
@@ -320,44 +324,50 @@ export function GoogleAdsStepper({
                                     </div>
                                 )}
 
-                                {step === 4 && (
-                                    <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                                        <div className="p-4 rounded-xl border bg-slate-50 dark:bg-slate-900/30 space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Campaign</p>
-                                                    <p className="font-semibold">{selectedCampaign?.campaignName}</p>
+                                 {step === 4 && (
+                                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                                        <div className="bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm overflow-hidden">
+                                            <div className="grid grid-cols-2 gap-y-6 gap-x-12">
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Campaign</p>
+                                                    <p className="text-sm font-bold text-slate-900 dark:text-white">{selectedCampaign?.campaignName || 'N/A'}</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Source</p>
-                                                    <p className="font-semibold capitalize">{formData.source.replace('_', ' ')}</p>
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Source</p>
+                                                    <p className="text-sm font-bold text-slate-900 dark:text-white">Google Ads</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Form Name</p>
-                                                    <p className="font-semibold">{formData.sub_source}</p>
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Form Name</p>
+                                                    <p className="text-sm font-bold text-slate-900 dark:text-white">{formData.sub_source || 'N/A'}</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Inventory Project</p>
-                                                    <p className="font-semibold">{selectedProject?.name}</p>
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Inventory Project</p>
+                                                    <p className="text-sm font-bold text-slate-900 dark:text-white">{selectedProject?.name || 'N/A'}</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Google Form ID</p>
-                                                    <p className="font-semibold truncate font-mono text-sm">{formData.form_id}</p>
+                                                <div className="space-y-1 col-span-1">
+                                                    <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 mb-1">Google Form ID</p>
+                                                    <p className="text-xs font-mono text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-950 p-2 rounded-lg border border-slate-100 dark:border-slate-800 truncate">
+                                                        {formData.form_id || 'N/A'}
+                                                    </p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Secret Key</p>
-                                                    <p className="font-semibold truncate font-mono text-xs text-blue-600">{formData.secret_key}</p>
+                                                <div className="space-y-1 col-span-1">
+                                                    <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 mb-1">Secret Key</p>
+                                                    <p className="text-[10px] font-mono text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/10 p-2 rounded-lg border border-blue-100 dark:border-blue-900/30 truncate">
+                                                        {formData.secret_key || 'N/A'}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 flex gap-3">
-                                            <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-full h-fit">
-                                                <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                        <div className="bg-blue-600/5 dark:bg-blue-600/10 rounded-2xl p-4 border border-blue-600/10 flex items-start gap-3">
+                                            <div className="h-9 w-9 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-600/30">
+                                                <Check className="h-4 w-4 text-white" />
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-sm font-semibold text-blue-900 dark:text-blue-300">Ready to Connect</p>
-                                                <p className="text-xs text-blue-700/80 dark:text-blue-400/70 leading-relaxed uppercase tracking-tight">Leads from this form will now automatically flow into the CRM and be assigned to the selected project.</p>
+                                                <p className="text-sm font-bold text-blue-900 dark:text-blue-300">Ready to Connect</p>
+                                                <p className="text-[10px] text-blue-700/80 dark:text-blue-400/80 leading-relaxed font-semibold uppercase tracking-tight">
+                                                    LEADS FROM THIS FORM WILL NOW AUTOMATICALLY FLOW INTO THE CRM.
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -369,7 +379,7 @@ export function GoogleAdsStepper({
 
                 <Separator />
 
-                <DialogFooter className="p-6 bg-slate-50 dark:bg-slate-900/30 flex items-center justify-between sm:justify-between w-full">
+                <DialogFooter className="p-6 bg-gray-900/10 dark:bg-muted/70 border-b dark:border-white/10- flex items-center justify-between sm:justify-between w-full">
                     <Button
                         variant="ghost"
                         onClick={handleBack}
@@ -384,7 +394,7 @@ export function GoogleAdsStepper({
                         <Button 
                             onClick={handleSubmit} 
                             disabled={loading}
-                            className="bg-primary hover:bg-primary/90 text-white min-w-[140px] font-bold gap-2"
+                            className="min-w-[140px] font-bold gap-2"
                         >
                             {loading ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -399,7 +409,7 @@ export function GoogleAdsStepper({
                         <Button 
                             onClick={handleNext} 
                             disabled={fetchingData}
-                            className="bg-primary hover:bg-primary/90 text-white min-w-[140px] font-bold gap-2"
+                            className="min-w-[140px] font-bold gap-2"
                         >
                             Continue
                             <ChevronRight className="h-4 w-4" />

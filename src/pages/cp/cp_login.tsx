@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { useNavigate } from "react-router-dom"
 import { Eye, EyeOff, Loader2, GalleryVerticalEnd } from "lucide-react"
 import { API } from "@/config/api"
+import { encryptPassword } from "@/utils/encryption"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { setCookie, deleteAllAuthCookies, isAuthenticated, getCookie } from "@/utils/cookies"
@@ -64,9 +65,11 @@ export default function CpLoginPage() {
 
         setIsLoading(true)
         try {
+            const encryptedPassword = await encryptPassword(trimmedPassword)
+
             const response = await axios.post(API.AUTH.CP_LOGIN, {
                 email: trimmedEmail,
-                password: trimmedPassword,
+                password: encryptedPassword,
             })
 
             const data = response.data.data

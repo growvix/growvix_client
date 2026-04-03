@@ -4,6 +4,7 @@ import { API } from '@/config/api'
 import { toast } from 'sonner'
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import LoaderScreen from '@/components/ui/loader-screen'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -183,6 +184,7 @@ export default function NewProject() {
     const [formData, setFormData] = useState<ProjectFormData>(initialFormData)
     const [loading, setLoading] = useState(false)
     const [pageLoading, setPageLoading] = useState(true)
+    const navigate = useNavigate()
     const [expandedBlocks, setExpandedBlocks] = useState<string[]>([])
     const [blockConfigs, setBlockConfigs] = useState<Record<string, BlockConfig>>({})
     const { setBreadcrumbs } = useBreadcrumb()
@@ -810,6 +812,7 @@ export default function NewProject() {
             const response = await axios.post(API.PROJECTS, payload)
             toast.success(response.data.message || 'Project added successfully!')
             setFormData(initialFormData)
+            navigate('/project_listing')
         } catch (error: any) {
             console.error('Failed to add project:', error)
             toast.error(error.response?.data?.message || error.response?.data?.errors?.[0]?.msg || 'Failed to add project')

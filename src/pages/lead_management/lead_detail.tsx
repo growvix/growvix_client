@@ -232,6 +232,10 @@ const UPDATE_LEAD = gql`
             status
             exe_user
             exe_user_name
+            profile {
+                phone
+                email
+            }
         }
     }
 `;
@@ -1449,12 +1453,28 @@ export default function LeadDetail() {
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="flex flex-col">
-                                    <CardDescription className="text-xs sm:text-sm opacity-70 tracking-wide text-black dark:text-dark">
-                                        Lead Id <span className=""> #{leadDetail?.profile_id ?? ""}</span>
-                                    </CardDescription>
-                                    <CardTitle className="text-lg sm:text-xl md:text-2xl font-semibold text-black dark:text-dark">
-                                        {leadName}
-                                    </CardTitle>
+                                    <div className="flex items-center gap-2">
+                                        <CardTitle className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight">
+                                            {leadName}
+                                        </CardTitle>
+                                        <Badge variant="secondary" className="text-[10px] h-5 opacity-70">
+                                            #{leadDetail?.profile_id ?? ""}
+                                        </Badge>
+                                    </div>
+                                    <div className="flex items-center gap-3 sm:gap-4 mt-1 text-muted-foreground">
+                                        <div className="flex items-center gap-1.2 text-xs sm:text-sm">
+                                            <Mail className="size-3 sm:size-3.5" />
+                                            <span className="truncate max-w-[150px] sm:max-w-[200px]">
+                                                {leadDetail?.profile?.email || 'No email'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1.2 text-xs sm:text-sm border-l pl-3 sm:pl-4">
+                                            <Smartphone className="size-3 sm:size-3.5" />
+                                            <span>
+                                                {leadDetail?.profile?.phone || 'No phone'}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                                 {leadDetail?.exe_user_name && (
                                     <div className="ml-auto flex items-center gap-1.5 bg-white/80 dark:bg-black px-2.5 py-1 rounded-full">
