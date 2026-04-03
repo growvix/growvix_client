@@ -113,8 +113,8 @@ const data = {
       isActive: true,
       items: [
         {
-          title: "General Reports",
-          url: "/general_reports",
+          title: "Reports Template",
+          url: "/reports_template",
         },
         {
           title: "Lead Stage Analysis",
