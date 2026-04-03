@@ -641,52 +641,53 @@ export default function NewProject() {
     }
 
     // Handle floor plan image upload
-   const  handleImageUpload = async (blockId: string, files: FileList | null) => {
-    if (!files || files.length === 0) return
+    const handleImageUpload = async (blockId: string, files: FileList | null) => {
+        if (!files || files.length === 0) return
 
-    const fileArray = Array.from(files)
+        const fileArray = Array.from(files)
 
-    // ✅ Allow only SVG files
-    const nonSvgFile = fileArray.find(
-        file => file.type !== "image/svg+xml" && !file.name.toLowerCase().endsWith(".svg")
-    )
-
-    if (nonSvgFile) {
-        toast.error("Only SVG images are allowed")
-        return
-    }
-
-    // Check max 5 images limit
-    const block = formData.blocks.find(b => b.blockId === blockId)
-    const currentCount = block?.floorPlanImages?.length || 0
-    if (currentCount + fileArray.length > 5) {
-        toast.error('Maximum 5 images allowed per block')
-        return
-    }
-
-    const formDataUpload = new FormData()
-    fileArray.forEach(file => {
-        formDataUpload.append('images', file)
-    })
-
-    try {
-        const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        })
-
-        const newUrls = response.data.data.urls
-        updateBlock(
-            blockId,
-            'floorPlanImages',
-            [...(block?.floorPlanImages || []), ...newUrls].slice(0, 5)
+        // Allow common image formats
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
+        const invalidFile = fileArray.find(
+            file => !allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith(".svg")
         )
 
-        toast.success(`${newUrls.length} SVG image(s) uploaded successfully`)
-    } catch (error: any) {
-        console.error('Failed to upload images:', error)
-        toast.error(error.response?.data?.message || 'Failed to upload images')
+        if (invalidFile) {
+            toast.error("Only image files are allowed (JPEG, PNG, GIF, WebP, SVG)")
+            return
+        }
+
+        // Check max 5 images limit
+        const block = formData.blocks.find(b => b.blockId === blockId)
+        const currentCount = block?.floorPlanImages?.length || 0
+        if (currentCount + fileArray.length > 5) {
+            toast.error('Maximum 5 images allowed per block')
+            return
+        }
+
+        const formDataUpload = new FormData()
+        fileArray.forEach(file => {
+            formDataUpload.append('images', file)
+        })
+
+        try {
+            const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+
+            const newUrls = response.data.data.urls
+            updateBlock(
+                blockId,
+                'floorPlanImages',
+                [...(block?.floorPlanImages || []), ...newUrls].slice(0, 5)
+            )
+
+            toast.success(`${newUrls.length} image(s) uploaded successfully`)
+        } catch (error: any) {
+            console.error('Failed to upload images:', error)
+            toast.error(error.response?.data?.message || 'Failed to upload images')
+        }
     }
-}
 
     // Handle plot layout image upload
     const handleLayoutImageUpload = async (files: FileList | null) => {
@@ -736,6 +737,47 @@ export default function NewProject() {
             ...prev,
             layoutImages: prev.layoutImages?.filter(url => url !== imageUrl) || []
         }))
+    }
+
+    // Handle project asset upload (logo, brochure)
+    const handleProjectAssetUpload = async (type: 'logo' | 'brochure', file: File) => {
+        // Frontend validation
+        const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+        const allowedDocTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+
+        if (type === 'logo') {
+            if (!allowedImageTypes.includes(file.type)) {
+                toast.error('Only image files are allowed for the logo (JPEG, PNG, GIF, WebP)')
+                return
+            }
+        } else if (type === 'brochure') {
+            if (!allowedImageTypes.includes(file.type) && !allowedDocTypes.includes(file.type)) {
+                toast.error('Only identity documents (PDF/DOC) and images are allowed for the brochure')
+                return
+            }
+        }
+
+        const formDataUpload = new FormData()
+        formDataUpload.append('images', file)
+
+        try {
+            const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+
+            const newUrl = response.data.data.urls[0]
+            setFormData(prev => ({
+                ...prev,
+                img_location: {
+                    ...prev.img_location,
+                    [type]: newUrl
+                }
+            }))
+            toast.success(`${type} uploaded successfully`)
+        } catch (error: any) {
+            console.error(`Failed to upload ${type}:`, error)
+            toast.error(error.response?.data?.message || `Failed to upload ${type}`)
+        }
     }
 
     // Handle form submission
@@ -1047,12 +1089,12 @@ export default function NewProject() {
                                                                             <Label>Floor Plan Images (Max 5)</Label>
                                                                             <div className="flex gap-2">
                                                                                 <Input
-  type="file"
-  accept=".svg,image/svg+xml"
-  multiple
-  onChange={e => handleImageUpload(block.blockId, e.target.files)}
-  className="flex-1  text-xs bg-background dark:bg-[#09090b]"
-/>
+                                                                                    type="file"
+                                                                                    accept="image/*"
+                                                                                    multiple
+                                                                                    onChange={e => handleImageUpload(block.blockId, e.target.files)}
+                                                                                    className="flex-1  text-xs bg-background dark:bg-[#09090b]"
+                                                                                />
                                                                             </div>
                                                                             {block.floorPlanImages.length > 0 && (
                                                                                 <ScrollArea className="h-20 mt-2">
@@ -1316,6 +1358,66 @@ export default function NewProject() {
                                                 onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
                                             />
                                         </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="logo">Project Logo</Label>
+                                            <div className="flex items-center gap-3">
+                                                <Input
+                                                    id="logo"
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="bg-background dark:bg-[#09090b]"
+                                                    onChange={e => {
+                                                        const file = e.target.files?.[0]
+                                                        if (file) handleProjectAssetUpload('logo', file)
+                                                        e.target.value = ''
+                                                    }}
+                                                />
+                                                {formData.img_location?.logo && (
+                                                    <div className="relative group shrink-0">
+                                                        <img src={formData.img_location.logo} alt="Logo preview" className="h-10 w-10 object-contain border rounded" />
+                                                        <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            className="absolute -top-2 -right-2 h-5 w-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            onClick={() => setFormData(prev => ({ ...prev, img_location: { ...prev.img_location, logo: '' } }))}
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="brochure">Project Brochure (PDF/DOC)</Label>
+                                            <div className="flex items-center gap-3">
+                                                <Input
+                                                    id="brochure"
+                                                    type="file"
+                                                    accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                                    className="bg-background dark:bg-[#09090b]"
+                                                    onChange={e => {
+                                                        const file = e.target.files?.[0]
+                                                        if (file) handleProjectAssetUpload('brochure', file)
+                                                        e.target.value = ''
+                                                    }}
+                                                />
+                                                {formData.img_location?.brochure && (
+                                                    <div className="relative group shrink-0">
+                                                        <a href={formData.img_location.brochure} target="_blank" rel="noreferrer" className="text-xs text-primary underline truncate max-w-[100px] block">View PDF</a>
+                                                        <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            className="absolute -top-1 -right-4 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            onClick={() => setFormData(prev => ({ ...prev, img_location: { ...prev.img_location, brochure: '' } }))}
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </CardContent>
                                 <CardFooter className="flex justify-end gap-3">
@@ -1385,7 +1487,7 @@ export default function NewProject() {
                                                 </Label>
                                                 <span className="text-xs text-muted-foreground">{(floor.floorChartImages || []).length}/5</span>
                                             </div>
-                                            
+
                                             {/* Image Grid Preview */}
                                             {(floor.floorChartImages || []).length > 0 && (
                                                 <div className="grid grid-cols-2 gap-2 mb-3">
@@ -1748,8 +1850,8 @@ export default function NewProject() {
             </Drawer>
             {/* Image Lightbox Overlay (Task 2: Using Dialog for proper portaling to prevent Drawer closing) */}
             <Dialog open={lightboxImageIndex !== null} onOpenChange={(open) => !open && setLightboxImageIndex(null)}>
-                <DialogContent 
-                    className="max-w-none sm:max-w-none w-screen h-screen bg-black/95 border-none p-0 flex flex-col items-center justify-center rounded-none z-[99999] shadow-none outline-none" 
+                <DialogContent
+                    className="max-w-none sm:max-w-none w-screen h-screen bg-black/95 border-none p-0 flex flex-col items-center justify-center rounded-none z-[99999] shadow-none outline-none"
                     showCloseButton={false}
                     onKeyDown={(e) => {
                         if (!editingFloor) return;
@@ -1814,11 +1916,10 @@ export default function NewProject() {
                                         {images.map((url, idx) => (
                                             <button
                                                 key={idx}
-                                                className={`h-16 w-16 rounded-lg overflow-hidden border-2 transition-all duration-300 ${
-                                                    idx === currentIndex
-                                                        ? 'border-white shadow-[0_0_20px_rgba(255,255,255,0.3)] scale-110'
-                                                        : 'border-white/20 opacity-40 hover:opacity-100 hover:border-white/50'
-                                                }`}
+                                                className={`h-16 w-16 rounded-lg overflow-hidden border-2 transition-all duration-300 ${idx === currentIndex
+                                                    ? 'border-white shadow-[0_0_20px_rgba(255,255,255,0.3)] scale-110'
+                                                    : 'border-white/20 opacity-40 hover:opacity-100 hover:border-white/50'
+                                                    }`}
                                                 onClick={() => setLightboxImageIndex(idx)}
                                             >
                                                 <img src={url} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
