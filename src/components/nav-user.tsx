@@ -11,7 +11,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Link } from "react-router-dom"
 import axios from "axios"
-import { API } from "@/config/api"
+import { API, API_URL, getSanitizedAvatarUrl } from "@/config/api"
 import { toast } from "sonner"
 
 import {
@@ -54,11 +54,26 @@ export function NavUser({
   }
 }) {
   const { isMobile, setLocked, setOpen, setOpenMobile } = useSidebar()
+  
+  // Helper to get user initials
+  const getInitials = (name: string) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  const initials = getInitials(user.name);
   const rawRole = getCookie('role');
   const role = rawRole?.toLowerCase();
   const canImpersonate = role === 'admin' || role === 'manager';
   console.log("Current user role (active):", role);
   const [showSwitchAccount, setShowSwitchAccount] = useState(false);
+
+  const avatarSrc = getSanitizedAvatarUrl(user.avatar);
   const [executives, setExecutives] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -195,8 +210,8 @@ export function NavUser({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className={cn("h-8 w-8 rounded-lg", isAdminImpersonating && "border-2 border-red-500 shadow-sm shadow-red-500/50")}>
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarImage src={avatarSrc} alt={user.name} />
+                <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
@@ -214,8 +229,8 @@ export function NavUser({
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className={cn("h-8 w-8 rounded-lg", isAdminImpersonating && "border-2 border-red-500")}>
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg"></AvatarFallback>
+                  <AvatarImage src={avatarSrc} alt={user.name} />
+                  <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
