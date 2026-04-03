@@ -31,7 +31,7 @@ const SEARCHABLE_PAGES: SearchablePage[] = [
     { label: "Add New Lead", url: "/NewLead", group: "Lead Directory", icon: PlusCircle },
     { label: "Projects", url: "/project_listing", group: "Inventory", icon: Package },
     { label: "Add Project", url: "/new_project", group: "Inventory", icon: PlusCircle },
-    { label: "General Reports", url: "/general_reports", group: "Reports", icon: BarChart3 },
+    { label: "General Reports", url: "/reports_template", group: "Reports", icon: BarChart3 },
     { label: "Lead Stage Analysis", url: "/lead_stage_analysis", group: "Reports", icon: TrendingUp },
     { label: "General Settings", url: "/settings", group: "Settings", icon: Settings },
     { label: "Import Leads", url: "/setting/import_leads", group: "Settings", icon: PlusCircle },

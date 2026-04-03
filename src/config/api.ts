@@ -14,6 +14,7 @@ export const API = {
         LOGOUT: `${API_URL}/api/auth/logout`,
         IMPERSONATE: `${API_URL}/api/auth/impersonate`,
         CP_LOGIN: `${API_URL}/api/auth/Cplogin`,
+        ENCRYPTION_KEY: `${API_URL}/api/auth/encryption-key`,
     },
     USERS: `${API_URL}/api/users`,
 
@@ -21,6 +22,8 @@ export const API = {
     PROJECTS: `${API_URL}/api/projects`,
     LEADS: `${API_URL}/api/leads`,
     TEAMS: `${API_URL}/api/teams`,
+    CAMPAIGNS: `${API_URL}/api/campaigns`,
+    SOURCES: `${API_URL}/api/sources`,
 
     // Project specific endpoints
     getProject: (id: number | string) => `${API_URL}/api/projects/${id}`,

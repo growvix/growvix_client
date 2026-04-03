@@ -131,16 +131,6 @@ export default function GeneralSetting() {
             hoverGradient: "from-red-50/50 dark:from-red-950/20",
             path: "/setting/mail",
         },
-        {
-            title: "Mail Templates",
-            description: "Create and manage reusable email templates with simple or design editors.",
-            icon: MailPlus,
-            colorClass: "text-teal-600 dark:text-teal-400",
-            bgClass: "bg-teal-100 dark:bg-teal-900/40",
-            hoverBorder: "hover:border-teal-300 dark:hover:border-teal-800",
-            hoverGradient: "from-teal-50/50 dark:from-teal-950/20",
-            path: "/setting/mail_templates",
-        },
     ]
 
     const activePermissions = getPermissions()

@@ -4,6 +4,7 @@ import { API } from '@/config/api'
 import { toast } from 'sonner'
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import LoaderScreen from '@/components/ui/loader-screen'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -34,6 +35,11 @@ import {
     DrawerClose,
 } from '@/components/ui/drawer'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
 
 // Helper function to get cookie value
 const getCookie = (name: string): string => {
@@ -54,6 +60,7 @@ interface Unit {
     facing: string
     status: 'available' | 'booked' | 'sold'
     position: { row: number; col: number }
+    unitPlanImages?: string[]
 }
 
 // Unit type configuration
@@ -177,6 +184,7 @@ export default function NewProject() {
     const [formData, setFormData] = useState<ProjectFormData>(initialFormData)
     const [loading, setLoading] = useState(false)
     const [pageLoading, setPageLoading] = useState(true)
+    const navigate = useNavigate()
     const [expandedBlocks, setExpandedBlocks] = useState<string[]>([])
     const [blockConfigs, setBlockConfigs] = useState<Record<string, BlockConfig>>({})
     const { setBreadcrumbs } = useBreadcrumb()
@@ -186,6 +194,7 @@ export default function NewProject() {
     const [editingFloor, setEditingFloor] = useState<{ blockId: string; floorNumber: number } | null>(null)
     const [copyToFloors, setCopyToFloors] = useState<number[]>([])
     const [floorImageUploading, setFloorImageUploading] = useState(false)
+    const [unitImageUploading, setUnitImageUploading] = useState<string | null>(null) // Stores unitId being uploaded
     const floorImageInputRef = useRef<HTMLInputElement>(null)
     const [lightboxImageIndex, setLightboxImageIndex] = useState<number | null>(null)
 
@@ -515,6 +524,63 @@ export default function NewProject() {
         }))
     }
 
+    // Handle unit plan image upload (multiple images, max 5)
+    const handleUnitImageUpload = async (blockId: string, floorNumber: number, unitId: string, files: FileList | null) => {
+        if (!files || files.length === 0) return
+
+        const fileArray = Array.from(files)
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']
+        const invalidFile = fileArray.find(f => !allowedTypes.includes(f.type))
+        if (invalidFile) {
+            toast.error('Only PNG, JPG, SVG, and WebP images are allowed')
+            return
+        }
+
+        const block = formData.blocks.find(b => b.blockId === blockId)
+        const floor = block?.floors.find(f => f.floorNumber === floorNumber)
+        const unit = floor?.units.find(u => u.unitId === unitId)
+        const currentCount = unit?.unitPlanImages?.length || 0
+
+        if (currentCount + fileArray.length > 5) {
+            toast.error(`Maximum 5 images allowed for each unit. You can add ${5 - currentCount} more.`)
+            return
+        }
+
+        setUnitImageUploading(unitId)
+        const formDataUpload = new FormData()
+        fileArray.forEach(file => formDataUpload.append('images', file))
+
+        try {
+            const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+
+            const newUrls = response.data.data.urls
+            updateSingleUnit(blockId, floorNumber, unitId, {
+                unitPlanImages: [...(unit?.unitPlanImages || []), ...newUrls].slice(0, 5)
+            })
+            toast.success(`${newUrls.length} unit image(s) uploaded successfully`)
+        } catch (error: any) {
+            console.error('Failed to upload unit images:', error)
+            toast.error(error.response?.data?.message || 'Failed to upload unit images')
+        } finally {
+            setUnitImageUploading(null)
+        }
+    }
+
+    // Remove a single unit image by URL
+    const removeUnitImage = (blockId: string, floorNumber: number, unitId: string, imageUrl: string) => {
+        const block = formData.blocks.find(b => b.blockId === blockId)
+        const floor = block?.floors.find(f => f.floorNumber === floorNumber)
+        const unit = floor?.units.find(u => u.unitId === unitId)
+        if (!unit) return
+
+        updateSingleUnit(blockId, floorNumber, unitId, {
+            unitPlanImages: (unit.unitPlanImages || []).filter(url => url !== imageUrl)
+        })
+        toast.success('Unit image removed')
+    }
+
     // Add a new unit to a floor
     const addUnitToFloor = (blockId: string, floorNumber: number) => {
         const config = getBlockConfig(blockId)
@@ -577,52 +643,53 @@ export default function NewProject() {
     }
 
     // Handle floor plan image upload
-   const  handleImageUpload = async (blockId: string, files: FileList | null) => {
-    if (!files || files.length === 0) return
+    const handleImageUpload = async (blockId: string, files: FileList | null) => {
+        if (!files || files.length === 0) return
 
-    const fileArray = Array.from(files)
+        const fileArray = Array.from(files)
 
-    // ✅ Allow only SVG files
-    const nonSvgFile = fileArray.find(
-        file => file.type !== "image/svg+xml" && !file.name.toLowerCase().endsWith(".svg")
-    )
-
-    if (nonSvgFile) {
-        toast.error("Only SVG images are allowed")
-        return
-    }
-
-    // Check max 5 images limit
-    const block = formData.blocks.find(b => b.blockId === blockId)
-    const currentCount = block?.floorPlanImages?.length || 0
-    if (currentCount + fileArray.length > 5) {
-        toast.error('Maximum 5 images allowed per block')
-        return
-    }
-
-    const formDataUpload = new FormData()
-    fileArray.forEach(file => {
-        formDataUpload.append('images', file)
-    })
-
-    try {
-        const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        })
-
-        const newUrls = response.data.data.urls
-        updateBlock(
-            blockId,
-            'floorPlanImages',
-            [...(block?.floorPlanImages || []), ...newUrls].slice(0, 5)
+        // Allow common image formats
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
+        const invalidFile = fileArray.find(
+            file => !allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith(".svg")
         )
 
-        toast.success(`${newUrls.length} SVG image(s) uploaded successfully`)
-    } catch (error: any) {
-        console.error('Failed to upload images:', error)
-        toast.error(error.response?.data?.message || 'Failed to upload images')
+        if (invalidFile) {
+            toast.error("Only image files are allowed (JPEG, PNG, GIF, WebP, SVG)")
+            return
+        }
+
+        // Check max 5 images limit
+        const block = formData.blocks.find(b => b.blockId === blockId)
+        const currentCount = block?.floorPlanImages?.length || 0
+        if (currentCount + fileArray.length > 5) {
+            toast.error('Maximum 5 images allowed per block')
+            return
+        }
+
+        const formDataUpload = new FormData()
+        fileArray.forEach(file => {
+            formDataUpload.append('images', file)
+        })
+
+        try {
+            const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+
+            const newUrls = response.data.data.urls
+            updateBlock(
+                blockId,
+                'floorPlanImages',
+                [...(block?.floorPlanImages || []), ...newUrls].slice(0, 5)
+            )
+
+            toast.success(`${newUrls.length} image(s) uploaded successfully`)
+        } catch (error: any) {
+            console.error('Failed to upload images:', error)
+            toast.error(error.response?.data?.message || 'Failed to upload images')
+        }
     }
-}
 
     // Handle plot layout image upload
     const handleLayoutImageUpload = async (files: FileList | null) => {
@@ -674,6 +741,47 @@ export default function NewProject() {
         }))
     }
 
+    // Handle project asset upload (logo, brochure)
+    const handleProjectAssetUpload = async (type: 'logo' | 'brochure', file: File) => {
+        // Frontend validation
+        const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+        const allowedDocTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+
+        if (type === 'logo') {
+            if (!allowedImageTypes.includes(file.type)) {
+                toast.error('Only image files are allowed for the logo (JPEG, PNG, GIF, WebP)')
+                return
+            }
+        } else if (type === 'brochure') {
+            if (!allowedImageTypes.includes(file.type) && !allowedDocTypes.includes(file.type)) {
+                toast.error('Only identity documents (PDF/DOC) and images are allowed for the brochure')
+                return
+            }
+        }
+
+        const formDataUpload = new FormData()
+        formDataUpload.append('images', file)
+
+        try {
+            const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+
+            const newUrl = response.data.data.urls[0]
+            setFormData(prev => ({
+                ...prev,
+                img_location: {
+                    ...prev.img_location,
+                    [type]: newUrl
+                }
+            }))
+            toast.success(`${type} uploaded successfully`)
+        } catch (error: any) {
+            console.error(`Failed to upload ${type}:`, error)
+            toast.error(error.response?.data?.message || `Failed to upload ${type}`)
+        }
+    }
+
     // Handle form submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -704,6 +812,7 @@ export default function NewProject() {
             const response = await axios.post(API.PROJECTS, payload)
             toast.success(response.data.message || 'Project added successfully!')
             setFormData(initialFormData)
+            navigate('/project_listing')
         } catch (error: any) {
             console.error('Failed to add project:', error)
             toast.error(error.response?.data?.message || error.response?.data?.errors?.[0]?.msg || 'Failed to add project')
@@ -983,12 +1092,12 @@ export default function NewProject() {
                                                                             <Label>Floor Plan Images (Max 5)</Label>
                                                                             <div className="flex gap-2">
                                                                                 <Input
-  type="file"
-  accept=".svg,image/svg+xml"
-  multiple
-  onChange={e => handleImageUpload(block.blockId, e.target.files)}
-  className="flex-1  text-xs bg-background dark:bg-[#09090b]"
-/>
+                                                                                    type="file"
+                                                                                    accept="image/*"
+                                                                                    multiple
+                                                                                    onChange={e => handleImageUpload(block.blockId, e.target.files)}
+                                                                                    className="flex-1  text-xs bg-background dark:bg-[#09090b]"
+                                                                                />
                                                                             </div>
                                                                             {block.floorPlanImages.length > 0 && (
                                                                                 <ScrollArea className="h-20 mt-2">
@@ -1252,6 +1361,66 @@ export default function NewProject() {
                                                 onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
                                             />
                                         </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="logo">Project Logo</Label>
+                                            <div className="flex items-center gap-3">
+                                                <Input
+                                                    id="logo"
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="bg-background dark:bg-[#09090b]"
+                                                    onChange={e => {
+                                                        const file = e.target.files?.[0]
+                                                        if (file) handleProjectAssetUpload('logo', file)
+                                                        e.target.value = ''
+                                                    }}
+                                                />
+                                                {formData.img_location?.logo && (
+                                                    <div className="relative group shrink-0">
+                                                        <img src={formData.img_location.logo} alt="Logo preview" className="h-10 w-10 object-contain border rounded" />
+                                                        <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            className="absolute -top-2 -right-2 h-5 w-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            onClick={() => setFormData(prev => ({ ...prev, img_location: { ...prev.img_location, logo: '' } }))}
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="brochure">Project Brochure (PDF/DOC)</Label>
+                                            <div className="flex items-center gap-3">
+                                                <Input
+                                                    id="brochure"
+                                                    type="file"
+                                                    accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                                    className="bg-background dark:bg-[#09090b]"
+                                                    onChange={e => {
+                                                        const file = e.target.files?.[0]
+                                                        if (file) handleProjectAssetUpload('brochure', file)
+                                                        e.target.value = ''
+                                                    }}
+                                                />
+                                                {formData.img_location?.brochure && (
+                                                    <div className="relative group shrink-0">
+                                                        <a href={formData.img_location.brochure} target="_blank" rel="noreferrer" className="text-xs text-primary underline truncate max-w-[100px] block">View PDF</a>
+                                                        <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            className="absolute -top-1 -right-4 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            onClick={() => setFormData(prev => ({ ...prev, img_location: { ...prev.img_location, brochure: '' } }))}
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </CardContent>
                                 <CardFooter className="flex justify-end gap-3">
@@ -1321,7 +1490,7 @@ export default function NewProject() {
                                                 </Label>
                                                 <span className="text-xs text-muted-foreground">{(floor.floorChartImages || []).length}/5</span>
                                             </div>
-                                            
+
                                             {/* Image Grid Preview */}
                                             {(floor.floorChartImages || []).length > 0 && (
                                                 <div className="grid grid-cols-2 gap-2 mb-3">
@@ -1421,17 +1590,18 @@ export default function NewProject() {
                                                     Add Unit
                                                 </Button>
                                             </div>
-                                            <div className="grid grid-cols-6 gap-2 text-xs font-medium text-muted-foreground mb-1 px-2">
+                                            <div className="grid grid-cols-7 gap-2 text-xs font-medium text-muted-foreground mb-1 px-2">
                                                 <div>Door No.</div>
                                                 <div>BHK</div>
                                                 <div>Bathrooms</div>
                                                 <div>Size (sqft)</div>
                                                 <div>Facing</div>
+                                                <div className="text-center">Plan Images</div>
                                                 <div></div>
                                             </div>
                                             <div className="space-y-1 max-h-[250px] overflow-auto">
                                                 {floor.units.map((unit) => (
-                                                    <div key={unit.unitId} className="grid grid-cols-6 gap-2 items-center bg-muted/20 p-2 rounded">
+                                                    <div key={unit.unitId} className="grid grid-cols-7 gap-2 items-center bg-muted/20 p-2 rounded">
                                                         <Input
                                                             className="h-8 text-xs font-medium"
                                                             value={unit.unitNumber}
@@ -1452,7 +1622,7 @@ export default function NewProject() {
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {[1, 2, 3, 4, 5].map(n => (
+                                                                {[1, 2, 3, 4, 5, 6].map(n => (
                                                                     <SelectItem key={n} value={String(n)}>{n} BHK</SelectItem>
                                                                 ))}
                                                             </SelectContent>
@@ -1465,8 +1635,8 @@ export default function NewProject() {
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {[1, 2, 3, 4].map(n => (
-                                                                    <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                                                {[1, 2, 3, 4, 5].map(n => (
+                                                                    <SelectItem key={n} value={String(n)}>{n} Bath</SelectItem>
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
@@ -1474,7 +1644,7 @@ export default function NewProject() {
                                                             type="number"
                                                             className="h-8 text-xs"
                                                             value={unit.size}
-                                                            onChange={e => updateSingleUnit(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, { size: parseInt(e.target.value) || 1000 })}
+                                                            onChange={e => updateSingleUnit(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, { size: parseInt(e.target.value) || 0 })}
                                                         />
                                                         <Select
                                                             value={unit.facing}
@@ -1484,22 +1654,116 @@ export default function NewProject() {
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="East">East</SelectItem>
-                                                                <SelectItem value="West">West</SelectItem>
-                                                                <SelectItem value="North">North</SelectItem>
-                                                                <SelectItem value="South">South</SelectItem>
+                                                                {['East', 'West', 'North', 'South', 'North-East', 'South-East', 'North-West', 'South-West'].map(d => (
+                                                                    <SelectItem key={d} value={d}>
+                                                                        {d.length > 5 ? d.split('-').map(s => s[0]).join('') : d}
+                                                                    </SelectItem>
+                                                                ))}
                                                             </SelectContent>
                                                         </Select>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8"
-                                                            onClick={() => removeUnitFromFloor(editingFloor.blockId, editingFloor.floorNumber, unit.unitId)}
-                                                            disabled={floor.units.length <= 1}
-                                                        >
-                                                            <X className="h-3 w-3" />
-                                                        </Button>
+
+                                                        {/* Unit Plan Images Column */}
+                                                        <div className="flex justify-center">
+                                                            <Popover>
+                                                                <PopoverTrigger asChild>
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="icon"
+                                                                        className="h-8 w-8 relative group"
+                                                                        title="Manage Floor Plan Images"
+                                                                    >
+                                                                        <ImagePlus className="h-4 w-4" />
+                                                                        {unit.unitPlanImages && unit.unitPlanImages.length > 0 && (
+                                                                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold border-2 border-background">
+                                                                                {unit.unitPlanImages.length}
+                                                                            </span>
+                                                                        )}
+                                                                    </Button>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="w-80 p-4" side="top" align="center">
+                                                                    <div className="space-y-4">
+                                                                        <div className="flex items-center justify-between">
+                                                                            <h4 className="text-sm font-semibold">Unit Floor Plan Images</h4>
+                                                                            <span className="text-xs text-muted-foreground">
+                                                                                {(unit.unitPlanImages || []).length}/5
+                                                                            </span>
+                                                                        </div>
+
+                                                                        {/* Previews */}
+                                                                        {(unit.unitPlanImages || []).length > 0 && (
+                                                                            <div className="grid grid-cols-3 gap-2">
+                                                                                {unit.unitPlanImages?.map((url, idx) => (
+                                                                                    <div key={idx} className="relative group aspect-square rounded-md overflow-hidden border bg-muted">
+                                                                                        <img src={url} alt={`Unit image ${idx + 1}`} className="w-full h-full object-cover" />
+                                                                                        <Button
+                                                                                            type="button"
+                                                                                            size="icon"
+                                                                                            variant="destructive"
+                                                                                            className="absolute -top-1 -right-1 h-5 w-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                            onClick={() => removeUnitImage(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, url)}
+                                                                                        >
+                                                                                            <X className="h-2 w-2" />
+                                                                                        </Button>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Upload Action */}
+                                                                        {(unit.unitPlanImages || []).length < 5 && (
+                                                                            <div className="relative">
+                                                                                <Button
+                                                                                    type="button"
+                                                                                    variant="outline"
+                                                                                    className="w-full h-20 border-dashed flex flex-col gap-1 text-xs"
+                                                                                    disabled={unitImageUploading === unit.unitId}
+                                                                                    onClick={() => {
+                                                                                        const input = document.getElementById(`unit-img-${unit.unitId}`) as HTMLInputElement
+                                                                                        if (input) input.click()
+                                                                                    }}
+                                                                                >
+                                                                                    {unitImageUploading === unit.unitId ? (
+                                                                                        <>
+                                                                                            <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                                                                            <span>Uploading...</span>
+                                                                                        </>
+                                                                                    ) : (
+                                                                                        <>
+                                                                                            <Plus className="h-4 w-4 text-muted-foreground" />
+                                                                                            <span>Add {(unit.unitPlanImages || []).length === 0 ? 'Images' : 'More'}</span>
+                                                                                        </>
+                                                                                    )}
+                                                                                </Button>
+                                                                                <input
+                                                                                    id={`unit-img-${unit.unitId}`}
+                                                                                    type="file"
+                                                                                    accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+                                                                                    multiple
+                                                                                    className="hidden"
+                                                                                    onChange={(e) => {
+                                                                                        handleUnitImageUpload(editingFloor.blockId, editingFloor.floorNumber, unit.unitId, e.target.files)
+                                                                                        e.target.value = ''
+                                                                                    }}
+                                                                                />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </PopoverContent>
+                                                            </Popover>
+                                                        </div>
+
+                                                        <div className="flex justify-end pr-1">
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                                onClick={() => removeUnitFromFloor(editingFloor.blockId, editingFloor.floorNumber, unit.unitId)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -1589,8 +1853,8 @@ export default function NewProject() {
             </Drawer>
             {/* Image Lightbox Overlay (Task 2: Using Dialog for proper portaling to prevent Drawer closing) */}
             <Dialog open={lightboxImageIndex !== null} onOpenChange={(open) => !open && setLightboxImageIndex(null)}>
-                <DialogContent 
-                    className="max-w-none sm:max-w-none w-screen h-screen bg-black/95 border-none p-0 flex flex-col items-center justify-center rounded-none z-[99999] shadow-none outline-none" 
+                <DialogContent
+                    className="max-w-none sm:max-w-none w-screen h-screen bg-black/95 border-none p-0 flex flex-col items-center justify-center rounded-none z-[99999] shadow-none outline-none"
                     showCloseButton={false}
                     onKeyDown={(e) => {
                         if (!editingFloor) return;
@@ -1655,11 +1919,10 @@ export default function NewProject() {
                                         {images.map((url, idx) => (
                                             <button
                                                 key={idx}
-                                                className={`h-16 w-16 rounded-lg overflow-hidden border-2 transition-all duration-300 ${
-                                                    idx === currentIndex
-                                                        ? 'border-white shadow-[0_0_20px_rgba(255,255,255,0.3)] scale-110'
-                                                        : 'border-white/20 opacity-40 hover:opacity-100 hover:border-white/50'
-                                                }`}
+                                                className={`h-16 w-16 rounded-lg overflow-hidden border-2 transition-all duration-300 ${idx === currentIndex
+                                                    ? 'border-white shadow-[0_0_20px_rgba(255,255,255,0.3)] scale-110'
+                                                    : 'border-white/20 opacity-40 hover:opacity-100 hover:border-white/50'
+                                                    }`}
                                                 onClick={() => setLightboxImageIndex(idx)}
                                             >
                                                 <img src={url} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />

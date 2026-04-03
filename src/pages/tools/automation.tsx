@@ -7,7 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { UserRoundCog, Import, UsersRound, Search, SearchX, SearchCode, MailPlus, Phone } from "lucide-react"
+import { UserRoundCog, Import, UsersRound,FileDown, Search, SearchX, SearchCode, MailPlus, Phone, Megaphone } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -20,13 +20,13 @@ export default function Automation() {
 
     useEffect(() => {
         setBreadcrumbs([
-            { label: "Automation" },
+            { label: "Automation", href: "tools/automation" },
             {
                 label: (
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Info className="h-4.5 w-4.5" />
+                                <Info className="h-4.5 w-4.5 " />
                             </TooltipTrigger>
                             <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
                                 <p className="font-medium">Automation</p>
@@ -42,7 +42,7 @@ export default function Automation() {
         {
             title: "Campaigns",
             description: "Manage campaigns for your business.",
-            icon: Phone,
+            icon: Megaphone,
             colorClass: "text-blue-600 dark:text-blue-400",
             bgClass: "bg-blue-100 dark:bg-blue-900/40",
             hoverBorder: "hover:border-blue-300 dark:hover:border-blue-800",
@@ -67,12 +67,12 @@ export default function Automation() {
             bgClass: "bg-purple-100 dark:bg-purple-900/40",
             hoverBorder: "hover:border-purple-300 dark:hover:border-purple-800",
             hoverGradient: "from-purple-50/50 dark:from-purple-950/20",
-            path: "/automation/email_templates",
+            path: "/automation/mail_templates",
         },
         {
             title: "Lead Capture Forms",
             description: "Create and manage reusable lead capture forms with simple or design editors.",
-            icon: Import,
+            icon: FileDown,
             colorClass: "text-emerald-600 dark:text-emerald-400",
             bgClass: "bg-emerald-100 dark:bg-emerald-900/40",
             hoverBorder: "hover:border-emerald-300 dark:hover:border-emerald-800",

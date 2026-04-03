@@ -15,7 +15,8 @@ import {
     MessageCircle,
     Plug2,
     Info,
-    ExternalLink
+    ExternalLink,
+    ChevronRight,
 } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
@@ -29,7 +30,6 @@ export default function ThirdPartyIntegration() {
 
     useEffect(() => {
         setBreadcrumbs([
-            { label: "General Settings", href: "/settings" },
             { label: "Third-Party Integration" },
             {
                 label: (
@@ -120,6 +120,18 @@ export default function ThirdPartyIntegration() {
                                 <CardDescription className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 font-medium">
                                     {card.description}
                                 </CardDescription>
+                                <Button 
+                                    className="w-full h-11 font-bold gap-2 rounded-xl bg-slate-950 text-white hover:bg-slate-800 transition-all shadow-md group/btn"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (card.title === "Google Workspace") {
+                                            navigate("/tools/third_party_integration/google_ads");
+                                        }
+                                    }}
+                                >
+                                    Manage Integration
+                                    <ChevronRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                                </Button>
                             </CardContent>
                         </Card>
                     )
