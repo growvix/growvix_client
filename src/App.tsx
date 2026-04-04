@@ -42,13 +42,10 @@ import CpDashboard from "./pages/cp/cp_dashboard";
 import CpProjectShowcase from "./pages/cp/cp_project_showcase";
 import EditProject from "./pages/inventory/edit_project";
 import CpBulkUpload from "./pages/cp/cp_bulkupload";
-<<<<<<< HEAD
 import LeadCapture from "./pages/tools/leadcapture";
 import LeadCaptureForm from "./pages/tools/leadcaptureform";
 import CpLeadEntry from "./pages/cp/cp_lead_entry";
-=======
 import UpdatesPage from "./pages/updates";
->>>>>>> e6c316a82f3bbdc67c1bf50ba643f56fec3dc3fe
 
 import Mail from "./pages/setting/mail";
 import MailTemplatesListing from "./pages/setting/mail_templates/mail_listing";
