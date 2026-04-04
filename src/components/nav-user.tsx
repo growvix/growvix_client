@@ -101,7 +101,7 @@ export function NavUser({
           const response = await axios.get(`${API.USERS}?limit=500`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-          
+
           const payload = response.data.data;
           let usersList = [];
           if (Array.isArray(payload)) {
@@ -111,7 +111,7 @@ export function NavUser({
           } else if (payload && payload.data && Array.isArray(payload.data)) {
             usersList = payload.data;
           }
-          
+
           const currentUserId = getCookie('user_id');
           const filteredList = usersList.filter((u: any) => {
             if (String(u._id) === String(currentUserId)) return false;
@@ -289,11 +289,9 @@ export function NavUser({
               </DropdownMenuGroup>
 
               <DropdownMenuItem asChild>
+
                 <Link
-                  to={isAdminImpersonating ? "#" : "/login"}
-                  onClick={handleLogout}
-                <Link 
-                  to="/updates" 
+                  to="/updates"
                   className="flex items-center gap-2"
                   onClick={() => {
                     setOpen(false)
@@ -305,8 +303,9 @@ export function NavUser({
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link 
-                  to="/profile" 
+                <Link
+                  to={isAdminImpersonating ? "#" : "/login"}
+                  onClick={handleLogout}
                   className="flex items-center gap-2"
                 >
                   <LogOut className="h-4 w-4" />
