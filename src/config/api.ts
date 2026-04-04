@@ -35,6 +35,7 @@ export const API = {
     TEAMS: `${API_URL}/api/teams`,
     CAMPAIGNS: `${API_URL}/api/campaigns`,
     SOURCES: `${API_URL}/api/sources`,
+    LEAD_CAPTURE_CONFIGS: `${API_URL}/api/lead-capture-configs`,
 
     // Project specific endpoints
     getProject: (id: number | string) => `${API_URL}/api/projects/${id}`,

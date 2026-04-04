@@ -1,5 +1,5 @@
 import { Outlet, useNavigate } from "react-router-dom"
-import { GalleryVerticalEnd, LogOut, Moon, Sun, Edit } from "lucide-react"
+import { GalleryVerticalEnd, LogOut, Moon, Sun, Edit, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getCookie, deleteAllAuthCookies } from "@/utils/cookies"
 import { useTheme } from "@/components/theme-provider"
@@ -58,15 +58,25 @@ export default function CpLayout() {
                 <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <div className="flex h-14 items-center justify-between px-4 md:px-6">
                         {/* Logo */}
-                        <div className="flex items-center gap-2 font-semibold">
+                        <div className="flex items-center gap-2 font-semibold cursor-pointer" onClick={() => navigate("/cp/dashboard")}>
                             <div className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-md">
                                 <GalleryVerticalEnd className="size-4" />
                             </div>
-                            <span className="text-base">GROWVIX</span>
+                            <span className="text-base uppercase tracking-wider">GROWVIX</span>
                         </div>
 
                         {/* Right side */}
                         <div className="flex items-center gap-3">
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => navigate("/cp/bulk_upload")}
+                                className="h-8 gap-1.5 px-3 mr-1"
+                            >
+                                <Download className="h-3.5 w-3.5" />
+                                <span className="hidden md:inline">Import Leads</span>
+                            </Button>
+
                             <span 
                                 className="text-sm text-muted-foreground hidden sm:flex items-center gap-1 cursor-pointer hover:text-foreground transition-colors group"
                                 onClick={() => setIsProfileOpen(true)}

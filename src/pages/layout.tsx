@@ -163,7 +163,7 @@ export default function SidebarLayout() {
                     )}
                     <header className="sticky z-5 top-0 bg-white dark:bg-black flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 mb-1">
 
-                        <PageBreadcrumb items={breadcrumbItems} />
+                            <PageBreadcrumb items={breadcrumbItems} />
 
                         <div className="me-2 md:me-4 ml-auto flex gap-3">
                             <Button
