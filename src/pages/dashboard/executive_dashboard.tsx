@@ -36,6 +36,8 @@ import {
   MailPlus,
   UserRoundX,
   MapPinX,
+  PaintBucket,
+  Trash 
 } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -100,11 +102,11 @@ export default function UserDashboard() {
 
   const chartConfig = useMemo(() => ({
     desktop: {
-      label: "Desktop",
+      label: "Presales",
       color: CHART_COLORS.desktop,
     },
     mobile: {
-      label: "Mobile",
+      label: "Sales",
       color: CHART_COLORS.mobile,
     },
   } satisfies ChartConfig), [])
@@ -159,7 +161,7 @@ export default function UserDashboard() {
                       <div>
                         <CardTitle className="text-sm text-foreground">Missed Calls</CardTitle>
                         <CardDescription className="text-xs text-muted-foreground">
-                          Since a few moments ago
+                          Keeping track of every missed connection
                         </CardDescription>
                       </div>
                     </div>
@@ -183,7 +185,7 @@ export default function UserDashboard() {
                     <div>
                       <CardTitle className="text-sm text-foreground">New Enquiries</CardTitle>
                       <CardDescription className="text-xs text-muted-foreground">
-                        Since a few moments ago
+                        The latest interest in your properties
                       </CardDescription>
                     </div>
                   </div>
@@ -195,7 +197,7 @@ export default function UserDashboard() {
               </Card>
             </div>
 
-
+{/* 
             <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
               <Card className=" rounded-xl cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
@@ -207,7 +209,7 @@ export default function UserDashboard() {
                     <div>
                       <CardTitle className="text-sm text-foreground">Unread Emails</CardTitle>
                       <CardDescription className="text-xs text-muted-foreground">
-                        Since a few moments ago
+                        A quick look at your pending mail.
                       </CardDescription>
                     </div>
                   </div>
@@ -217,7 +219,7 @@ export default function UserDashboard() {
                   <div className="text-3xl font-semibold text-foreground">{(1375).toLocaleString('en-US')}</div>
                 </CardContent>
               </Card>
-            </div>
+            </div> */}
 
 
             <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
@@ -231,7 +233,7 @@ export default function UserDashboard() {
                     <div>
                       <CardTitle className="text-sm text-foreground">Unread WhatsApp</CardTitle>
                       <CardDescription className="text-xs text-muted-foreground">
-                        Since a few moments ago
+                        Staying updated on your recent chats
                       </CardDescription>
                     </div>
                   </div>
@@ -250,12 +252,13 @@ export default function UserDashboard() {
                     <div className="flex items-center gap-3">
                       <div className="inline-flex items-center justify-center rounded-lg p-2 bg-purple-100 dark:bg-purple-900/40">
                         <Users className="text-purple-600 dark:text-purple-400" size={20} />
+                       
                       </div>
 
                       <div>
                         <CardTitle className="text-sm text-foreground">No Future Activity</CardTitle>
                         <CardDescription className="text-xs text-muted-foreground">
-                          Since a few moments ago
+                          Leads waiting for their next step
                         </CardDescription>
                       </div>
                     </div>
@@ -268,127 +271,7 @@ export default function UserDashboard() {
               </Card>
             </div>
 
-            <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-              <Card className=" rounded-xl cardSelect p-1">
-                <CardHeader className="pt-2 px-2">
-                  <div className="flex items-center gap-3">
-                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-teal-100 dark:bg-teal-900/40">
-                      <PlusCircle className="text-teal-600 dark:text-teal-400" size={20} />
-                    </div>
-
-                    <div>
-                      <CardTitle className="text-sm text-foreground">Re-Engaged Leads</CardTitle>
-                      <CardDescription className="text-xs text-muted-foreground">
-                        Since a few moments ago
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="flex items-center justify-end pe-3 pb-1">
-                  <div className="text-3xl font-semibold text-foreground">6</div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-          <div className="grid auto-rows-min gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mt-3">
-
-            <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-              <Card className=" rounded-xl cardSelect p-1">
-                <CardHeader className="pt-2 px-2">
-                  <div className="flex items-start justify-between gap-4 w-full">
-                    <div className="flex items-center gap-3">
-                      <div className="inline-flex items-center justify-center rounded-lg p-2 bg-orange-100 dark:bg-orange-900/40">
-                        <UserRoundX className="text-orange-600 dark:text-orange-400" size={20} />
-                      </div>
-
-                      <div>
-                        <CardTitle className="text-sm text-foreground">Missed Follow-ups</CardTitle>
-                        <CardDescription className="text-xs text-muted-foreground">
-                          Since a few moments ago
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex items-center justify-end pe-3 pb-1">
-                  <div className="text-3xl font-semibold text-foreground">432</div>
-                </CardContent>
-
-              </Card>
-            </div>
-
-            <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-              <Card className=" rounded-xl cardSelect p-1">
-                <CardHeader className="pt-2 px-2">
-                  <div className="flex items-center gap-3">
-                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-rose-100 dark:bg-rose-900/40">
-                      <MapPinX className="text-rose-600 dark:text-rose-400" size={20} />
-                    </div>
-
-                    <div>
-                      <CardTitle className="text-sm text-foreground">Missed Site Visits</CardTitle>
-                      <CardDescription className="text-xs text-muted-foreground">
-                        Contacts in nurturing stage
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex items-center justify-end pe-3 pb-1">
-                  <div className="text-3xl font-semibold text-foreground">{(1375).toLocaleString('en-US')}</div>
-                </CardContent>
-              </Card>
-
-            </div>
-
-            <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-              <Card className=" rounded-xl cardSelect p-1">
-                <CardHeader className="pt-2 px-2">
-                  <div className="flex items-center gap-3">
-                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-slate-100 dark:bg-slate-900/40">
-                      <DollarSign className="text-slate-600 dark:text-slate-400" size={20} />
-                    </div>
-
-                    <div>
-                      <CardTitle className="text-sm text-foreground">Lost Bucket</CardTitle>
-                      <CardDescription className="text-xs text-muted-foreground">
-                        Since a few moments ago
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="flex items-center justify-end pe-3 pb-1">
-                  <div className="text-3xl font-semibold text-foreground">$1.55M</div>
-                </CardContent>
-              </Card>
-            </div>
-
-
-            <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-              <Card className=" rounded-xl cardSelect p-1">
-                <CardHeader className="pt-2 px-2">
-                  <div className="flex items-center gap-3">
-                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-sky-100 dark:bg-sky-900/40">
-                      <Briefcase className="text-sky-600 dark:text-sky-400" size={20} />
-                    </div>
-
-                    <div>
-                      <CardTitle className="text-sm text-foreground">Projects</CardTitle>
-                      <CardDescription className="text-xs text-muted-foreground">
-                        Active deals & initiatives
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="flex items-center justify-end pe-3 pb-1">
-                  <div className="text-3xl font-semibold text-foreground">12</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div
+             <div
               className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs cursor-pointer hover:scale-[1.02] transition-transform"
               onClick={() => {
                 let userId = getCookie('user_id');
@@ -418,18 +301,122 @@ export default function UserDashboard() {
                       <div>
                         <CardTitle className="text-sm text-foreground">Assigned Leads</CardTitle>
                         <CardDescription className="text-xs text-muted-foreground">
-                          Leads to your team
+                          Leads currently sitting in your bucket
                         </CardDescription>
                       </div>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="flex items-center justify-end pe-3 pb-1">
-                  <div className="text-3xl font-semibold text-foreground">+ 432</div>
+                  <div className="text-3xl font-semibold text-foreground"> 432</div>
                 </CardContent>
 
               </Card>
             </div>
+
+            
+            <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
+              <Card className=" rounded-xl cardSelect p-1">
+                <CardHeader className="pt-2 px-2">
+                  <div className="flex items-center gap-3">
+                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-red-100 dark:bg-slate-900/40">
+                      {/* <DollarSign className="text-slate-600 dark:text-slate-400" size={20} /> */}
+                     <Trash className="text-red-600 dark:text-red-400" size={20} />
+                    </div>
+
+                    <div>
+                      <CardTitle className="text-sm text-foreground">Lost Bucket</CardTitle>
+                      <CardDescription className="text-xs text-muted-foreground">
+                        Deals that didn't move forward
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="flex items-center justify-end pe-3 pb-1">
+                  <div className="text-3xl font-semibold text-foreground">1,537</div>
+                </CardContent>
+              </Card>
+            </div>
+
+          
+          </div>
+          <div className="grid auto-rows-min gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mt-3">
+
+            {/* <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
+              <Card className=" rounded-xl cardSelect p-1">
+                <CardHeader className="pt-2 px-2">
+                  <div className="flex items-start justify-between gap-4 w-full">
+                    <div className="flex items-center gap-3">
+                      <div className="inline-flex items-center justify-center rounded-lg p-2 bg-orange-100 dark:bg-orange-900/40">
+                        <UserRoundX className="text-orange-600 dark:text-orange-400" size={20} />
+                      </div>
+
+                      <div>
+                        <CardTitle className="text-sm text-foreground">Missed Follow-ups</CardTitle>
+                        <CardDescription className="text-xs text-muted-foreground">
+                          Since a few moments ago
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex items-center justify-end pe-3 pb-1">
+                  <div className="text-3xl font-semibold text-foreground">432</div>
+                </CardContent>
+
+              </Card>
+            </div> */}
+
+            {/* <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
+              <Card className=" rounded-xl cardSelect p-1">
+                <CardHeader className="pt-2 px-2">
+                  <div className="flex items-center gap-3">
+                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-rose-100 dark:bg-rose-900/40">
+                      <MapPinX className="text-rose-600 dark:text-rose-400" size={20} />
+                    </div>
+
+                    <div>
+                      <CardTitle className="text-sm text-foreground">Missed Site Visits</CardTitle>
+                      <CardDescription className="text-xs text-muted-foreground">
+                        Contacts in nurturing stage
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex items-center justify-end pe-3 pb-1">
+                  <div className="text-3xl font-semibold text-foreground">{(1375).toLocaleString('en-US')}</div>
+                </CardContent>
+              </Card>
+
+            </div> */}
+
+
+
+            {/* <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
+              <Card className=" rounded-xl cardSelect p-1">
+                <CardHeader className="pt-2 px-2">
+                  <div className="flex items-center gap-3">
+                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-sky-100 dark:bg-sky-900/40">
+                      <Briefcase className="text-sky-600 dark:text-sky-400" size={20} />
+                    </div>
+
+                    <div>
+                      <CardTitle className="text-sm text-foreground">Projects</CardTitle>
+                      <CardDescription className="text-xs text-muted-foreground">
+                        Active deals & initiatives
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="flex items-center justify-end pe-3 pb-1">
+                  <div className="text-3xl font-semibold text-foreground">12</div>
+                </CardContent>
+              </Card>
+            </div> */}
+
+           
 
             <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
               <Card className=" rounded-xl cardSelect p-1">
@@ -442,17 +429,42 @@ export default function UserDashboard() {
                     <div>
                       <CardTitle className="text-sm text-foreground">Active Prospects</CardTitle>
                       <CardDescription className="text-xs text-muted-foreground">
-                        Contacts in nurturing stage
+                        Tracking your most engaged buyers
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
 
                 <CardContent className="flex items-center justify-end pe-3 pb-1">
-                  <div className="text-3xl font-semibold text-foreground">+ 6</div>
+                  <div className="text-3xl font-semibold text-foreground"> 6</div>
                 </CardContent>
               </Card>
             </div>
+            
+              <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
+              <Card className=" rounded-xl cardSelect p-1">
+                <CardHeader className="pt-2 px-2">
+                  <div className="flex items-center gap-3">
+                    <div className="inline-flex items-center justify-center rounded-lg p-2 bg-teal-100 dark:bg-teal-900/40">
+                    <CalendarCheck className="text-green-600 dark:text-green-400" size={20} />  
+                    </div>
+
+                    <div>
+                      <CardTitle className="text-sm text-foreground">Site visit schedule</CardTitle>
+                      <CardDescription className="text-xs text-muted-foreground">
+                        Your upcoming tours at a glance
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="flex items-center justify-end pe-3 pb-1">
+                  <div className="text-3xl font-semibold text-foreground">16</div>
+                </CardContent>
+              </Card>
+            </div>
+
+
           </div>
         </CardContent>
       </Card>
@@ -600,7 +612,7 @@ export default function UserDashboard() {
               <div className="p-2.5 rounded-lg bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400 mb-3 group-hover:bg-cyan-200 dark:group-hover:bg-cyan-800/60 transition-colors">
                 <Timer className="h-5 w-5" />
               </div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Time to First Contact</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Average Response Time</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-5xl font-bold text-foreground">0</span>
                 <span className="text-xl text-muted-foreground">min</span>
@@ -650,13 +662,13 @@ export default function UserDashboard() {
               <div className="p-2.5 rounded-lg bg-pink-100 dark:bg-pink-900/40 text-pink-600 dark:text-pink-400 mb-3 group-hover:bg-pink-200 dark:group-hover:bg-pink-800/60 transition-colors">
                 <UserPlus className="h-5 w-5" />
               </div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Leads from Pre Sales</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Leads Assigned by team</p>
               <p className="text-5xl font-bold text-foreground">0</p>
             </div>
           </div>
         </CardContent>
       </Card>
-      <Card className="shadow-none">
+      {/* <Card className="shadow-none">
         <CardHeader className="px-3 py-0 flex justify-between">
           <div className="pl-1 flex items-center gap-2 pt-3">
             <div className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400">
@@ -668,7 +680,7 @@ export default function UserDashboard() {
         <CardContent>
           <TeamProductivityTable />
         </CardContent>
-      </Card>
+      </Card> */}
 
     </div>
   )
