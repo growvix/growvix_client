@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { useSearchParams, useLocation } from "react-router-dom"
 import axios from "axios"
-import { API } from "@/config/api"
+import { API, API_URL } from "@/config/api"
 import { getCookie } from "@/utils/cookies"
 import { decodeProjectId } from "@/utils/idEncoder"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import LoaderScreen from "@/components/ui/loader-screen"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Building2, DoorOpen, ImageIcon, X, Maximize2, ChevronLeft, ChevronRight, Layers, Info, User, CalendarClock, CalendarCheck, ExternalLink } from "lucide-react"
+import { Building2, DoorOpen, ImageIcon, X, Maximize2, ChevronLeft, ChevronRight, Layers, Info, User, CalendarClock, CalendarCheck, ExternalLink, Download } from "lucide-react"
 import { BookingDialog } from "@/components/booking-dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
@@ -25,6 +25,16 @@ import {
     DialogContent,
     DialogTitle,
 } from "@/components/ui/dialog"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 // Types
 interface Unit {
@@ -84,6 +94,13 @@ interface Project {
     name: string
     property: string
     location: string
+    img_location?: {
+        logo: string
+        banner: string
+        brochure: string
+        post: string
+        videos: string
+    }
     blocks: Block[]
     plots?: Plot[]
     layoutImages?: string[]
@@ -114,6 +131,7 @@ export default function ProjectShowcase() {
     const [userRole, setUserRole] = useState<string | null>(null)
     const [dragStart, setDragStart] = useState<number | null>(null)
     const [isDragging, setIsDragging] = useState(false)
+    const [brochureConfirmOpen, setBrochureConfirmOpen] = useState(false)
 
     useEffect(() => {
         setUserRole(getCookie("role"))
@@ -419,17 +437,30 @@ export default function ProjectShowcase() {
                 {/* ====== LEFT PANEL: Blocks & Floors / Plots ====== */}
                 <Card className="col-span-4 flex flex-col overflow-hidden">
                     <CardHeader className="py-3 flex-shrink-0">
-                        <CardTitle className="text-sm flex items-center gap-2">
-                            {project.property === 'plots' ? (
-                                <>
-                                    <Layers className="h-4 w-4" />
-                                    All Plots ({project.plots?.length || 0})
-                                </>
-                            ) : (
-                                <>
-                                    <Building2 className="h-4 w-4" />
-                                    Blocks & Floors
-                                </>
+                        <CardTitle className="text-sm flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                {project.property === 'plots' ? (
+                                    <>
+                                        <Layers className="h-4 w-4" />
+                                        All Plots ({project.plots?.length || 0})
+                                    </>
+                                ) : (
+                                    <>
+                                        <Building2 className="h-4 w-4" />
+                                        Blocks & Floors
+                                    </>
+                                )}
+                            </div>
+                            {project.img_location?.brochure && (
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-7 text-[10px] gap-1 px-2"
+                                    onClick={() => setBrochureConfirmOpen(true)}
+                                >
+                                    <Download className="h-3 w-3" />
+                                    Brochure
+                                </Button>
                             )}
                         </CardTitle>
                     </CardHeader>
@@ -881,6 +912,36 @@ export default function ProjectShowcase() {
                     onBookingComplete={handleBookingComplete}
                 />
             )}
+
+            {/* Brochure Download Confirmation */}
+            <AlertDialog open={brochureConfirmOpen} onOpenChange={setBrochureConfirmOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Download</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to download the project brochure for {project.name}? This will download the file to your device.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => {
+                            if (project.img_location?.brochure) {
+                                const url = project.img_location.brochure;
+                                const fullUrl = url.startsWith('http') ? url : `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+                                const a = document.createElement('a');
+                                a.href = fullUrl;
+                                a.download = url.split('/').pop() || `${project.name.replace(/\s+/g, '_')}_Brochure`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                            }
+                            setBrochureConfirmOpen(false);
+                        }}>
+                            Confirm
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

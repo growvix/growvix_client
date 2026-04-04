@@ -42,54 +42,42 @@ import { CalendarDays, Clock, Filter, RotateCcw, TrendingUp, Users, Target, Chec
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
-// Metrics for Online/Offline/CP
+// Metrics for Online/Offline/CP (Structured by Lead Type)
 const ONLINE_DATA = {
     budget: 800000,
-    leads: 400,
-    rnr: 10,
-    prospect: 200,
-    unqualified: 10,
-    lost: 50,
-    svs: 50,
-    sv: 45,
-    booking: 35
+    new: { leads: 200, prospect: 80, rnr: 40, unqualified: 15, lost: 20, svs: 18, sv: 12, booking: 15 },
+    reengaged: { leads: 100, prospect: 40, rnr: 25, unqualified: 10, lost: 10, svs: 10, sv: 5, booking: 5 }
 }
 
 const OFFLINE_DATA = {
     budget: 1000000,
-    leads: 400,
-    rnr: 10,
-    prospect: 200,
-    unqualified: 10,
-    lost: 50,
-    svs: 50,
-    sv: 45,
-    booking: 35
+    new: { leads: 152, prospect: 60, rnr: 30, unqualified: 10, lost: 15, svs: 12, sv: 10, booking: 15 },
+    reengaged: { leads: 113, prospect: 40, rnr: 25, unqualified: 10, lost: 10, svs: 10, sv: 8, booking: 5 }
 }
 
 const CP_DATA = {
-    leads: 400,
-    rnr: 10,
-    prospect: 200,
-    unqualified: 10,
-    lost: 50,
-    svs: 50,
-    sv: 45,
-    booking: 35
+    budget: 0, // CP usually doesnt have direct budget spent in this context
+    new: { leads: 200, prospect: 100, rnr: 50, unqualified: 10, lost: 20, svs: 10, sv: 5, booking: 5 },
+    reengaged: { leads: 135, prospect: 50, rnr: 30, unqualified: 10, lost: 20, svs: 10, sv: 10, booking: 5 }
 }
 
-const CAMPAIGN_COLUMNS = ["BUDGET SPENT", "NO. OF LEADS", "CPL", "RNR", "PROSPECT", "UNQUALIFIED", "LOST", "SVS", "COST PER SVS", "SV", "COST PER SV", "BOOKING", "COST PER BOOKING"]
+const FULL_COLUMNS = ["BUDGET SPENT", "NO. OF LEADS", "CPL", "RNR", "PROSPECT", "UNQUALIFIED", "LOST", "SVS", "COST PER SVS", "SV", "COST PER SV", "BOOKING", "COST PER BOOKING"]
+const REDUCED_COLUMNS = ["NO. OF LEADS", "PROSPECT", "RNR", "UNQUALIFIED", "LOST", "SVS", "SV DONE", "BOOKING", "COST PER BOOKING"]
+const LEAD_ONLY_COLUMNS = ["NO. OF LEADS", "PROSPECT", "RNR", "UNQUALIFIED", "LOST", "SVS", "SV DONE", "BOOKING"]
 const CP_COLUMNS = ["NO. OF LEADS", "RNR", "PROSPECT", "UNQUALIFIED", "LOST", "SVS", "SV", "BOOKING"]
 
 const campaignFilterMap: Record<string, string> = {
+    "none": "Campaign Report",
     "online": "Online Report",
     "offline": "Offline Report",
+    "cp": "Channel Partner Report",
     "all_responses": "All Responses - Combined View",
 }
 
 export default function CampaignLevelReport() {
     const { setBreadcrumbs } = useBreadcrumb()
-    const [campaignFilter, setCampaignFilter] = useState("all_responses")
+    const [campaignFilter, setCampaignFilter] = useState("none")
+    const [leadType, setLeadType] = useState("all") // Default to All Types
     const [dateFilter, setDateFilter] = useState("")
     const [timeFilter, setTimeFilter] = useState("")
 
@@ -100,33 +88,103 @@ export default function CampaignLevelReport() {
         ])
     }, [setBreadcrumbs])
 
-    const tableHeading = campaignFilterMap[campaignFilter] || "Campaign Analysis Report"
-    const isFilterApplied = campaignFilter !== "" || dateFilter !== "" || timeFilter !== ""
+    const isFilterApplied = campaignFilter !== "none" || dateFilter !== "" || timeFilter !== "" || leadType !== "all"
 
     const clearFilters = () => {
-        setCampaignFilter("")
+        setCampaignFilter("none")
+        setLeadType("all")
         setDateFilter("")
         setTimeFilter("")
     }
 
+    // Determine which columns to show based on filter state rules
+    const activeColumns = useMemo(() => {
+        if (campaignFilter === "cp") return CP_COLUMNS;
+
+        const isDefaultSource = campaignFilter === "none" || campaignFilter === "all_responses";
+        const isSpecificType = leadType === "new" || leadType === "reengaged";
+
+        // Case: Source selecting All Responses + Lead Type selecting All Types
+        if (isDefaultSource && leadType === "all") return FULL_COLUMNS;
+
+        // Case: Only Lead Type filter selected (Default/None source)
+        if (isDefaultSource) return LEAD_ONLY_COLUMNS;
+        
+        // Case: Source (Online/Offline) + Specific Lead Type Selected
+        if (!isDefaultSource && isSpecificType) return REDUCED_COLUMNS;
+
+        return FULL_COLUMNS;
+    }, [campaignFilter, leadType]);
+
+    // Helper to sum new + reengaged
+    const combineLeadTypes = (sourceData: any) => ({
+        budget: sourceData.budget,
+        leads: sourceData.new.leads + sourceData.reengaged.leads,
+        rnr: sourceData.new.rnr + sourceData.reengaged.rnr,
+        prospect: sourceData.new.prospect + sourceData.reengaged.prospect,
+        unqualified: sourceData.new.unqualified + sourceData.reengaged.unqualified,
+        lost: sourceData.new.lost + sourceData.reengaged.lost,
+        svs: sourceData.new.svs + sourceData.reengaged.svs,
+        sv: sourceData.new.sv + sourceData.reengaged.sv,
+        booking: sourceData.new.booking + sourceData.reengaged.booking
+    })
+    
+    // Helper to extract specific lead type
+    const extractLeadType = (sourceData: any, type: "new" | "reengaged") => ({
+        budget: sourceData.budget,
+        ...sourceData[type]
+    })
+
     const activeData = useMemo(() => {
-        if (campaignFilter === "online") return ONLINE_DATA
-        if (campaignFilter === "offline") return OFFLINE_DATA
-        if (campaignFilter === "all_responses") {
-            return {
+        // 1. Get the base data depending on source
+        let baseData = null;
+        if (campaignFilter === "online") baseData = ONLINE_DATA;
+        if (campaignFilter === "offline") baseData = OFFLINE_DATA;
+        if (campaignFilter === "cp") baseData = CP_DATA;
+        
+        // 2. If All Responses/None (Source) is selected, combine Online + Offline first
+        if (campaignFilter === "all_responses" || campaignFilter === "none") {
+            const combinedSource = {
                 budget: ONLINE_DATA.budget + OFFLINE_DATA.budget,
-                leads: ONLINE_DATA.leads + OFFLINE_DATA.leads,
-                rnr: ONLINE_DATA.rnr + OFFLINE_DATA.rnr,
-                prospect: ONLINE_DATA.prospect + OFFLINE_DATA.prospect,
-                unqualified: ONLINE_DATA.unqualified + OFFLINE_DATA.unqualified,
-                lost: ONLINE_DATA.lost + OFFLINE_DATA.lost,
-                svs: ONLINE_DATA.svs + OFFLINE_DATA.svs,
-                sv: ONLINE_DATA.sv + OFFLINE_DATA.sv,
-                booking: ONLINE_DATA.booking + OFFLINE_DATA.booking
+                new: {
+                    leads: ONLINE_DATA.new.leads + OFFLINE_DATA.new.leads,
+                    rnr: ONLINE_DATA.new.rnr + OFFLINE_DATA.new.rnr,
+                    prospect: ONLINE_DATA.new.prospect + OFFLINE_DATA.new.prospect,
+                    unqualified: ONLINE_DATA.new.unqualified + OFFLINE_DATA.new.unqualified,
+                    lost: ONLINE_DATA.new.lost + OFFLINE_DATA.new.lost,
+                    svs: ONLINE_DATA.new.svs + OFFLINE_DATA.new.svs,
+                    sv: ONLINE_DATA.new.sv + OFFLINE_DATA.new.sv,
+                    booking: ONLINE_DATA.new.booking + OFFLINE_DATA.new.booking
+                },
+                reengaged: {
+                    leads: ONLINE_DATA.reengaged.leads + OFFLINE_DATA.reengaged.leads,
+                    rnr: ONLINE_DATA.reengaged.rnr + OFFLINE_DATA.reengaged.rnr,
+                    prospect: ONLINE_DATA.reengaged.prospect + OFFLINE_DATA.reengaged.prospect,
+                    unqualified: ONLINE_DATA.reengaged.unqualified + OFFLINE_DATA.reengaged.unqualified,
+                    lost: ONLINE_DATA.reengaged.lost + OFFLINE_DATA.reengaged.lost,
+                    svs: ONLINE_DATA.reengaged.svs + OFFLINE_DATA.reengaged.svs,
+                    sv: ONLINE_DATA.reengaged.sv + OFFLINE_DATA.reengaged.sv,
+                    booking: ONLINE_DATA.reengaged.booking + OFFLINE_DATA.reengaged.booking
+                }
             }
+            baseData = combinedSource;
         }
-        return null
-    }, [campaignFilter])
+
+        if (!baseData) return null;
+
+        // 3. Apply the Lead Type filter
+        if (leadType === "all") {
+            return combineLeadTypes(baseData);
+        } else {
+            return extractLeadType(baseData, leadType as "new" | "reengaged");
+        }
+    }, [campaignFilter, leadType])
+
+    // CP Data logic update (keep for summary card / independent calc)
+    const cpActiveData = useMemo(() => {
+        if (leadType === "all") return combineLeadTypes(CP_DATA);
+        return extractLeadType(CP_DATA, leadType as "new" | "reengaged");
+    }, [leadType])
 
     // Calculation Helpers
     const calculateMetrics = (data: any) => {
@@ -157,11 +215,12 @@ export default function CampaignLevelReport() {
         // Simple export logic for now, can be refined
         const wb = XLSX.utils.book_new()
 
-        if (campaignFilter === "online" || campaignFilter === "offline" || campaignFilter === "all_responses") {
+        if (campaignFilter === "online" || campaignFilter === "offline" || campaignFilter === "all_responses" || campaignFilter === "none") {
             const campaignMetrics = calculateMetrics(activeData)
-            const wsData = [
-                CAMPAIGN_COLUMNS,
-                [
+            let wsRow = [];
+            
+            if (activeColumns.length === FULL_COLUMNS.length) {
+                wsRow = [
                     campaignMetrics.budget.toLocaleString(),
                     campaignMetrics.leads,
                     campaignMetrics.cpl.toLocaleString(),
@@ -176,23 +235,52 @@ export default function CampaignLevelReport() {
                     campaignMetrics.booking,
                     campaignMetrics.costPerBooking.toLocaleString()
                 ]
+            } else if (activeColumns.length === REDUCED_COLUMNS.length) {
+                 wsRow = [
+                    campaignMetrics.leads,
+                    campaignMetrics.prospect,
+                    campaignMetrics.rnr,
+                    campaignMetrics.unqualified,
+                    campaignMetrics.lost,
+                    campaignMetrics.svs,
+                    campaignMetrics.sv,
+                    campaignMetrics.booking,
+                    campaignMetrics.costPerBooking.toLocaleString()
+                ]
+            } else {
+                // LEAD_ONLY_COLUMNS
+                wsRow = [
+                    campaignMetrics.leads,
+                    campaignMetrics.prospect,
+                    campaignMetrics.rnr,
+                    campaignMetrics.unqualified,
+                    campaignMetrics.lost,
+                    campaignMetrics.svs,
+                    campaignMetrics.sv,
+                    campaignMetrics.booking
+                ]
+            }
+
+            const wsData = [
+                activeColumns,
+                wsRow
             ]
             const ws = XLSX.utils.aoa_to_sheet(wsData)
             XLSX.utils.book_append_sheet(wb, ws, "Campaign Report")
         }
 
-        if (campaignFilter === "all_responses") {
+        if (campaignFilter === "all_responses" || campaignFilter === "none") {
             const cpWsData = [
                 CP_COLUMNS,
                 [
-                    CP_DATA.leads,
-                    CP_DATA.rnr,
-                    CP_DATA.prospect,
-                    CP_DATA.unqualified,
-                    CP_DATA.lost,
-                    CP_DATA.svs,
-                    CP_DATA.sv,
-                    CP_DATA.booking
+                    cpActiveData.leads,
+                    cpActiveData.rnr,
+                    cpActiveData.prospect,
+                    cpActiveData.unqualified,
+                    cpActiveData.lost,
+                    cpActiveData.svs,
+                    cpActiveData.sv,
+                    cpActiveData.booking
                 ]
             ]
             const cpWs = XLSX.utils.aoa_to_sheet(cpWsData)
@@ -226,19 +314,39 @@ export default function CampaignLevelReport() {
                 <CardContent className="p-6">
                     <div className="flex flex-wrap items-end gap-6">
                         {/* Campaign Filter */}
-                        <div className="flex flex-col gap-2 min-w-[240px]">
+                        <div className="flex flex-col gap-2 min-w-[200px]">
                             <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/80 flex items-center gap-2">
                                 <Filter className="h-3 w-3" />
-                                Response Category
+                                Response Source
                             </Label>
                             <Select value={campaignFilter} onValueChange={setCampaignFilter}>
                                 <SelectTrigger className="h-10 bg-muted/30 border-none hover:bg-muted/50 transition-colors">
-                                    <SelectValue placeholder="Select Category" />
+                                    <SelectValue placeholder="Select Source" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <SelectItem value="none">None</SelectItem>
                                     <SelectItem value="online">Online</SelectItem>
                                     <SelectItem value="offline">Offline</SelectItem>
+                                    <SelectItem value="cp">CP</SelectItem>
                                     <SelectItem value="all_responses">All Responses</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* New Lead Type Filter */}
+                        <div className="flex flex-col gap-2 min-w-[200px]">
+                            <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/80 flex items-center gap-2">
+                                <Users className="h-3 w-3" />
+                                Lead Type
+                            </Label>
+                            <Select value={leadType} onValueChange={setLeadType}>
+                                <SelectTrigger className="h-10 bg-emerald-500/10 text-emerald-700 border-none hover:bg-emerald-500/20 transition-colors font-semibold">
+                                    <SelectValue placeholder="Select Type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="new">New Leads</SelectItem>
+                                    <SelectItem value="reengaged">Re-engaged Leads</SelectItem>
+                                    <SelectItem value="all">All Types</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -329,7 +437,7 @@ export default function CampaignLevelReport() {
             {isFilterApplied ? (
                 <div className="flex flex-col gap-12">
                     {/* Table 1: Campaign Report */}
-                    {(campaignFilter === "online" || campaignFilter === "offline" || campaignFilter === "all_responses") && (
+                    {(campaignFilter === "online" || campaignFilter === "offline" || campaignFilter === "cp" || campaignFilter === "all_responses" || campaignFilter === "none") && (
                         <Card className="border-none shadow-xl animate-in fade-in slide-in-from-top-6 duration-700 bg-background/40 backdrop-blur-sm">
                             <CardHeader className="bg-muted/5 py-3 border-b">
                                 <div className="flex items-center justify-between px-2">
@@ -381,13 +489,13 @@ export default function CampaignLevelReport() {
                                         <thead className="bg-muted/5 border-b-2 border-primary/10">
                                             {/* Row 1: Top grid row for layout accuracy */}
                                             <tr className="h-5 border-none">
-                                                {CAMPAIGN_COLUMNS.map((col) => (
+                                                {activeColumns.map((col) => (
                                                     <th key={`grid-${col}`} className={`p-0 h-5 ${(col === "CPL" || col === "UNQUALIFIED" || col === "COST PER SVS" || col === "COST PER SV") ? 'border-r' : ''}`}></th>
                                                 ))}
                                             </tr>
                                             {/* Row 2: Actual header labels */}
                                             <tr>
-                                                {CAMPAIGN_COLUMNS.map((col) => (
+                                                {activeColumns.map((col) => (
                                                     <th key={col} className={`font-extrabold text-[11px] uppercase tracking-widest text-center text-primary/80 min-w-[110px] py-4 align-bottom ${(col === "CPL" || col === "UNQUALIFIED" || col === "COST PER SVS" || col === "COST PER SV") ? 'border-r' : ''}`}>
                                                         {col}
                                                     </th>
@@ -397,24 +505,66 @@ export default function CampaignLevelReport() {
                                         <tbody className="bg-background">
                                             {metrics ? (
                                                 <tr key="campaign-data-row" className="group hover:bg-primary/5 transition-all duration-200 border-b">
-                                                    <td className="text-center font-bold px-4 py-8 text-foreground border-r">{metrics.budget.toLocaleString()}</td>
-                                                    <td className="text-center px-4 py-8 text-foreground border-r">{metrics.leads}</td>
-                                                    <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">{metrics.cpl.toLocaleString()}</td>
-                                                    <td className="text-center px-4 py-8 text-foreground border-r">{metrics.rnr}</td>
-                                                    <td className="text-center px-4 py-8 text-foreground border-r">{metrics.prospect}</td>
-                                                    <td className="text-center border-r px-4 py-8 text-foreground">{metrics.unqualified}</td>
-                                                    <td className="text-center px-4 py-8 text-foreground border-r">{metrics.lost}</td>
-                                                    <td className="text-center px-4 py-8 text-foreground border-r">{metrics.svs}</td>
-                                                    <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">{metrics.costPerSVS.toLocaleString()}</td>
-                                                    <td className="text-center px-4 py-8 text-foreground border-r">{metrics.sv}</td>
-                                                    <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">{metrics.costPerSV.toLocaleString()}</td>
-                                                    <td className="text-center font-black text-primary px-4 py-8 border-r">{metrics.booking}</td>
-                                                    <td className="text-center font-bold bg-primary/10 px-4 py-8 text-primary">{metrics.costPerBooking.toLocaleString()}</td>
+                                                    {activeColumns.length === FULL_COLUMNS.length ? (
+                                                        // Full Table View (Case 1 & 3)
+                                                        <>
+                                                            <td className="text-center font-bold px-4 py-8 text-foreground border-r">{metrics.budget.toLocaleString()}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.leads}</td>
+                                                            <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">{metrics.cpl.toLocaleString()}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.rnr}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.prospect}</td>
+                                                            <td className="text-center border-r px-4 py-8 text-foreground">{metrics.unqualified}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.lost}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.svs}</td>
+                                                            <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">{metrics.costPerSVS.toLocaleString()}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.sv}</td>
+                                                            <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">{metrics.costPerSV.toLocaleString()}</td>
+                                                            <td className="text-center font-black text-primary px-4 py-8 border-r">{metrics.booking}</td>
+                                                            <td className="text-center font-bold bg-primary/10 px-4 py-8 text-primary">{metrics.costPerBooking.toLocaleString()}</td>
+                                                        </>
+                                                    ) : campaignFilter === "cp" ? (
+                                                        // CP Table View
+                                                        <>
+                                                            <td className="text-center font-bold px-4 py-8 text-foreground border-r">{metrics.leads}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.rnr}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.prospect}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.unqualified}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.lost}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.svs}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.sv}</td>
+                                                            <td className="text-center font-black text-primary px-4 py-8 border-r">{metrics.booking}</td>
+                                                        </>
+                                                    ) : activeColumns.length === REDUCED_COLUMNS.length ? (
+                                                        // Reduced Table View (Case 2: Source + Lead Type Selected)
+                                                        <>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.leads}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.prospect}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.rnr}</td>
+                                                            <td className="text-center border-r px-4 py-8 text-foreground">{metrics.unqualified}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.lost}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.svs}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.sv}</td>
+                                                            <td className="text-center font-black text-primary px-4 py-8 border-r">{metrics.booking}</td>
+                                                            <td className="text-center font-bold bg-primary/10 px-4 py-8 text-primary">{metrics.costPerBooking.toLocaleString()}</td>
+                                                        </>
+                                                    ) : (
+                                                        // Lead Only View (Only lead type selected, no source)
+                                                        <>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.leads}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.prospect}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.rnr}</td>
+                                                            <td className="text-center border-r px-4 py-8 text-foreground">{metrics.unqualified}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.lost}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.svs}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.sv}</td>
+                                                            <td className="text-center font-black text-primary px-4 py-8 border-r">{metrics.booking}</td>
+                                                        </>
+                                                    )}
                                                 </tr>
                                             ) : (
                                                 <tr>
-                                                    <td colSpan={CAMPAIGN_COLUMNS.length} className="text-center py-20 text-muted-foreground italic">
-                                                        No metrics available for selected filter. ({campaignFilter})
+                                                    <td colSpan={activeColumns.length} className="text-center py-20 text-muted-foreground italic">
+                                                        No metrics available for selected filter combination.
                                                     </td>
                                                 </tr>
                                             )}
@@ -426,7 +576,7 @@ export default function CampaignLevelReport() {
                     )}
 
                     {/* Table 2: CP Report */}
-                    {campaignFilter === "all_responses" && (
+                    {(campaignFilter === "all_responses" || campaignFilter === "none") && (
                         <Card className="border-none shadow-xl animate-in fade-in slide-in-from-top-6 duration-700 bg-background/40 backdrop-blur-sm">
                             <CardHeader className="bg-muted/5 py-3 border-b">
                                 <div>
@@ -453,14 +603,14 @@ export default function CampaignLevelReport() {
                                         </thead>
                                         <tbody className="bg-background">
                                             <tr key="cp-data-row" className="group hover:bg-primary/5 transition-all duration-200 border-b">
-                                                <td className="text-center font-bold px-4 py-8 text-foreground border-r">{CP_DATA.leads}</td>
-                                                <td className="text-center px-4 py-8 text-foreground border-r">{CP_DATA.rnr}</td>
-                                                <td className="text-center px-4 py-8 text-foreground border-r">{CP_DATA.prospect}</td>
-                                                <td className="text-center px-4 py-8 text-foreground border-r">{CP_DATA.unqualified}</td>
-                                                <td className="text-center px-4 py-8 text-foreground border-r">{CP_DATA.lost}</td>
-                                                <td className="text-center px-4 py-8 text-foreground border-r">{CP_DATA.svs}</td>
-                                                <td className="text-center px-4 py-8 text-foreground border-r">{CP_DATA.sv}</td>
-                                                <td className="text-center font-black text-primary px-4 py-8">{CP_DATA.booking}</td>
+                                                <td className="text-center font-bold px-4 py-8 text-foreground border-r">{cpActiveData.leads}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.rnr}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.prospect}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.unqualified}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.lost}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.svs}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.sv}</td>
+                                                <td className="text-center font-black text-primary px-4 py-8">{cpActiveData.booking}</td>
                                             </tr>
                                         </tbody>
                                     </table>

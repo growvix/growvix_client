@@ -7,6 +7,7 @@ import {
   LogOut,
   Users,
   Loader2,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Link } from "react-router-dom"
@@ -100,7 +101,7 @@ export function NavUser({
           const response = await axios.get(`${API.USERS}?limit=500`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-          
+
           const payload = response.data.data;
           let usersList = [];
           if (Array.isArray(payload)) {
@@ -110,7 +111,7 @@ export function NavUser({
           } else if (payload && payload.data && Array.isArray(payload.data)) {
             usersList = payload.data;
           }
-          
+
           const currentUserId = getCookie('user_id');
           const filteredList = usersList.filter((u: any) => {
             if (String(u._id) === String(currentUserId)) return false;
@@ -287,6 +288,20 @@ export function NavUser({
                 </DropdownMenuItem>
               </DropdownMenuGroup>
 
+              <DropdownMenuItem asChild>
+
+                <Link
+                  to="/updates"
+                  className="flex items-center gap-2"
+                  onClick={() => {
+                    setOpen(false)
+                    setOpenMobile(false)
+                  }}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>Updates</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link
                   to={isAdminImpersonating ? "#" : "/login"}
