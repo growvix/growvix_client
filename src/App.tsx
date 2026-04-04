@@ -60,6 +60,7 @@ import TrackSourceSubsource from "./pages/tools/track_source_subsource";
 
 import GoogleAdsIntegrationList from "./pages/tools/google_ads_integration_list";
 import GoogleAdsIntegrationTest from "./pages/tools/google_ads_integration_test";
+import MetaAdsIntegrationList from "./pages/tools/meta_ads_integration_list";
 
 // Searchable pages index
 function ScrollToTop() {
@@ -156,6 +157,7 @@ export default function App() {
             <Route path="/tools/third_party_integration" element={<ThirdPartyIntegration />} />
             <Route path="/tools/third_party_integration/google_ads" element={<GoogleAdsIntegrationList />} />
             <Route path="/tools/third_party_integration/google_ads/test/:id" element={<GoogleAdsIntegrationTest />} />
+            <Route path="/tools/third_party_integration/meta_ads" element={<MetaAdsIntegrationList />} />
             <Route path="/updates" element={<UpdatesPage />} />
             <Route path="/setting/attendance" element={<AttendanceManagement />} />
             <Route path="/setting/availability" element={<AvailabilityChart />} />

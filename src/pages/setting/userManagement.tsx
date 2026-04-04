@@ -68,6 +68,7 @@ const PERMISSION_OPTIONS = [
     { key: "create_team", label: "Create Team" },
     { key: "assign_team_members", label: "Assign Team Members" },
     { key: "view_lead_phone", label: "View Lead Phone (Unmasked)" },
+    { key: "mask_phone_number", label: "Phone Number Masked Button" },
     { key: "add_lead", label: "Add New Lead" },
     { key: "view_inventory", label: "View Project Inventory" },
     { key: "edit_inventory", label: "Edit Project Inventory" },
@@ -265,7 +266,7 @@ export default function UserManagement() {
             setEditFormData((prev) => ({
                 ...prev,
                 role: value,
-                permissions: PERMISSION_OPTIONS.map(p => p.key)
+                permissions: PERMISSION_OPTIONS.filter(p => p.key !== "mask_phone_number").map(p => p.key)
             }))
         } else if (value === "manager") {
             setEditFormData((prev) => ({
@@ -631,7 +632,7 @@ export default function UserManagement() {
             setFormData((prev) => ({
                 ...prev,
                 role: value,
-                permissions: PERMISSION_OPTIONS.map(p => p.key) // ✅ select all
+                permissions: PERMISSION_OPTIONS.filter(p => p.key !== "mask_phone_number").map(p => p.key) // ✅ select all except restrictive perms
             }))
         } else if (value === "manager") {
             setFormData((prev) => ({

@@ -405,6 +405,9 @@ export default function AllLeads() {
     return <LoaderScreen />
   }
 
+  const userRole = getCookie("role") || ""
+  const isAdminOrManager = userRole === "admin" || userRole === "manager"
+
   if (error) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-3 pt-2">
@@ -412,6 +415,7 @@ export default function AllLeads() {
       </div>
     )
   }
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-3 pt-2">
       <div className="rounded-xl bg-muted/50 dark:bg-muted/50 py-4 px-3">
@@ -459,16 +463,16 @@ export default function AllLeads() {
 
           {/* Assigned To */}
           <div className="col-span-1">
-            <Label htmlFor="filter-assigned" className="text-s mb-1 ms-1" title="Select a user to filter leads assigned to them">
-              Assigned To
+            <Label htmlFor="filter-assigned" className="text-s mb-1 ms-1 text-muted-foreground" title={isAdminOrManager ? "Select a user to filter leads assigned to them" : "Filtering by other users is restricted"}>
+              Assigned To {isAdminOrManager ? "" : "(Restricted)"}
             </Label>
-            <Popover open={assignedOpen} onOpenChange={setAssignedOpen}>
+            <Popover open={isAdminOrManager && assignedOpen} onOpenChange={setAssignedOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={assignedOpen} className="w-full justify-between font-normal dark:bg-background hover:dark:bg-background">
+                <Button variant="outline" role="combobox" aria-expanded={assignedOpen} className={cn("w-full justify-between font-normal dark:bg-background hover:dark:bg-background", !isAdminOrManager && "opacity-70 cursor-not-allowed")} disabled={!isAdminOrManager}>
                   <span className="truncate">
-                    {filters.assignedTo === "all" ? "All Users" : users.find(u => u._id === filters.assignedTo)?.name || "All Users"}
+                    {isAdminOrManager ? (filters.assignedTo === "all" ? "All Users" : users.find(u => u._id === filters.assignedTo)?.name || "All Users") : "My Leads Only"}
                   </span>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  {isAdminOrManager && <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[250px] p-0">
