@@ -41,6 +41,7 @@ import CpLayout from "./pages/cp/cp_layout";
 import CpDashboard from "./pages/cp/cp_dashboard";
 import CpProjectShowcase from "./pages/cp/cp_project_showcase";
 import EditProject from "./pages/inventory/edit_project";
+import UpdatesPage from "./pages/updates";
 
 import Mail from "./pages/setting/mail";
 import MailTemplatesListing from "./pages/setting/mail_templates/mail_listing";
@@ -140,6 +141,7 @@ export default function App() {
             <Route path="/tools/third_party_integration" element={<ThirdPartyIntegration />} />
             <Route path="/tools/third_party_integration/google_ads" element={<GoogleAdsIntegrationList />} />
             <Route path="/tools/third_party_integration/google_ads/test/:id" element={<GoogleAdsIntegrationTest />} />
+            <Route path="/updates" element={<UpdatesPage />} />
 
           </Route>
         </Routes>
