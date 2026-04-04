@@ -113,6 +113,9 @@ export default function MasterDashboard() {
     const [projects, setProjects] = useState<{ product_id: number; name: string }[]>([])
     const [sources, setSources] = useState<{ _id: string; source_name: string }[]>([])
     const [teamMembers, setTeamMembers] = useState<{ _id: string; name: string }[]>([])
+    const [selectedProject, setSelectedProject] = useState("all")
+    const [selectedSource, setSelectedSource] = useState("all")
+    const [selectedTeamMember, setSelectedTeamMember] = useState("all")
     const [selectedRangeType, setSelectedRangeType] = useState("today")
 
     // Fetch filters data
@@ -216,6 +219,13 @@ export default function MasterDashboard() {
         }
         setDate({ from, to })
     }
+
+    const handleReset = () => {
+        setSelectedProject("all")
+        setSelectedSource("all")
+        setSelectedTeamMember("all")
+        setPredefinedRange("today")
+    }
     // Chart configs
     const trendChartConfig = {
         leads: { label: "Total Leads", color: CHART_COLORS.desktop || "hsl(var(--chart-1))" },
@@ -240,7 +250,7 @@ export default function MasterDashboard() {
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex flex-1 gap-4">
                         <div className="flex-1">
-                            <Select defaultValue="all">
+                            <Select value={selectedProject} onValueChange={setSelectedProject}>
                                 <SelectTrigger className="w-full bg-background dark:bg-background/80">
                                     <SelectValue placeholder="Project" />
                                 </SelectTrigger>
@@ -253,7 +263,7 @@ export default function MasterDashboard() {
                             </Select>
                         </div>
                         <div className="flex-1">
-                            <Select defaultValue="all">
+                            <Select value={selectedSource} onValueChange={setSelectedSource}>
                                 <SelectTrigger className="w-full bg-background dark:bg-background/80">
                                     <SelectValue placeholder="Source" />
                                 </SelectTrigger>
@@ -266,7 +276,7 @@ export default function MasterDashboard() {
                             </Select>
                         </div>
                         <div className="flex-1">
-                            <Select defaultValue="all">
+                            <Select value={selectedTeamMember} onValueChange={setSelectedTeamMember}>
                                 <SelectTrigger className="w-full bg-background dark:bg-background/80">
                                     <SelectValue placeholder="Sales Person" />
                                 </SelectTrigger>
@@ -279,7 +289,12 @@ export default function MasterDashboard() {
                             </Select>
                         </div>
                     </div>
-                    <Button variant="outline" size="icon" className="shrink-0 bg-background dark:bg-background/80">
+                    <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="shrink-0 bg-background dark:bg-background/80"
+                        onClick={handleReset}
+                    >
                         <RefreshCcw className="h-4 w-4" />
                     </Button>
                 </div>

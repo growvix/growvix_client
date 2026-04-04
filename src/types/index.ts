@@ -98,6 +98,7 @@ export interface Lead {
     email?: string;
     phone: string;
     location?: string;
+    profileImagePath?: string;
   };
   prefered?: {
     location?: string;
@@ -122,11 +123,13 @@ export interface Lead {
   status?: string;
   exe_user?: string;
   exe_user_name?: string;
+  exe_user_image?: string;
   exe_user_department?: string;
   activities?: {
     id: string;
     user_id: string;
     user_name: string;
+    user_image?: string;
     updates: string;
     stage: string;
     status: string;
