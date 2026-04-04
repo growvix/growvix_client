@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import axios from "axios"
-import { getCookie } from "@/utils/cookies"
+import { getCookie, setCookie } from "@/utils/cookies"
 import { API } from "@/config/api"
 import { encodeProjectId } from "@/utils/idEncoder"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Building2, MapPin, Layers, Package, List, LayoutGrid, ArrowUpDown, Search } from "lucide-react"
+import { Building2, MapPin, Layers, Package, List, LayoutGrid, ArrowUpDown, Search, Download } from "lucide-react"
 import { DataTable } from "@/components/ui/data-table"
 import { type ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
@@ -46,69 +46,94 @@ export default function CpDashboard() {
     const fetchProjectDetails = useCallback(async () => {
         try {
             setLoading(true)
-            const raw = getCookie("allowed_projects")
             const organization = getCookie("organization")
             const token = getCookie("token")
+            const userId = getCookie("user_id")
 
-            if (!organization || !token) {
+            if (!organization || !token || !userId) {
                 setProjects([])
                 setLoading(false)
                 return
             }
 
+            // Step 1: Fetch fresh allowed_projects from CP User profile (live from DB)
             let allowedProjects: AllowedProject[] = []
             try {
+                // We use the CP User ID from the cookie but fetch the REAL live data from the backend
+                // to avoid stale project lists when an admin adds one.
+                const profileRes = await axios.get(`${API.CP_USERS}/${userId}?organization=${encodeURIComponent(organization)}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                })
+                
+                const profileData = profileRes.data.data
+                allowedProjects = profileData?.allowed_projects || []
+                
+                // Update the stale cookie with the new live data for other parts of the app
+                setCookie("allowed_projects", encodeURIComponent(JSON.stringify(allowedProjects)))
+                
+                if (isDebug) {
+                    console.log("CP Live Profile Fetched:", {
+                        userId,
+                        allowed_projects: allowedProjects
+                    })
+                }
+            } catch (profileErr) {
+                console.warn("CP Dashboard: Failed to fetch fresh profile. Falling back to cookie or empty.", profileErr)
+                const raw = getCookie("allowed_projects")
                 allowedProjects = raw ? JSON.parse(decodeURIComponent(raw)) : []
-            } catch (err) {
-                console.warn("CP Dashboard: Failed to parse allowed_projects cookie. Falling back to all projects.", err)
-                allowedProjects = []
             }
-    // Removed the early return to allow all projects to be fetched if no specific restrictions exist
-            // Fetch full project list and filter by allowed IDs
+
+            // Step 2: Fetch all projects in the organization
             const res = await axios.get(`${API.PROJECTS}?organization=${encodeURIComponent(organization)}`, {
                 headers: { Authorization: `Bearer ${token}` },
             })
             const allProjects: ProjectDetail[] = res.data.data || []
-            console.log("CP Dashboard Debug:", {
-                organization,
-                allowedProjectsFromCookie: allowedProjects,
-                allProjectsFromBackendCount: allProjects.length,
-                allProjectsFromBackend: allProjects.map(p => ({ id: p.product_id, name: p.name }))
-            })
             
-            // If the user has assigned projects, filter by them.
-            // Otherwise, show NO projects for the CP user.
+            if (isDebug) {
+                console.log("CP Dashboard Project Sync:", {
+                    allowedFromBackend: allowedProjects.map(p => p.project_id),
+                    allOrgProjects: allProjects.map(p => p.product_id)
+                })
+            }
+            
+            // Step 3: Match organization projects with user's allowed projects
             if (allowedProjects.length > 0) {
-                const allowedIds = new Set(allowedProjects.map(p => p.project_id))
+                const allowedIds = new Set(allowedProjects.map(p => Number(p.project_id)))
                 const filtered = allProjects.filter(p => {
-                    // Using loose equality check (==) in case of string vs number mismatch
-                    return Array.from(allowedIds).some(id => id == p.product_id)
+                    // Using Number to ensure strict equality works if one is a string
+                    return allowedIds.has(Number(p.product_id))
                 })
                 
                 setProjects(filtered)
                 
                 if (filtered.length === 0 && allProjects.length > 0) {
-                    console.warn("CP Dashboard: Assigned projects (ids) don't match any projects in organization.", {
-                        allowedIds: Array.from(allowedIds),
-                        backendIds: allProjects.map(p => p.product_id)
+                    console.warn("CP Dashboard: No match found between CP assigned IDs and Org Project product_ids.", {
+                        assignedIds: Array.from(allowedIds),
+                        orgIds: allProjects.map(p => p.product_id)
                     })
                 }
             } else {
                 setProjects([])
             }
         } catch (err) {
-            console.error("Failed to fetch projects:", err)
+            console.error("Dashboard Sync Failed:", err)
             setProjects([])
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [isDebug])
 
     useEffect(() => {
         fetchProjectDetails()
     }, [fetchProjectDetails])
 
     const handleProjectClick = (project: ProjectDetail) => {
+        // Restricted access for CP users: just show the project, don't give access to open
+        const role = getCookie("role")
+        if (role === "cp_user") {
+            return
+        }
+        
         const encodedId = encodeProjectId(project.product_id)
         navigate(`/cp/project?id=${encodedId}`)
     }
@@ -280,6 +305,10 @@ export default function CpDashboard() {
                         </ToggleGroupItem>
                     </ToggleGroup>
                 </div>
+                <Button variant="outline" size="sm" onClick={() => navigate("/cp/bulk_upload")}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Import Leads
+                </Button>
                 </div>
                 </div>
             </div>
@@ -304,7 +333,7 @@ export default function CpDashboard() {
                     {filteredProjects.length > 0 ? filteredProjects.map((project) => (
                         <Card
                             key={project.product_id}
-                            className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30"
+                            className={`flex flex-col relative transition-all duration-300 group ${getCookie("role") === "cp_user" ? "cursor-default" : "cursor-pointer hover:shadow-lg border-2 hover:border-primary/40"}`}
                             onClick={() => handleProjectClick(project)}
                         >
                             <CardHeader className="pb-2">
@@ -346,6 +375,7 @@ export default function CpDashboard() {
                                         </Badge>
                                     )}
                                 </div>
+                                
                             </CardContent>
                         </Card>
                     )) : (

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { compressImage, compressImages } from '@/utils/imageCompression'
 import axios from 'axios'
 import { API } from '@/config/api'
 import { toast } from 'sonner'
@@ -391,8 +392,9 @@ export default function EditProject() {
         }
 
         setUnitImageUploading(unitId)
+        const compressedFiles = await compressImages(fileArray, { quality: 0.7, maxWidth: 1600 })
         const formDataUpload = new FormData()
-        fileArray.forEach(file => formDataUpload.append('images', file))
+        compressedFiles.forEach(file => formDataUpload.append('images', file))
 
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
@@ -462,8 +464,9 @@ export default function EditProject() {
         const block = formData.blocks.find(b => b.blockId === blockId)
         const currentCount = block?.floorPlanImages?.length || 0
         if (currentCount + fileArray.length > 5) { toast.error('Maximum 5 images allowed per block'); return }
+        const compressedFiles = await compressImages(fileArray, { quality: 0.7, maxWidth: 1920 })
         const formDataUpload = new FormData()
-        fileArray.forEach(file => formDataUpload.append('images', file))
+        compressedFiles.forEach(file => formDataUpload.append('images', file))
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, { headers: { 'Content-Type': 'multipart/form-data' } })
             const newUrls = response.data.data.urls
@@ -476,8 +479,9 @@ export default function EditProject() {
         if (!files || files.length === 0) return
         const currentCount = formData.layoutImages?.length || 0
         if (currentCount + files.length > 5) { toast.error('Maximum 5 layout images allowed'); return }
+        const compressedFiles = await compressImages(Array.from(files), { quality: 0.7, maxWidth: 1920 })
         const formDataUpload = new FormData()
-        Array.from(files).forEach(file => formDataUpload.append('images', file))
+        compressedFiles.forEach(file => formDataUpload.append('images', file))
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, { headers: { 'Content-Type': 'multipart/form-data' } })
             const newUrls = response.data.data.urls
@@ -513,8 +517,9 @@ export default function EditProject() {
             }
         }
 
+        const compressedFile = await compressImage(file, { quality: 0.8, maxWidth: 1200 })
         const formDataUpload = new FormData()
-        formDataUpload.append('images', file)
+        formDataUpload.append('images', compressedFile)
 
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
@@ -548,8 +553,9 @@ export default function EditProject() {
         const currentCount = floor?.floorChartImages?.length || 0
         if (currentCount + fileArray.length > 5) { toast.error(`Maximum 5 images allowed. You can add ${5 - currentCount} more.`); return }
         setFloorImageUploading(true)
+        const compressedFiles = await compressImages(fileArray, { quality: 0.7, maxWidth: 1920 })
         const formDataUpload = new FormData()
-        fileArray.forEach(file => formDataUpload.append('images', file))
+        compressedFiles.forEach(file => formDataUpload.append('images', file))
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, { headers: { 'Content-Type': 'multipart/form-data' } })
             const newUrls = response.data.data.urls

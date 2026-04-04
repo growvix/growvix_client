@@ -41,6 +41,7 @@ export const API = {
     getProjectBlocks: (id: number | string) => `${API_URL}/api/projects/${id}/blocks`,
     updateProject: (id: number | string) => `${API_URL}/api/projects/${id}`,
     bookUnit: (projectId: number | string) => `${API_URL}/api/projects/${projectId}/book`,
+    reverseBook: (projectId: number | string) => `${API_URL}/api/projects/${projectId}/reverse-book`,
     getProjectBookedUnits: (projectId: number | string) => `${API_URL}/api/projects/${projectId}/booked`,
     getAllBookedUnits: () => `${API_URL}/api/projects/booked/all`,
 

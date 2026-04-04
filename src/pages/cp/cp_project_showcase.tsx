@@ -330,7 +330,7 @@ export default function ProjectShowcase() {
 
                 {/* Left Panel: Blocks/Floors OR Plots List */}
                 <Card className="col-span-4 flex flex-col overflow-hidden">
-                    <CardHeader className="py-3 flex-shrink-0">
+                    <CardHeader className="py-3 shrink-0">
                         <CardTitle className="text-sm flex items-center gap-2">
                             {project.property === 'plots' ? (
                                 <>
@@ -432,7 +432,7 @@ export default function ProjectShowcase() {
 
                 {/* Middle Panel: Layout / Floor Plan Images */}
                 <Card className="col-span-4 flex flex-col overflow-hidden">
-                    <CardHeader className="py-3 flex-shrink-0">
+                    <CardHeader className="py-3 shrink-0">
                         <CardTitle className="text-sm flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <ImageIcon className="h-4 w-4" />
@@ -528,7 +528,7 @@ export default function ProjectShowcase() {
 
                 {/* Right Panel: Units/Plot Details */}
                 <Card className="col-span-4 flex flex-col overflow-hidden">
-                    <CardHeader className="py-3 flex-shrink-0">
+                    <CardHeader className="py-3 shrink-0">
                         <CardTitle className="text-sm flex items-center gap-2">
                             {project.property === 'plots' ? (
                                 <>
@@ -577,28 +577,30 @@ export default function ProjectShowcase() {
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <div className="h-2 w-2 rounded-full shrink-0 bg-emerald-500" />
                                                         <span className="font-semibold text-[15px] text-foreground truncate">
-                                                            {isCpUser ? "Booked" : `#${selectedPlot.bookedBy.profileId}`}
+                                                            {isCpUser ? "Not Available" : `#${selectedPlot.bookedBy.profileId}`}
                                                         </span>
                                                     </div>
                                                     <Badge className="bg-background hover:bg-muted text-foreground font-medium text-[10px] px-2 py-0.5 rounded-md shrink-0 border">
-                                                        {selectedPlot.status.charAt(0).toUpperCase() + selectedPlot.status.slice(1)}
+                                                        {isCpUser ? "UNAVAILABLE" : selectedPlot.status.charAt(0).toUpperCase() + selectedPlot.status.slice(1)}
                                                     </Badge>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-y-2 gap-x-1 text-xs text-muted-foreground pl-4">
-                                                    {selectedPlot.bookedBy.bookedAt && (
-                                                        <div className="col-span-2 flex items-center gap-1.5 mt-1">
-                                                            <CalendarClock className="h-3.5 w-3.5 shrink-0" />
-                                                            <span className="truncate">{new Date(selectedPlot.bookedBy.bookedAt).toLocaleDateString()}</span>
-                                                        </div>
-                                                    )}
-                                                    {selectedPlot.bookedBy.userName && (
-                                                        <div className="col-span-2 flex items-center gap-1.5 text-emerald-600 dark:text-emerald-500 mt-1">
-                                                            <CalendarCheck className="h-3.5 w-3.5 shrink-0" />
-                                                            <span className="truncate">{selectedPlot.status.charAt(0).toUpperCase() + selectedPlot.status.slice(1)} by {selectedPlot.bookedBy.userName}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                {!isCpUser && (
+                                                    <div className="grid grid-cols-2 gap-y-2 gap-x-1 text-xs text-muted-foreground pl-4">
+                                                        {selectedPlot.bookedBy.bookedAt && (
+                                                            <div className="col-span-2 flex items-center gap-1.5 mt-1">
+                                                                <CalendarClock className="h-3.5 w-3.5 shrink-0" />
+                                                                <span className="truncate">{new Date(selectedPlot.bookedBy.bookedAt).toLocaleDateString()}</span>
+                                                            </div>
+                                                        )}
+                                                        {selectedPlot.bookedBy.userName && (
+                                                            <div className="col-span-2 flex items-center gap-1.5 text-emerald-600 dark:text-emerald-500 mt-1">
+                                                                <CalendarCheck className="h-3.5 w-3.5 shrink-0" />
+                                                                <span className="truncate">{selectedPlot.status.charAt(0).toUpperCase() + selectedPlot.status.slice(1)} by {selectedPlot.bookedBy.userName}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
 
                                                 {!isCpUser && (
                                                     <div className="pl-2 pt-1">
@@ -616,13 +618,13 @@ export default function ProjectShowcase() {
                                         <div className="w-full pt-2">
                                             <Button
                                                 className="w-full"
-                                                disabled={selectedPlot.status !== 'available'}
+                                                disabled={isCpUser || selectedPlot.status !== 'available'}
                                                 onClick={() => handleOpenBooking({
                                                     plotId: selectedPlot.plotId,
                                                     label: `Plot ${selectedPlot.plotNumber}`,
                                                 })}
                                             >
-                                                {selectedPlot.status === 'available' ? 'Book Now' : 'Not Available'}
+                                                {selectedPlot.status === 'available' ? (isCpUser ? 'View Only' : 'Book Now') : 'Not Available'}
                                             </Button>
                                         </div>
 
@@ -645,9 +647,9 @@ export default function ProjectShowcase() {
                                         {selectedFloor.units.map((unit) => (
                                             <div
                                                 key={unit.unitId}
-                                                className={`p-3 rounded-lg border-2 transition-all hover:shadow-md ${getStatusColor(unit.status)} ${unit.status === 'available' ? 'cursor-pointer' : ''}`}
+                                                className={`p-3 rounded-lg border-2 transition-all hover:shadow-md ${getStatusColor(unit.status)} ${!isCpUser && unit.status === 'available' ? 'cursor-pointer' : 'cursor-default'}`}
                                                 onClick={() => {
-                                                    if (unit.status === 'available' && selectedBlock) {
+                                                    if (!isCpUser && unit.status === 'available' && selectedBlock) {
                                                         handleOpenBooking({
                                                             unitId: unit.unitId,
                                                             blockId: selectedBlock.blockId,

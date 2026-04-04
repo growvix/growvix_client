@@ -1181,13 +1181,12 @@ export default function UserManagement() {
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="edit-last-name">Last Name</Label>
+                                <Label htmlFor="edit-last-name">Last Name <span className="text-muted-foreground">(Optional)</span></Label>
                                 <Input
                                     id="edit-last-name"
                                     placeholder="Doe"
                                     value={editFormData.lastName}
                                     onChange={handleEditInputChange}
-                                    required
                                 />
                             </div>
                         </div>

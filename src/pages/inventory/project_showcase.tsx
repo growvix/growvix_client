@@ -144,6 +144,7 @@ export default function ProjectShowcase() {
         plotId?: string
         blockId?: string
         label: string
+        bookedBy?: Unit['bookedBy']
     } | null>(null)
 
     // Get current images based on view mode
@@ -228,50 +229,77 @@ export default function ProjectShowcase() {
         const organization = getCookie('organization')
         try {
             const response = await axios.get(API.getProject(decodedId), {
-                params: { organization }
+                params: { organization, t: Date.now() }
             })
             const projectData = response.data.data
+            // Update selected block/floor/unit/plot from incoming data if already selected
             setProject(projectData)
 
-            // Auto-select based on URL parameters or default to first block
-            if (urlPlotId && projectData.property === 'plots' && projectData.plots) {
-                const matchedPlot = projectData.plots.find((p: Plot) => p.plotId === urlPlotId)
-                if (matchedPlot) {
-                    setSelectedPlot(matchedPlot)
+            if (projectData.property === 'plots') {
+                // Keep selected plot updated if one was already selected
+                if (urlPlotId) {
+                    const matchedPlot = projectData.plots?.find((p: Plot) => p.plotId === urlPlotId)
+                    if (matchedPlot) setSelectedPlot(matchedPlot)
+                } else if (selectedPlot) {
+                    const matchedPlot = projectData.plots?.find((p: Plot) => p.plotId === selectedPlot.plotId)
+                    if (matchedPlot) setSelectedPlot(matchedPlot)
                 }
-            } else if (urlUnitId && projectData.property !== 'plots' && projectData.blocks) {
-                let found = false;
-                for (const block of projectData.blocks) {
-                    for (const floor of (block.floors || [])) {
-                        const matchedUnit = floor.units?.find((u: Unit) => u.unitId === urlUnitId)
-                        if (matchedUnit) {
-                            setSelectedBlock(block)
-                            setSelectedFloor(floor)
-                            setSelectedUnit(matchedUnit)
-                            setViewMode('unit')
-                            found = true;
-                            break;
+            } else {
+                // Apartments/Villas - Keep block/floor/unit updated
+                if (urlUnitId) {
+                    let found = false;
+                    for (const block of projectData.blocks || []) {
+                        for (const floor of (block.floors || [])) {
+                            const matchedUnit = floor.units?.find((u: Unit) => u.unitId === urlUnitId)
+                            if (matchedUnit) {
+                                setSelectedBlock(block)
+                                setSelectedFloor(floor)
+                                setSelectedUnit(matchedUnit)
+                                setViewMode('unit')
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found) break;
+                    }
+                } else if (selectedBlock) {
+                    // Refresh current selection from new data
+                    const newBlock = projectData.blocks?.find((b: Block) => b.blockId === selectedBlock.blockId)
+                    if (newBlock) {
+                        setSelectedBlock(newBlock)
+                        if (selectedFloor) {
+                            const newFloor = newBlock.floors?.find((f: Floor) => f.floorNumber === selectedFloor.floorNumber)
+                            if (newFloor) {
+                                setSelectedFloor(newFloor)
+                                if (selectedUnit) {
+                                    const newUnit = newFloor.units?.find((u: Unit) => u.unitId === selectedUnit.unitId)
+                                    if (newUnit) setSelectedUnit(newUnit)
+                                }
+                            }
                         }
                     }
-                    if (found) break;
+                } else if (projectData.blocks && projectData.blocks.length > 0) {
+                    // Initial load - select first block
+                    setSelectedBlock(projectData.blocks[0])
+                    if (projectData.blocks[0].floors?.length > 0) {
+                        setSelectedFloor(projectData.blocks[0].floors[0])
+                    }
+                    setViewMode('block')
                 }
-            } else if (projectData.blocks && projectData.blocks.length > 0) {
-                setSelectedBlock(projectData.blocks[0])
-                setViewMode('block')
             }
         } catch (error) {
             console.error('Failed to fetch project:', error)
         } finally {
             setLoading(false)
         }
-    }, [projectId])
+    }, [projectId, selectedBlock?.blockId, selectedFloor?.floorNumber, selectedUnit?.unitId, selectedPlot?.plotId, urlPlotId, urlUnitId])
 
     useEffect(() => {
         fetchProject()
     }, [fetchProject])
 
     // Handle booking dialog open
-    const handleOpenBooking = useCallback((target: { unitId?: string; plotId?: string; blockId?: string; label: string }) => {
+    const handleOpenBooking = useCallback((target: { unitId?: string; plotId?: string; blockId?: string; label: string, bookedBy?: Unit['bookedBy'] }) => {
         setBookingTarget(target)
         setBookingOpen(true)
     }, [])
@@ -560,6 +588,14 @@ export default function ProjectShowcase() {
                                                         setCurrentImageIndex(0);
                                                     } else {
                                                         handleUnitClick(unit);
+                                                        if ((unit.status === 'available' || unit.status === 'booked') && selectedBlock) {
+                                                            handleOpenBooking({
+                                                                unitId: unit.unitId,
+                                                                blockId: selectedBlock.blockId,
+                                                                label: `Unit ${unit.unitNumber} (${selectedBlock.blockName})`,
+                                                                bookedBy: unit.status === 'booked' ? unit.bookedBy : undefined
+                                                            })
+                                                        }
                                                     }
                                                 }}
                                                 className={`text-md font-bold transition-all py-0 min-w-10 text-center ${selectedUnit?.unitId === unit.unitId
@@ -701,13 +737,14 @@ export default function ProjectShowcase() {
                                         <div className="w-full pt-2">
                                             <Button
                                                 className="w-full"
-                                                disabled={selectedPlot.status !== 'available'}
+                                                disabled={selectedPlot.status === 'sold'}
                                                 onClick={() => handleOpenBooking({
                                                     plotId: selectedPlot.plotId,
                                                     label: `Plot ${selectedPlot.plotNumber}`,
+                                                    bookedBy: selectedPlot.status === 'booked' ? selectedPlot.bookedBy : undefined
                                                 })}
                                             >
-                                                {selectedPlot.status === 'available' ? 'Book Now' : 'Not Available'}
+                                                {selectedPlot.status === 'available' ? 'Book Now' : selectedPlot.status === 'booked' ? 'View/Reverse Booking' : 'Not Available'}
                                             </Button>
                                         </div>
                                     </div>
@@ -732,11 +769,12 @@ export default function ProjectShowcase() {
                                                     }`}
                                                 onClick={() => {
                                                     handleUnitClick(unit); // Show details in center panel
-                                                    if (unit.status === 'available' && selectedBlock) {
+                                                    if ((unit.status === 'available' || unit.status === 'booked') && selectedBlock) {
                                                         handleOpenBooking({
                                                             unitId: unit.unitId,
                                                             blockId: selectedBlock.blockId,
                                                             label: `Unit ${unit.unitNumber} (${selectedBlock.blockName})`,
+                                                            bookedBy: unit.status === 'booked' ? unit.bookedBy : undefined
                                                         })
                                                     }
                                                 }}
@@ -865,10 +903,11 @@ export default function ProjectShowcase() {
                     open={bookingOpen}
                     onOpenChange={setBookingOpen}
                     projectId={project.product_id}
-                    unitId={bookingTarget.unitId}
-                    plotId={bookingTarget.plotId}
-                    blockId={bookingTarget.blockId}
-                    unitLabel={bookingTarget.label}
+                    unitId={bookingTarget?.unitId}
+                    plotId={bookingTarget?.plotId}
+                    blockId={bookingTarget?.blockId}
+                    unitLabel={bookingTarget?.label || ""}
+                    bookedBy={bookingTarget?.bookedBy}
                     prefilledLead={bookingLead}
                     onBookingComplete={handleBookingComplete}
                 />
