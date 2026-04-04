@@ -16,7 +16,9 @@ import {
     Handshake,
     Mail,
     MailPlus,
-    Info
+    Info,
+    CalendarClock,
+    CalendarCheck
 } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
@@ -71,26 +73,26 @@ export default function GeneralSetting() {
             path: "/setting/teams",
             permission: "manage_teams"
         },
-        // {
-        //     title: "Billing",
-        //     description: "Manage your invoices, payment methods, and dues.",
-        //     icon: FileText,
-        //     colorClass: "text-rose-600 dark:text-rose-400",
-        //     bgClass: "bg-rose-100 dark:bg-rose-900/40",
-        //     hoverBorder: "hover:border-rose-300 dark:hover:border-rose-800",
-        //     hoverGradient: "from-rose-50/50 dark:from-rose-950/20",
-        //     path: "#", // Placeholder
-        // },
-        // {
-        //     title: "Attendance",
-        //     description: "Review and manage user attendance records.",
-        //     icon: CalendarClock,
-        //     colorClass: "text-amber-600 dark:text-amber-400",
-        //     bgClass: "bg-amber-100 dark:bg-amber-900/40",
-        //     hoverBorder: "hover:border-amber-300 dark:hover:border-amber-800",
-        //     hoverGradient: "from-amber-50/50 dark:from-amber-950/20",
-        //     path: "#", // Placeholder
-        // },
+        {
+            title: "Attendance",
+            description: "Track and manage user attendance, login/logout sessions.",
+            icon: CalendarClock,
+            colorClass: "text-amber-600 dark:text-amber-400",
+            bgClass: "bg-amber-100 dark:bg-amber-900/40",
+            hoverBorder: "hover:border-amber-300 dark:hover:border-amber-800",
+            hoverGradient: "from-amber-50/50 dark:from-amber-950/20",
+            path: "/setting/attendance",
+        },
+        {
+            title: "Availability & Leave",
+            description: "Manage weekly availability, mark leaves, and assign fallback users for round-robin.",
+            icon: CalendarCheck,
+            colorClass: "text-teal-600 dark:text-teal-400",
+            bgClass: "bg-teal-100 dark:bg-teal-900/40",
+            hoverBorder: "hover:border-teal-300 dark:hover:border-teal-800",
+            hoverGradient: "from-teal-50/50 dark:from-teal-950/20",
+            path: "/setting/availability",
+        },
         {
             title: "Import Data",
             description: "Bulk import leads and other data into the system.",
@@ -134,7 +136,7 @@ export default function GeneralSetting() {
     ]
 
     const activePermissions = getPermissions()
-    
+
     const visibleCards = settingsCards.filter(card => {
         if (card.permission) {
             return activePermissions.includes(card.permission)

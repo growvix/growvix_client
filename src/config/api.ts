@@ -80,6 +80,21 @@ export const API = {
     MAIL: `${API_URL}/api/mail`,
     MAIL_TEMPLATES: `${API_URL}/api/mail/templates`,
     getMailTemplate: (id: string) => `${API_URL}/api/mail/templates/${id}`,
+
+    // Attendance endpoints
+    ATTENDANCE: {
+        TODAY: `${API_URL}/api/attendance/today`,
+        TOGGLE_ONLINE: `${API_URL}/api/attendance/toggle-online`,
+        TOGGLE_OFFLINE: `${API_URL}/api/attendance/toggle-offline`,
+        AUTO_LOGOUT: `${API_URL}/api/attendance/auto-logout`,
+    },
+    getMonthlyAttendance: (userId: string) => `${API_URL}/api/attendance/monthly/${userId}`,
+
+    // Availability endpoints
+    AVAILABILITY: {
+        WEEKLY: `${API_URL}/api/availability/weekly`,
+        TOGGLE: `${API_URL}/api/availability/toggle`,
+    },
 };
 
 export default API;

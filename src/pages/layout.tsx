@@ -41,6 +41,8 @@ const SEARCHABLE_PAGES: SearchablePage[] = [
     { label: "Teams", url: "/setting/teams", group: "Settings", icon: Users },
     { label: "Calendar", url: "/user_calendar", group: "Tools", icon: Calendar },
     { label: "Profile", url: "/profile", group: "Tools", icon: User },
+    { label: "Attendance", url: "/setting/attendance", group: "Settings", icon: Calendar },
+    { label: "Availability & Leave", url: "/setting/availability", group: "Settings", icon: Calendar },
 ];
 
 export default function SidebarLayout() {
