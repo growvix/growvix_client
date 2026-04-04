@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react"
+import * as XLSX from "xlsx"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import {
     Select,
@@ -7,6 +8,25 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -18,117 +38,58 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { CalendarDays, Clock, Filter, RotateCcw, TrendingUp, Users, Target, CheckCircle2 } from "lucide-react"
+import { CalendarDays, Clock, Filter, RotateCcw, TrendingUp, Users, Target, CheckCircle2, ChevronDown, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
-// Static data for the report
-const sources = ["Meta", "Google", "Incoming Calls", "MagicBricks", "Housing.com", "99 Acres", "Website"]
-const projects = ["P1", "P2", "P3", "P4"]
-
-// High-level Campaign Data structure
-const CAMPAIGN_DATA: Record<string, Record<string, Record<string, number[]>>> = {
-    "new_responses": {
-        "Meta": {
-            "P1": [20, 5, 6, 2, 1, 2, 1, 3],
-            "P2": [25, 6, 8, 3, 2, 3, 1, 2],
-            "P3": [23, 5, 7, 2, 2, 4, 1, 2],
-            "P4": [22, 4, 6, 3, 1, 3, 2, 3],
-        },
-        "Google": {
-            "P1": [18, 3, 5, 2, 2, 2, 1, 3],
-            "P2": [22, 4, 6, 3, 2, 3, 1, 3],
-            "P3": [20, 3, 6, 2, 2, 4, 1, 2],
-            "P4": [24, 5, 7, 3, 2, 3, 1, 3],
-        },
-        "Incoming Calls": {
-            "P1": [15, 2, 4, 1, 1, 3, 2, 2],
-            "P2": [12, 1, 3, 1, 1, 2, 1, 3],
-            "P3": [16, 2, 5, 1, 2, 3, 1, 2],
-            "P4": [14, 2, 4, 2, 1, 2, 1, 2],
-        },
-        "MagicBricks": {
-            "P1": [35, 6, 12, 4, 3, 4, 2, 4],
-            "P2": [30, 5, 10, 3, 2, 5, 1, 4],
-            "P3": [32, 6, 11, 4, 2, 4, 2, 3],
-            "P4": [38, 7, 13, 5, 3, 5, 2, 3],
-        },
-        "Housing.com": {
-            "P1": [28, 5, 9, 3, 2, 4, 2, 3],
-            "P2": [32, 6, 11, 4, 3, 4, 1, 3],
-            "P3": [30, 5, 10, 3, 2, 4, 2, 4],
-            "P4": [34, 7, 12, 4, 2, 4, 2, 3],
-        },
-        "99 Acres": {
-            "P1": [26, 4, 8, 3, 2, 4, 2, 3],
-            "P2": [28, 5, 10, 3, 2, 4, 1, 3],
-            "P3": [30, 6, 11, 4, 2, 4, 1, 2],
-            "P4": [32, 7, 12, 4, 2, 3, 2, 2],
-        },
-        "Website": {
-            "P1": [15, 2, 4, 1, 1, 3, 2, 2],
-            "P2": [18, 3, 5, 2, 2, 3, 1, 2],
-            "P3": [14, 2, 3, 1, 1, 3, 2, 2],
-            "P4": [16, 3, 4, 2, 1, 3, 1, 2],
-        },
-    },
-    "re_engaged_responses": {
-        "Meta": {
-            "P1": [10, 2, 3, 1, 1, 1, 1, 1],
-            "P2": [12, 3, 4, 1, 1, 1, 1, 1],
-            "P3": [15, 4, 5, 2, 1, 1, 1, 1],
-            "P4": [11, 2, 3, 2, 1, 1, 1, 1],
-        },
-        "Google": {
-            "P1": [8, 1, 2, 1, 1, 1, 1, 1],
-            "P2": [10, 2, 3, 1, 1, 1, 1, 2],
-            "P3": [12, 3, 4, 1, 1, 1, 1, 1],
-            "P4": [9, 1, 3, 1, 1, 1, 1, 1],
-        },
-        "Incoming Calls": {
-            "P1": [5, 1, 1, 1, 0, 1, 0, 1],
-            "P2": [6, 1, 1, 1, 1, 1, 0, 1],
-            "P3": [7, 1, 2, 1, 1, 1, 1, 0],
-            "P4": [4, 1, 1, 1, 0, 0, 1, 0],
-        },
-        "MagicBricks": {
-            "P1": [15, 3, 5, 2, 1, 2, 1, 1],
-            "P2": [12, 2, 4, 2, 1, 1, 1, 1],
-            "P3": [18, 4, 6, 2, 2, 2, 1, 1],
-            "P4": [14, 3, 4, 2, 1, 2, 1, 1],
-        },
-        "Housing.com": {
-            "P1": [12, 2, 4, 1, 1, 2, 1, 1],
-            "P2": [14, 3, 5, 1, 1, 2, 1, 1],
-            "P3": [10, 2, 3, 1, 1, 1, 1, 1],
-            "P4": [15, 3, 5, 2, 1, 2, 1, 1],
-        },
-        "99 Acres": {
-            "P1": [10, 2, 3, 1, 1, 1, 1, 1],
-            "P2": [12, 3, 4, 1, 1, 1, 1, 1],
-            "P3": [14, 3, 4, 2, 1, 2, 1, 1],
-            "P4": [11, 2, 3, 2, 1, 1, 1, 1],
-        },
-        "Website": {
-            "P1": [8, 1, 2, 1, 1, 1, 1, 1],
-            "P2": [10, 2, 3, 1, 1, 1, 1, 2],
-            "P3": [7, 1, 2, 1, 1, 1, 1, 1],
-            "P4": [9, 1, 3, 1, 1, 1, 1, 1],
-        },
-    }
+// Metrics for Online/Offline/CP
+const ONLINE_DATA = {
+    budget: 800000,
+    leads: 400,
+    rnr: 10,
+    prospect: 200,
+    unqualified: 10,
+    lost: 50,
+    svs: 50,
+    sv: 45,
+    booking: 35
 }
 
-const columns = ["New Leads", "RNR", "Prospect", "Not Connected", "Lost", "SVS", "SV Done", "Booking"]
+const OFFLINE_DATA = {
+    budget: 1000000,
+    leads: 400,
+    rnr: 10,
+    prospect: 200,
+    unqualified: 10,
+    lost: 50,
+    svs: 50,
+    sv: 45,
+    booking: 35
+}
+
+const CP_DATA = {
+    leads: 400,
+    rnr: 10,
+    prospect: 200,
+    unqualified: 10,
+    lost: 50,
+    svs: 50,
+    sv: 45,
+    booking: 35
+}
+
+const CAMPAIGN_COLUMNS = ["BUDGET SPENT", "NO. OF LEADS", "CPL", "RNR", "PROSPECT", "UNQUALIFIED", "LOST", "SVS", "COST PER SVS", "SV", "COST PER SV", "BOOKING", "COST PER BOOKING"]
+const CP_COLUMNS = ["NO. OF LEADS", "RNR", "PROSPECT", "UNQUALIFIED", "LOST", "SVS", "SV", "BOOKING"]
 
 const campaignFilterMap: Record<string, string> = {
-    "new_responses": "Online - New Lead",
-    "re_engaged_responses": "Online - Re-engaged Lead",
-    "all_responses": "Online",
+    "online": "Online Report",
+    "offline": "Offline Report",
+    "all_responses": "All Responses - Combined View",
 }
 
 export default function CampaignLevelReport() {
     const { setBreadcrumbs } = useBreadcrumb()
-    const [campaignFilter, setCampaignFilter] = useState("")
+    const [campaignFilter, setCampaignFilter] = useState("all_responses")
     const [dateFilter, setDateFilter] = useState("")
     const [timeFilter, setTimeFilter] = useState("")
 
@@ -139,7 +100,7 @@ export default function CampaignLevelReport() {
         ])
     }, [setBreadcrumbs])
 
-    const tableHeading = campaignFilterMap[campaignFilter] || "Online Report"
+    const tableHeading = campaignFilterMap[campaignFilter] || "Campaign Analysis Report"
     const isFilterApplied = campaignFilter !== "" || dateFilter !== "" || timeFilter !== ""
 
     const clearFilters = () => {
@@ -148,59 +109,98 @@ export default function CampaignLevelReport() {
         setTimeFilter("")
     }
 
-    // Dynamic Data Selection and Calculation
     const activeData = useMemo(() => {
-        if (!campaignFilter || campaignFilter === "all_responses") {
-            // Compute sum of new and re-engaged
-            const newData = CAMPAIGN_DATA["new_responses"]
-            const reEngagedData = CAMPAIGN_DATA["re_engaged_responses"]
-            const combined: Record<string, Record<string, number[]>> = {}
-
-            sources.forEach(source => {
-                combined[source] = {}
-                projects.forEach(project => {
-                    const array1 = newData[source]?.[project] || new Array(columns.length).fill(0)
-                    const array2 = reEngagedData[source]?.[project] || new Array(columns.length).fill(0)
-                    combined[source][project] = array1.map((val, idx) => val + array2[idx])
-                })
-            })
-            return combined
+        if (campaignFilter === "online") return ONLINE_DATA
+        if (campaignFilter === "offline") return OFFLINE_DATA
+        if (campaignFilter === "all_responses") {
+            return {
+                budget: ONLINE_DATA.budget + OFFLINE_DATA.budget,
+                leads: ONLINE_DATA.leads + OFFLINE_DATA.leads,
+                rnr: ONLINE_DATA.rnr + OFFLINE_DATA.rnr,
+                prospect: ONLINE_DATA.prospect + OFFLINE_DATA.prospect,
+                unqualified: ONLINE_DATA.unqualified + OFFLINE_DATA.unqualified,
+                lost: ONLINE_DATA.lost + OFFLINE_DATA.lost,
+                svs: ONLINE_DATA.svs + OFFLINE_DATA.svs,
+                sv: ONLINE_DATA.sv + OFFLINE_DATA.sv,
+                booking: ONLINE_DATA.booking + OFFLINE_DATA.booking
+            }
         }
-        return CAMPAIGN_DATA[campaignFilter] || {}
+        return null
     }, [campaignFilter])
 
-    // Calculate totals based on activeData
+    // Calculation Helpers
+    const calculateMetrics = (data: any) => {
+        if (!data) return null
+        return {
+            ...data,
+            cpl: data.leads > 0 ? Math.round(data.budget / data.leads) : 0,
+            costPerSVS: data.svs > 0 ? Math.round(data.budget / data.svs) : 0,
+            costPerSV: data.sv > 0 ? Math.round(data.budget / data.sv) : 0,
+            costPerBooking: data.booking > 0 ? Math.round(data.budget / data.booking) : 0
+        }
+    }
+
+    const metrics = useMemo(() => calculateMetrics(activeData), [activeData])
+
+    // Summary stats for the top cards
     const summaryStats = useMemo(() => {
-        const stats = {
-            totalLeads: 0,
-            totalProspects: 0,
-            totalSVDone: 0,
-            totalBookings: 0
+        if (!activeData) return { totalLeads: 0, totalProspects: 0, totalSVDone: 0, totalBookings: 0 }
+        return {
+            totalLeads: activeData.leads,
+            totalProspects: activeData.prospect,
+            totalSVDone: activeData.svs,
+            totalBookings: activeData.booking
+        }
+    }, [activeData])
+
+    const handleDownloadExcel = () => {
+        // Simple export logic for now, can be refined
+        const wb = XLSX.utils.book_new()
+
+        if (campaignFilter === "online" || campaignFilter === "offline" || campaignFilter === "all_responses") {
+            const campaignMetrics = calculateMetrics(activeData)
+            const wsData = [
+                CAMPAIGN_COLUMNS,
+                [
+                    campaignMetrics.budget.toLocaleString(),
+                    campaignMetrics.leads,
+                    campaignMetrics.cpl.toLocaleString(),
+                    campaignMetrics.rnr,
+                    campaignMetrics.prospect,
+                    campaignMetrics.unqualified,
+                    campaignMetrics.lost,
+                    campaignMetrics.svs,
+                    campaignMetrics.costPerSVS.toLocaleString(),
+                    campaignMetrics.sv,
+                    campaignMetrics.costPerSV.toLocaleString(),
+                    campaignMetrics.booking,
+                    campaignMetrics.costPerBooking.toLocaleString()
+                ]
+            ]
+            const ws = XLSX.utils.aoa_to_sheet(wsData)
+            XLSX.utils.book_append_sheet(wb, ws, "Campaign Report")
         }
 
-        Object.values(activeData).forEach(sourceProjects => {
-            Object.values(sourceProjects).forEach(data => {
-                stats.totalLeads += data[0] // New Leads
-                stats.totalProspects += data[2] // Prospect
-                stats.totalSVDone += data[6] // SV Done
-                stats.totalBookings += data[7] // Booking
-            })
-        })
+        if (campaignFilter === "all_responses") {
+            const cpWsData = [
+                CP_COLUMNS,
+                [
+                    CP_DATA.leads,
+                    CP_DATA.rnr,
+                    CP_DATA.prospect,
+                    CP_DATA.unqualified,
+                    CP_DATA.lost,
+                    CP_DATA.svs,
+                    CP_DATA.sv,
+                    CP_DATA.booking
+                ]
+            ]
+            const cpWs = XLSX.utils.aoa_to_sheet(cpWsData)
+            XLSX.utils.book_append_sheet(wb, cpWs, "CP Report")
+        }
 
-        return stats
-    }, [activeData])
-
-    const columnTotals = useMemo(() => {
-        const totals = new Array(columns.length).fill(0)
-        Object.values(activeData).forEach(sourceProjects => {
-            Object.values(sourceProjects).forEach(data => {
-                data.forEach((val, idx) => {
-                    totals[idx] += val
-                })
-            })
-        })
-        return totals
-    }, [activeData])
+        XLSX.writeFile(wb, `Campaign_Report_${new Date().toISOString().split('T')[0]}.xlsx`)
+    }
 
     return (
         <div className="flex flex-1 flex-col gap-6 px-6 py-4 max-w-[98%] mx-auto w-full">
@@ -233,11 +233,11 @@ export default function CampaignLevelReport() {
                             </Label>
                             <Select value={campaignFilter} onValueChange={setCampaignFilter}>
                                 <SelectTrigger className="h-10 bg-muted/30 border-none hover:bg-muted/50 transition-colors">
-                                    <SelectValue placeholder="Select Campaign Type" />
+                                    <SelectValue placeholder="Select Category" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="new_responses">New Responses</SelectItem>
-                                    <SelectItem value="re_engaged_responses">Re-engaged Responses</SelectItem>
+                                    <SelectItem value="online">Online</SelectItem>
+                                    <SelectItem value="offline">Offline</SelectItem>
                                     <SelectItem value="all_responses">All Responses</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -270,6 +270,7 @@ export default function CampaignLevelReport() {
                                 className="h-10 bg-muted/30 border-none hover:bg-muted/50 transition-colors"
                             />
                         </div>
+
                     </div>
                 </CardContent>
             </Card>
@@ -326,97 +327,148 @@ export default function CampaignLevelReport() {
 
             {/* Report Table Section */}
             {isFilterApplied ? (
-                <Card className="border-none shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-6 duration-700 bg-background/40 backdrop-blur-sm">
-                    <CardHeader className="bg-muted/10 pb-4 border-b">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                                    {tableHeading}
-                                    <Badge variant="secondary" className="font-mono text-[10px] px-1.5 py-0">LIVE</Badge>
-                                </CardTitle>
-                                <CardDescription className="text-xs mt-1">
-                                    Displaying metrics for all sources and projects based on active filters.
-                                </CardDescription>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-full ring-1 ring-border shadow-sm">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                Data Updated: Just now
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto max-h-[600px] scrollbar-thin scrollbar-track-muted/20 scrollbar-thumb-muted-foreground/20">
-                            <Table>
-                                <TableHeader className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm shadow-sm">
-                                    <TableRow className="hover:bg-transparent border-b-2">
-                                        <TableHead className="font-extrabold text-[11px] uppercase tracking-widest w-[160px] text-primary/80 py-4">Source</TableHead>
-                                        <TableHead className="font-extrabold text-[11px] uppercase tracking-widest w-[100px] text-primary/80 py-4">Projects</TableHead>
-                                        {columns.map((col) => (
-                                            <TableHead key={col} className="font-extrabold text-[11px] uppercase tracking-widest text-center text-primary/80 min-w-[100px] py-4">
-                                                {col}
-                                            </TableHead>
-                                        ))}
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {sources.map((source) => (
-                                        projects.map((project, projectIdx) => (
-                                            <TableRow
-                                                key={`${source}-${project}`}
-                                                className={`
-                                                    ${projectIdx === projects.length - 1 ? 'border-b-4 border-muted/30' : 'border-b border-muted/10'}
-                                                    group hover:bg-primary/5 transition-all duration-200
-                                                `}
-                                            >
-                                                {/* Source name only on first project row */}
-                                                {projectIdx === 0 ? (
-                                                    <TableCell
-                                                        rowSpan={projects.length}
-                                                        className="font-bold text-sm align-middle border-r-2 border-muted/20 bg-muted/5 group-hover:bg-primary/10 transition-colors"
-                                                    >
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-1.5 h-8 rounded-full bg-primary/20 group-hover:bg-primary/50 transition-all" />
-                                                            {source}
-                                                        </div>
-                                                    </TableCell>
-                                                ) : null}
-                                                <TableCell className="text-xs font-semibold text-muted-foreground border-r group-hover:text-primary transition-colors pl-4 italic">
-                                                    {project}
-                                                </TableCell>
-                                                {activeData[source][project].map((value, colIdx) => {
-                                                    const isNewLeads = colIdx === 0;
-                                                    const isHighValue = (colIdx === 7 && value > 2);
-                                                    return (
-                                                        <TableCell
-                                                            key={colIdx}
-                                                            className={`text-center py-4 tabular-nums transition-all 
-                                                                ${isNewLeads ? 'font-black text-foreground bg-muted/30 border-x border-muted-foreground/10' : ''}
-                                                                ${isHighValue ? 'font-bold text-primary bg-primary/5' : 'text-sm text-foreground/80'}
-                                                            `}
-                                                        >
-                                                            {value === 0 ? <span className="text-muted-foreground/30 ring-1 ring-muted/20 px-2 py-0.5 rounded italic opacity-50">0</span> : value}
-                                                        </TableCell>
-                                                    );
-                                                })}
-                                            </TableRow>
-                                        ))
-                                    ))}
-                                    {/* Grand Total Row */}
-                                    <TableRow className="bg-primary/5 border-t-2 border-primary/20 hover:bg-primary/10">
-                                        <TableCell colSpan={2} className="font-extrabold text-xs uppercase tracking-wider text-primary py-6 text-center ring-1 ring-primary/20 rounded-l-lg">
-                                            Grand Total
-                                        </TableCell>
-                                        {columnTotals.map((total, idx) => (
-                                            <TableCell key={idx} className="text-center font-extrabold text-base text-primary tabular-nums py-6 bg-primary/5">
-                                                {total}
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="flex flex-col gap-12">
+                    {/* Table 1: Campaign Report */}
+                    {(campaignFilter === "online" || campaignFilter === "offline" || campaignFilter === "all_responses") && (
+                        <Card className="border-none shadow-xl animate-in fade-in slide-in-from-top-6 duration-700 bg-background/40 backdrop-blur-sm">
+                            <CardHeader className="bg-muted/5 py-3 border-b">
+                                <div className="flex items-center justify-between px-2">
+                                    <div>
+                                        <CardTitle className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                                            Campaign Report
+                                            <Badge variant="secondary" className="font-mono text-[10px] px-1.5 py-0">LIVE</Badge>
+                                        </CardTitle>
+                                        <CardDescription className="text-xs mt-1">
+                                            Aggregated performance metrics based on spending and conversion.
+                                        </CardDescription>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="gap-2 text-xs h-8 font-semibold bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary"
+                                                >
+                                                    <Download className="h-3.5 w-3.5" />
+                                                    Download Report
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Confirm Download</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        Are you sure you want to download the Campaign Level Report in Excel format?
+                                                        The file will include current filtering based on Response Category and Date/Time selection.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={handleDownloadExcel}>Confirm</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-full ring-1 ring-border shadow-sm">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                            Data Updated: Just now
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <div className="overflow-x-auto scrollbar-thin scrollbar-track-muted/20 scrollbar-thumb-muted-foreground/20">
+                                    <table className="w-full border-collapse">
+                                        <thead className="bg-muted/5 border-b-2 border-primary/10">
+                                            {/* Row 1: Top grid row for layout accuracy */}
+                                            <tr className="h-5 border-none">
+                                                {CAMPAIGN_COLUMNS.map((col) => (
+                                                    <th key={`grid-${col}`} className={`p-0 h-5 ${(col === "CPL" || col === "UNQUALIFIED" || col === "COST PER SVS" || col === "COST PER SV") ? 'border-r' : ''}`}></th>
+                                                ))}
+                                            </tr>
+                                            {/* Row 2: Actual header labels */}
+                                            <tr>
+                                                {CAMPAIGN_COLUMNS.map((col) => (
+                                                    <th key={col} className={`font-extrabold text-[11px] uppercase tracking-widest text-center text-primary/80 min-w-[110px] py-4 align-bottom ${(col === "CPL" || col === "UNQUALIFIED" || col === "COST PER SVS" || col === "COST PER SV") ? 'border-r' : ''}`}>
+                                                        {col}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-background">
+                                            {metrics ? (
+                                                <tr key="campaign-data-row" className="group hover:bg-primary/5 transition-all duration-200 border-b">
+                                                    <td className="text-center font-bold px-4 py-8 text-foreground border-r">{metrics.budget.toLocaleString()}</td>
+                                                    <td className="text-center px-4 py-8 text-foreground border-r">{metrics.leads}</td>
+                                                    <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">{metrics.cpl.toLocaleString()}</td>
+                                                    <td className="text-center px-4 py-8 text-foreground border-r">{metrics.rnr}</td>
+                                                    <td className="text-center px-4 py-8 text-foreground border-r">{metrics.prospect}</td>
+                                                    <td className="text-center border-r px-4 py-8 text-foreground">{metrics.unqualified}</td>
+                                                    <td className="text-center px-4 py-8 text-foreground border-r">{metrics.lost}</td>
+                                                    <td className="text-center px-4 py-8 text-foreground border-r">{metrics.svs}</td>
+                                                    <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">{metrics.costPerSVS.toLocaleString()}</td>
+                                                    <td className="text-center px-4 py-8 text-foreground border-r">{metrics.sv}</td>
+                                                    <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">{metrics.costPerSV.toLocaleString()}</td>
+                                                    <td className="text-center font-black text-primary px-4 py-8 border-r">{metrics.booking}</td>
+                                                    <td className="text-center font-bold bg-primary/10 px-4 py-8 text-primary">{metrics.costPerBooking.toLocaleString()}</td>
+                                                </tr>
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={CAMPAIGN_COLUMNS.length} className="text-center py-20 text-muted-foreground italic">
+                                                        No metrics available for selected filter. ({campaignFilter})
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Table 2: CP Report */}
+                    {campaignFilter === "all_responses" && (
+                        <Card className="border-none shadow-xl animate-in fade-in slide-in-from-top-6 duration-700 bg-background/40 backdrop-blur-sm">
+                            <CardHeader className="bg-muted/5 py-3 border-b">
+                                <div>
+                                    <CardTitle className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                                        CP Report
+                                        <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0 border-primary/30 text-primary/70">CHANNEL PARTNER</Badge>
+                                    </CardTitle>
+                                    <CardDescription className="text-xs mt-1">
+                                        Performance breakdown for Channel Partner leads.
+                                    </CardDescription>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <div className="overflow-x-auto scrollbar-thin scrollbar-track-muted/20 scrollbar-thumb-muted-foreground/20">
+                                    <table className="w-full border-collapse">
+                                        <thead className="bg-muted/5 border-b-2 border-primary/10">
+                                            <tr>
+                                                {CP_COLUMNS.map((col) => (
+                                                    <th key={col} className="font-extrabold text-[11px] uppercase tracking-widest text-center text-primary/80 min-w-[110px] py-6">
+                                                        {col}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-background">
+                                            <tr key="cp-data-row" className="group hover:bg-primary/5 transition-all duration-200 border-b">
+                                                <td className="text-center font-bold px-4 py-8 text-foreground border-r">{CP_DATA.leads}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{CP_DATA.rnr}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{CP_DATA.prospect}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{CP_DATA.unqualified}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{CP_DATA.lost}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{CP_DATA.svs}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{CP_DATA.sv}</td>
+                                                <td className="text-center font-black text-primary px-4 py-8">{CP_DATA.booking}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
             ) : (
                 <div className="flex flex-col items-center justify-center p-20 border-2 border-dashed rounded-3xl bg-muted/5 border-muted-foreground/10 group hover:border-primary/20 hover:bg-primary/5 transition-all duration-500 cursor-default">
                     <div className="p-6 rounded-full bg-muted/20 text-muted-foreground/40 mb-6 group-hover:scale-110 group-hover:text-primary/40 transition-all duration-700">
@@ -424,7 +476,7 @@ export default function CampaignLevelReport() {
                     </div>
                     <h3 className="text-xl font-bold text-foreground/80 mb-2 group-hover:text-primary transition-colors">Awaiting Filter Parameters</h3>
                     <p className="text-muted-foreground text-sm max-w-sm text-center leading-relaxed font-medium italic opacity-80 group-hover:opacity-100">
-                        Please define your criteria above to generate the campaign performance report. 
+                        Please define your criteria above to generate the campaign performance report.
                         Data will appear here instantly once filters are applied.
                     </p>
                     <div className="mt-8 flex gap-2">

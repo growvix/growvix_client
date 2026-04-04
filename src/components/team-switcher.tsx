@@ -13,7 +13,6 @@ import { useTheme } from "@/components/theme-provider"
 import lightLogo from "@/assets/logo/light.png"
 import darkLogo from "@/assets/logo/dark.png"
 import lightThemeFull from "@/assets/logo/light_theme_full.png"
-import darkThemeFull from "@/assets/logo/dark_theme_full.png"
 
 export function TeamSwitcher({
   teams,
@@ -38,7 +37,7 @@ export function TeamSwitcher({
 
   // Select the right images based on theme
   const smallLogo = isDark ? darkLogo : lightLogo
-  const fullLogo = isDark ? darkThemeFull : lightThemeFull
+  
 
   const isCollapsed = state === "collapsed"
 
@@ -72,12 +71,9 @@ export function TeamSwitcher({
                   className="size-8 object-contain"
                 />
               </div>
-              <div className="flex-1 flex items-center">
-                <img 
-                  src={fullLogo} 
-                  alt="Growvix" 
-                  className={`h-7 object-contain ${isDark ? "mix-blend-lighten" : ""}`}
-                />
+              <div className="flex-1 flex flex-col">
+                <p className="text-md font-semibold text-primary text-black dark:text-white">Growvix</p>
+                <p className="text-xs text-muted-foreground">CRM</p>
               </div>
             </>
           )}

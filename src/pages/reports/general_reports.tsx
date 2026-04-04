@@ -93,7 +93,7 @@ export default function ReportsTemplate() {
 
     return (
         <div className="relative flex flex-1 flex-col gap-8 px-6 py-8 max-w-[95%] mx-auto w-full overflow-hidden min-h-[90vh]">
-            
+
             {/* Decorative Background Elements */}
             <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] -z-10" />
             <div className="absolute bottom-[10%] left-[-5%] w-[300px] h-[300px] bg-blue-500/5 rounded-full blur-[80px] -z-10" />
@@ -108,7 +108,7 @@ export default function ReportsTemplate() {
                         Harness data-driven insights to optimize your sales funnel.
                     </p>
                 </div>
-                
+
                 <div className="relative w-full md:w-80 group">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                     <Input
@@ -127,12 +127,12 @@ export default function ReportsTemplate() {
                         <Card
                             key={index}
                             className={`group relative overflow-hidden flex flex-col cursor-pointer border-muted-foreground/10 bg-background/40 backdrop-blur-md transition-all duration-500 hover:shadow-2xl hover:shadow-${card.accentColor}-500/10 hover:-translate-y-2 ${card.hoverBorder} animate-in fade-in slide-in-from-bottom-4 duration-500`}
-                            style={{"--delay": `${index * 100}ms`} as React.CSSProperties}
+                            style={{ "--delay": `${index * 100}ms` } as React.CSSProperties}
                             onClick={() => navigate(card.path)}
                         >
                             {/* Animated background gradient */}
                             <div className={`absolute inset-0 bg-gradient-to-br ${card.hoverGradient} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
-                            
+
                             <CardHeader className="flex flex-col items-start gap-4 pb-4 z-10">
                                 <div className={`p-4 rounded-2xl ring-1 ring-inset ring-foreground/5 shadow-inner transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 ${card.bgClass} ${card.colorClass}`}>
                                     <Icon size={28} strokeWidth={2.5} />
@@ -146,7 +146,7 @@ export default function ReportsTemplate() {
                                     </CardDescription>
                                 </div>
                             </CardHeader>
-                            
+
                             <CardContent className="mt-auto pt-4 pb-6 flex items-center justify-between z-10">
                                 <div className="h-px flex-1 bg-muted-foreground/10 mr-4" />
                                 <div className={`flex items-center gap-1.5 font-bold text-xs uppercase tracking-widest ${card.colorClass} opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-4 transition-all duration-500`}>
@@ -160,7 +160,7 @@ export default function ReportsTemplate() {
                         </Card>
                     )
                 })}
-                
+
                 {filteredCards.length === 0 && (
                     <div className="col-span-full flex flex-col items-center justify-center p-20 text-center animate-in zoom-in-95 duration-500">
                         <div className="bg-muted/30 p-10 rounded-[3rem] shadow-inner mb-6 ring-2 ring-muted-foreground/5">

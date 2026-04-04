@@ -37,6 +37,7 @@ interface Unit {
     facing: string
     status: 'available' | 'booked' | 'sold'
     position: { row: number; col: number }
+    unitPlanImages?: string[]
     bookedBy?: {
         leadName: string;
         profileId?: number;
@@ -88,6 +89,9 @@ interface Project {
     layoutImages?: string[]
 }
 
+// View mode: what level of image to display
+type ViewMode = 'block' | 'floor' | 'unit'
+
 export default function ProjectShowcase() {
     const [searchParams] = useSearchParams()
     const location = useLocation()
@@ -102,7 +106,9 @@ export default function ProjectShowcase() {
     const [project, setProject] = useState<Project | null>(null)
     const [selectedBlock, setSelectedBlock] = useState<Block | null>(null)
     const [selectedFloor, setSelectedFloor] = useState<Floor | null>(null)
+    const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null)
     const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null)
+    const [viewMode, setViewMode] = useState<ViewMode>('block')
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
     const [isGalleryOpen, setIsGalleryOpen] = useState(false)
     const [userRole, setUserRole] = useState<string | null>(null)
@@ -113,8 +119,6 @@ export default function ProjectShowcase() {
         setUserRole(getCookie("role"))
     }, [])
 
-
-
     // Booking dialog state
     const [bookingOpen, setBookingOpen] = useState(false)
     const [bookingTarget, setBookingTarget] = useState<{
@@ -124,18 +128,33 @@ export default function ProjectShowcase() {
         label: string
     } | null>(null)
 
+    // Get current images based on view mode
+    const getCurrentImages = useCallback((): string[] => {
+        if (project?.property === 'plots') {
+            return project.layoutImages || []
+        }
+        switch (viewMode) {
+            case 'unit': {
+                const unitImages = selectedUnit?.unitPlanImages || []
+                if (unitImages.length > 0) return unitImages
+                // Fallback to floor images if no unit images
+                return selectedFloor?.floorChartImages || []
+            }
+            case 'floor':
+                return selectedFloor?.floorChartImages || []
+            case 'block':
+            default:
+                return selectedBlock?.floorPlanImages || []
+        }
+    }, [viewMode, selectedUnit, selectedFloor, selectedBlock, project])
+
+    const galleryImages = getCurrentImages()
+
     // Keyboard navigation for gallery
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!isGalleryOpen) return
-
-            let images: string[] = []
-            if (project?.property === 'plots') {
-                images = project.layoutImages || []
-            } else {
-                images = (selectedFloor?.floorChartImages?.length ? selectedFloor.floorChartImages : selectedBlock?.floorPlanImages) || []
-            }
-
+            const images = getCurrentImages()
             if (images.length === 0) return
 
             const imageCount = images.length
@@ -149,7 +168,7 @@ export default function ProjectShowcase() {
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [isGalleryOpen, selectedBlock?.floorPlanImages, selectedFloor?.floorChartImages, project?.layoutImages, project?.property])
+    }, [isGalleryOpen, getCurrentImages])
 
     const { setBreadcrumbs } = useBreadcrumb()
 
@@ -210,6 +229,8 @@ export default function ProjectShowcase() {
                         if (matchedUnit) {
                             setSelectedBlock(block)
                             setSelectedFloor(floor)
+                            setSelectedUnit(matchedUnit)
+                            setViewMode('unit')
                             found = true;
                             break;
                         }
@@ -218,6 +239,7 @@ export default function ProjectShowcase() {
                 }
             } else if (projectData.blocks && projectData.blocks.length > 0) {
                 setSelectedBlock(projectData.blocks[0])
+                setViewMode('block')
             }
         } catch (error) {
             console.error('Failed to fetch project:', error)
@@ -241,10 +263,27 @@ export default function ProjectShowcase() {
         fetchProject()
     }, [fetchProject])
 
-    // Handle block change - reset floor selection and update images
-    const handleBlockChange = (block: Block) => {
+    // Handle block click - show block images
+    const handleBlockClick = (block: Block) => {
         setSelectedBlock(block)
         setSelectedFloor(null)
+        setSelectedUnit(null)
+        setViewMode('block')
+        setCurrentImageIndex(0)
+    }
+
+    // Handle floor click - show floor images and unit numbers
+    const handleFloorClick = (floor: Floor) => {
+        setSelectedFloor(floor)
+        setSelectedUnit(null)
+        setViewMode('floor')
+        setCurrentImageIndex(0)
+    }
+
+    // Handle unit click - show unit images
+    const handleUnitClick = (unit: Unit) => {
+        setSelectedUnit(unit)
+        setViewMode('unit')
         setCurrentImageIndex(0)
     }
 
@@ -255,6 +294,47 @@ export default function ProjectShowcase() {
             case 'booked': return 'bg-yellow-500/20 text-yellow-600 border-yellow-500 hover:bg-yellow-500/30'
             case 'sold': return 'bg-red-500/20 text-red-600 border-red-500 hover:bg-red-500/30'
             default: return 'bg-gray-500/20 text-gray-600 border-gray-500'
+        }
+    }
+
+    // Get middle panel title based on view mode
+    const getMiddlePanelTitle = () => {
+        if (project?.property === 'plots') return 'Site Layout / Masters'
+        switch (viewMode) {
+            case 'unit':
+                return `${selectedBlock?.blockName || 'Unit'} ${selectedUnit?.unitNumber} - Details`
+            case 'floor':
+                return `${selectedBlock?.blockName ? `${selectedBlock.blockName} - ` : ''}${selectedFloor?.floorName || `Floor ${selectedFloor?.floorNumber}`} - Units`
+            case 'block':
+                return `${selectedBlock?.blockName || 'Select Block'} - Block Plan`
+            default:
+                return 'Select a Block'
+        }
+    }
+
+    // Get right panel title based on view mode
+    const getRightPanelTitle = () => {
+        if (project?.property === 'plots') return 'Plot Details'
+        if (selectedUnit) {
+            return `Unit ${selectedUnit.unitNumber} - Details`
+        }
+        if (selectedFloor) {
+            return `${selectedFloor.floorName || `Floor ${selectedFloor.floorNumber}`} - Units`
+        }
+        return 'Select a Floor'
+    }
+
+    // Get empty state message for middle panel
+    const getMiddlePanelEmptyMessage = () => {
+        switch (viewMode) {
+            case 'unit':
+                return { title: 'No unit images', subtitle: 'No images uploaded for this unit' }
+            case 'floor':
+                return { title: 'No floor plan images', subtitle: 'Upload floor chart images in project edit' }
+            case 'block':
+                return { title: 'No block plan images', subtitle: 'Upload block plan images in project edit' }
+            default:
+                return { title: 'No images', subtitle: 'Select a block or floor to view' }
         }
     }
 
@@ -273,11 +353,6 @@ export default function ProjectShowcase() {
             </div>
         )
     }
-
-    // Determine which images to show in gallery
-    const galleryImages = project.property === 'plots'
-        ? (project.layoutImages || [])
-        : ((selectedFloor?.floorChartImages?.length ? selectedFloor.floorChartImages : selectedBlock?.floorPlanImages) || [])
 
     const minSwipeDistance = 50
 
@@ -310,26 +385,10 @@ export default function ProjectShowcase() {
 
     return (
         <div className="p-3">
-            {/* Project Header */}
-            <Card className="mb-3 py-1">
-                <CardHeader className="">
-                    <div className="flex items-center justify-around">
-                        <div>
-                            <CardTitle className="text-xl">{project.name}</CardTitle>
-
-                        </div>
-                        <p className="text-sm text-muted-foreground">{project.location}</p>
-                        <div className="flex gap-2">
-                            <Badge variant="outline">{project.property}</Badge>
-                        </div>
-                    </div>
-                </CardHeader>
-            </Card>
-
             {/* Main Layout - 3 columns */}
             <div className="grid grid-cols-12 gap-3 h-[calc(100vh-180px)]">
 
-                {/* Left Panel: Blocks/Floors OR Plots List */}
+                {/* ====== LEFT PANEL: Blocks & Floors / Plots ====== */}
                 <Card className="col-span-4 flex flex-col overflow-hidden">
                     <CardHeader className="py-3 flex-shrink-0">
                         <CardTitle className="text-sm flex items-center gap-2">
@@ -384,10 +443,13 @@ export default function ProjectShowcase() {
                                                     : 'border-border'
                                                     }`}
                                             >
-                                                {/* Block Header */}
+                                                {/* Block Header - Click to show block image */}
                                                 <div
-                                                    className="p-3 cursor-pointer flex items-center justify-between"
-                                                    onClick={() => handleBlockChange(block)}
+                                                    className={`p-3 cursor-pointer flex items-center justify-between transition-colors ${selectedBlock?.blockId === block.blockId && viewMode === 'block'
+                                                            ? 'bg-primary/10'
+                                                            : 'hover:bg-muted/50'
+                                                        }`}
+                                                    onClick={() => handleBlockClick(block)}
                                                 >
                                                     <div className="flex items-center gap-2">
                                                         <Building2 className="h-5 w-5 text-primary" />
@@ -403,9 +465,9 @@ export default function ProjectShowcase() {
                                                             {[...block.floors].reverse().map((floor) => (
                                                                 <button
                                                                     key={floor.floorNumber}
-                                                                    onClick={() => setSelectedFloor(floor)}
+                                                                    onClick={() => handleFloorClick(floor)}
                                                                     className={`p-2 text-xs rounded border transition-all ${selectedFloor?.floorNumber === floor.floorNumber
-                                                                        ? 'bg-primary text-white border-primary dark:bg-primary dark:text-black dark:border-primary'
+                                                                        ? 'bg-black text-white border-black dark:bg-white dark:text-black dark:border-white'
                                                                         : 'bg-muted/50 hover:bg-muted border-border dark:bg-muted/50 dark:hover:bg-muted dark:border-border'
                                                                         }`}
                                                                 >
@@ -431,13 +493,13 @@ export default function ProjectShowcase() {
                     </CardContent>
                 </Card>
 
-                {/* Middle Panel: Layout / Floor Plan Images */}
+                {/* ====== MIDDLE PANEL: Floor Plan Images / Unit Numbers / Unit Details ====== */}
                 <Card className="col-span-4 flex flex-col overflow-hidden">
-                    <CardHeader className="py-3 flex-shrink-0">
+                    <CardHeader className="py-0 flex-shrink-0">
                         <CardTitle className="text-sm flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <ImageIcon className="h-4 w-4" />
-                                {project.property === 'plots' ? 'Site Layout / Masters' : `Floor Plan - ${selectedFloor ? selectedFloor.floorName : selectedBlock?.blockName || 'Select Block'}`}
+                                {getMiddlePanelTitle()}
                             </div>
                             {galleryImages.length > 0 && (
                                 <Button
@@ -450,84 +512,120 @@ export default function ProjectShowcase() {
                             )}
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="flex-1 p-2 flex items-center justify-center">
-                        {galleryImages.length > 0 ? (
-                            <div className="w-full h-full flex flex-col">
-                                <div 
-                                    className="flex-1 relative bg-muted/30 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer select-none"
-                                    onMouseDown={(e) => handleDragStart(e.clientX)}
-                                    onMouseMove={(e) => handleDragMove(e.clientX)}
-                                    onMouseUp={(e) => handleDragEnd(e.clientX)}
-                                    onMouseLeave={(e) => {
-                                        if (dragStart !== null) handleDragEnd(e.clientX)
-                                    }}
-                                    onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
-                                    onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
-                                    onTouchEnd={(e) => {
-                                        if (e.changedTouches.length > 0) {
-                                            handleDragEnd(e.changedTouches[0].clientX)
-                                        }
-                                    }}
-                                    onClick={() => {
-                                        if (!isDragging) setIsGalleryOpen(true)
-                                    }}
-                                >
-                                    <img
-                                        src={galleryImages[currentImageIndex]}
-                                        alt={`Layout Plan ${currentImageIndex + 1}`}
-                                        className="max-w-full max-h-full object-contain pointer-events-none"
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=Plan'
-                                        }}
-                                        draggable={false}
-                                    />
-                                </div>
-                                {galleryImages.length > 1 && (
-                                    <div className="flex items-center justify-center gap-2 mt-2">
-                                        <Button
-                                            size="icon"
-                                            variant="outline"
-                                            className="h-8 w-8"
-                                            onClick={() => setCurrentImageIndex(prev =>
-                                                prev === 0 ? galleryImages.length - 1 : prev - 1
-                                            )}
-                                        >
-                                            <ChevronLeft className="h-4 w-4" />
-                                        </Button>
-                                        <div className="flex gap-1">
-                                            {galleryImages.map((_, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => setCurrentImageIndex(idx)}
-                                                    className={`h-2 w-2 rounded-full transition-all ${idx === currentImageIndex ? 'bg-primary w-4' : 'bg-muted-foreground/30'
-                                                        }`}
-                                                />
-                                            ))}
-                                        </div>
-                                        <Button
-                                            size="icon"
-                                            variant="outline"
-                                            className="h-8 w-8"
-                                            onClick={() => setCurrentImageIndex(prev =>
-                                                prev === galleryImages.length - 1 ? 0 : prev + 1
-                                            )}
-                                        >
-                                            <ChevronRight className="h-4 w-4" />
-                                        </Button>
+                    <CardContent className="flex-1 px-2 pb-2 pt-0 overflow-hidden flex flex-col">
+                        {/* Horizontal Unit Number Selection (User's Mockup) */}
+                        {project.property !== 'plots' && selectedFloor && selectedFloor.units && (
+                            <div className="mb-1 shrink-0 border-b pb-1">
+                                <ScrollArea className="w-full" orientation="horizontal">
+                                    <div className="flex items-center gap-2 px-2">
+                                        {(selectedFloor.units as Unit[]).map((unit) => (
+                                            <button
+                                                key={unit.unitId}
+                                                onClick={() => {
+                                                    if (selectedUnit?.unitId === unit.unitId) {
+                                                        // Deselect if same unit clicked -> Return to floor view
+                                                        setSelectedUnit(null);
+                                                        setViewMode('floor');
+                                                        setCurrentImageIndex(0);
+                                                    } else {
+                                                        handleUnitClick(unit);
+                                                    }
+                                                }}
+                                                className={`text-md font-bold transition-all py-0 min-w-10 text-center ${selectedUnit?.unitId === unit.unitId
+                                                        ? 'text-foreground scale-105'
+                                                        : 'text-muted-foreground opacity-40 hover:opacity-100'
+                                                    }`}
+                                            >
+                                                {unit.unitNumber}
+                                            </button>
+                                        ))}
                                     </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="text-center text-muted-foreground">
-                                <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                                <p>{project.property === 'plots' ? 'No layout images' : 'No floor plan images'}</p>
-                                <p className="text-xs">{project.property === 'plots' ? 'Upload layout images in project edit' : (selectedFloor ? 'Upload floor chart images in block edit' : 'Select a block or floor to view')}</p>
+                                </ScrollArea>
                             </div>
                         )}
+
+                        {/* Image Gallery Area */}
+                        <div className="flex-1 overflow-hidden">
+                            {galleryImages.length > 0 ? (
+                                <div className="w-full h-full flex flex-col">
+                                    <div
+                                        className="flex-1 relative bg-muted/5 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer select-none"
+                                        onMouseDown={(e) => handleDragStart(e.clientX)}
+                                        onMouseMove={(e) => handleDragMove(e.clientX)}
+                                        onMouseUp={(e) => handleDragEnd(e.clientX)}
+                                        onMouseLeave={(e) => {
+                                            if (dragStart !== null) handleDragEnd(e.clientX)
+                                        }}
+                                        onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
+                                        onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
+                                        onTouchEnd={(e) => {
+                                            if (e.changedTouches.length > 0) {
+                                                handleDragEnd(e.changedTouches[0].clientX)
+                                            }
+                                        }}
+                                        onClick={() => {
+                                            if (!isDragging) setIsGalleryOpen(true)
+                                        }}
+                                    >
+                                        <img
+                                            src={galleryImages[currentImageIndex]}
+                                            alt={`Plan ${currentImageIndex + 1}`}
+                                            className="max-w-full max-h-full object-contain pointer-events-none transition-all duration-300"
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=Plan'
+                                            }}
+                                            draggable={false}
+                                        />
+                                    </div>
+                                    {galleryImages.length > 1 && (
+                                        <div className="flex items-center justify-center gap-2 mt-2">
+                                            <Button
+                                                size="icon"
+                                                variant="outline"
+                                                className="h-8 w-8"
+                                                onClick={() => setCurrentImageIndex(prev =>
+                                                    prev === 0 ? galleryImages.length - 1 : prev - 1
+                                                )}
+                                            >
+                                                <ChevronLeft className="h-4 w-4" />
+                                            </Button>
+                                            <div className="flex gap-1">
+                                                {galleryImages.map((_, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        onClick={() => setCurrentImageIndex(idx)}
+                                                        className={`h-2 w-2 rounded-full transition-all ${idx === currentImageIndex ? 'bg-primary w-4' : 'bg-muted-foreground/30'
+                                                            }`}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <Button
+                                                size="icon"
+                                                variant="outline"
+                                                className="h-8 w-8"
+                                                onClick={() => setCurrentImageIndex(prev =>
+                                                    prev === galleryImages.length - 1 ? 0 : prev + 1
+                                                )}
+                                            >
+                                                <ChevronRight className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-center text-muted-foreground">
+                                    <div className="opacity-50">
+                                        <ImageIcon className="h-12 w-12 mx-auto mb-2" />
+                                        <p>{getMiddlePanelEmptyMessage().title}</p>
+                                        <p className="text-xs">{getMiddlePanelEmptyMessage().subtitle}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
 
-                {/* Right Panel: Units/Plot Details */}
+                {/* ====== RIGHT PANEL: Old-style Unit Grid / Plot Details ====== */}
                 <Card className="col-span-4 flex flex-col overflow-hidden">
                     <CardHeader className="py-3 flex-shrink-0">
                         <CardTitle className="text-sm flex items-center gap-2">
@@ -539,27 +637,26 @@ export default function ProjectShowcase() {
                             ) : (
                                 <>
                                     <DoorOpen className="h-4 w-4" />
-                                    {selectedFloor ? `${selectedFloor.floorName} - Units` : 'Select a Floor'}
+                                    {selectedFloor ? `${selectedFloor.floorName || `Floor ${selectedFloor.floorNumber}`} - Units` : 'Select a Floor'}
                                 </>
                             )}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 p-2 overflow-hidden">
                         {project.property === 'plots' ? (
+                            /* ==== Plot Details ==== */
                             selectedPlot ? (
                                 <ScrollArea className="h-full pr-3">
                                     <div className="flex flex-col items-center p-6 text-center space-y-3">
                                         <div className={`p-4 rounded-full ${getStatusColor(selectedPlot.status).split(' ')[0]} bg-opacity-20`}>
                                             <Layers className={`h-12 w-12 ${getStatusColor(selectedPlot.status).split(' ')[1]}`} />
                                         </div>
-
                                         <div>
                                             <h3 className="text-3xl font-bold">Plot {selectedPlot.plotNumber}</h3>
                                             <Badge className="mt-2 text-lg px-4 py-1" variant={selectedPlot.status === 'available' ? 'default' : 'secondary'}>
                                                 {selectedPlot.status.toUpperCase()}
                                             </Badge>
                                         </div>
-
                                         <div className="grid grid-cols-2 gap-4 w-full mt-6 bg-muted/30 p-4 rounded-lg">
                                             <div className="text-left">
                                                 <p className="text-sm text-muted-foreground">Size</p>
@@ -570,50 +667,6 @@ export default function ProjectShowcase() {
                                                 <p className="font-semibold text-lg">{selectedPlot.facing || 'N/A'}</p>
                                             </div>
                                         </div>
-
-                                        {/* Booked By Info */}
-                                        {selectedPlot.bookedBy && (selectedPlot.status === 'booked' || selectedPlot.status === 'sold') && (
-                                            <div className="w-full mt-4 bg-muted/30 p-4 rounded-lg text-left space-y-3">
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <div className="h-2 w-2 rounded-full shrink-0 bg-emerald-500" />
-                                                        <span className="font-semibold text-[15px] text-foreground truncate">
-                                                            {`#${selectedPlot.bookedBy.profileId}`}
-                                                        </span>
-                                                    </div>
-                                                    <Badge className="bg-background hover:bg-muted text-foreground font-medium text-[10px] px-2 py-0.5 rounded-md shrink-0 border">
-                                                        {selectedPlot.status.charAt(0).toUpperCase() + selectedPlot.status.slice(1)}
-                                                    </Badge>
-                                                </div>
-
-                                                <div className="grid grid-cols-2 gap-y-2 gap-x-1 text-xs text-muted-foreground pl-4">
-                                                    {selectedPlot.bookedBy.bookedAt && (
-                                                        <div className="col-span-2 flex items-center gap-1.5 mt-1">
-                                                            <CalendarClock className="h-3.5 w-3.5 shrink-0" />
-                                                            <span className="truncate">{new Date(selectedPlot.bookedBy.bookedAt).toLocaleDateString()}</span>
-                                                        </div>
-                                                    )}
-                                                    {selectedPlot.bookedBy.userName && (
-                                                        <div className="col-span-2 flex items-center gap-1.5 text-emerald-600 dark:text-emerald-500 mt-1">
-                                                            <CalendarCheck className="h-3.5 w-3.5 shrink-0" />
-                                                            <span className="truncate">{selectedPlot.status.charAt(0).toUpperCase() + selectedPlot.status.slice(1)} by {selectedPlot.bookedBy.userName}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                               
-                                                    <div className="pl-2 pt-1">
-                                                        <a
-                                                            href={`/lead_detail/${selectedPlot.bookedBy.leadUuid || selectedPlot.bookedBy.profileId}`}
-                                                            className="inline-flex h-6 items-center text-[13px] font-medium gap-1 text-primary hover:text-primary/80 transition-colors p-0"
-                                                        >
-                                                            View Lead <ExternalLink className="h-3.5 w-3.5" />
-                                                        </a>
-                                                    </div>
-                                                
-
-                                            </div>
-                                        )}
                                         <div className="w-full pt-2">
                                             <Button
                                                 className="w-full"
@@ -626,8 +679,6 @@ export default function ProjectShowcase() {
                                                 {selectedPlot.status === 'available' ? 'Book Now' : 'Not Available'}
                                             </Button>
                                         </div>
-
-
                                     </div>
                                 </ScrollArea>
                             ) : (
@@ -635,19 +686,21 @@ export default function ProjectShowcase() {
                                     <div>
                                         <Layers className="h-12 w-12 mx-auto mb-2 opacity-50" />
                                         <p>Select a plot to view details</p>
-                                        <p className="text-xs mt-1">Click on a plot number in the left panel</p>
                                     </div>
                                 </div>
                             )
                         ) : (
+                            /* ==== Old-style Unit Grid (Green Boxes) ==== */
                             selectedFloor && selectedFloor.units && selectedFloor.units.length > 0 ? (
                                 <ScrollArea className="h-full pr-3">
                                     <div className="grid grid-cols-4 gap-2">
-                                        {selectedFloor.units.map((unit) => (
+                                        {(selectedFloor.units as Unit[]).map((unit) => (
                                             <div
                                                 key={unit.unitId}
-                                                className={`p-3 rounded-lg border-2 transition-all hover:shadow-md ${getStatusColor(unit.status)} ${unit.status === 'available' ? 'cursor-pointer' : ''}`}
+                                                className={`p-3 rounded-lg border-2 transition-all hover:shadow-md cursor-pointer ${getStatusColor(unit.status)} ${selectedUnit?.unitId === unit.unitId ? 'ring-2 ring-primary ring-offset-1' : ''
+                                                    }`}
                                                 onClick={() => {
+                                                    handleUnitClick(unit); // Show details in center panel
                                                     if (unit.status === 'available' && selectedBlock) {
                                                         handleOpenBooking({
                                                             unitId: unit.unitId,
@@ -656,26 +709,15 @@ export default function ProjectShowcase() {
                                                         })
                                                     }
                                                 }}
-                                                title={unit.status === 'available' ? `Click to book Unit ${unit.unitNumber}` : `Unit ${unit.unitNumber} - ${unit.status}`}
+                                                title={`Unit ${unit.unitNumber} - ${unit.status}`}
                                             >
                                                 <div className="text-center">
                                                     <div className="font-bold text-lg">{unit.unitNumber}</div>
-                                                    <div className="text-xs">{unit.bhk} BHK</div>
-                                                    <div className="text-xs opacity-70">{unit.size} sqft</div>
-                                                    <div className="text-xs opacity-70">{unit.facing}</div>
+                                                    <div className="text-[10px] mt-0.5 opacity-80">{unit.bhk} BHK</div>
+                                                    <div className="text-[9px] opacity-70 truncate">{unit.size} sqft</div>
                                                     {unit.bookedBy && (unit.status === 'booked' || unit.status === 'sold') && (
-                                                        <div
-                                                            className={`text-xs mt-1 pt-1 border-t border-current/20 opacity-80 truncate flex justify-center items-center cursor-pointer hover:underline`}
-                                                            title={`#${unit.bookedBy.profileId}`}
-                                                            onClick={(e) => {
-                                                                if (unit.bookedBy?.leadUuid || unit.bookedBy?.profileId) {
-                                                                    e.stopPropagation();
-                                                                    window.location.href = `/lead_detail/${unit.bookedBy.leadUuid || unit.bookedBy.profileId}`;
-                                                                }
-                                                            }}
-                                                        >
-                                                            <User className="h-3 w-3 inline mr-0.5" />
-                                                            {`#${unit.bookedBy.profileId || 'Lead'}`}
+                                                        <div className="mt-1 pt-1 border-t border-current/20 opacity-80">
+                                                            <User className="h-2.5 w-2.5 mx-auto" />
                                                         </div>
                                                     )}
                                                 </div>
@@ -688,7 +730,6 @@ export default function ProjectShowcase() {
                                     <div>
                                         <DoorOpen className="h-12 w-12 mx-auto mb-2 opacity-50" />
                                         <p>Select a floor to view units</p>
-                                        <p className="text-xs mt-1">Click on a floor button (F1, F2...) in the left panel</p>
                                     </div>
                                 </div>
                             )
