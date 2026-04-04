@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { compressImage, compressImages } from '@/utils/imageCompression'
 import axios from 'axios'
 import { API } from '@/config/api'
 import { toast } from 'sonner'
@@ -373,10 +374,10 @@ export default function EditProject() {
         if (!files || files.length === 0) return
 
         const fileArray = Array.from(files)
-        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']
+        const allowedTypes = ['image/svg+xml']
         const invalidFile = fileArray.find(f => !allowedTypes.includes(f.type))
         if (invalidFile) {
-            toast.error('Only PNG, JPG, SVG, and WebP images are allowed')
+            toast.error('Only SVG images are allowed for unit plans')
             return
         }
 
@@ -391,8 +392,9 @@ export default function EditProject() {
         }
 
         setUnitImageUploading(unitId)
+        const compressedFiles = await compressImages(fileArray, { quality: 0.7, maxWidth: 1600 })
         const formDataUpload = new FormData()
-        fileArray.forEach(file => formDataUpload.append('images', file))
+        compressedFiles.forEach(file => formDataUpload.append('images', file))
 
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
@@ -456,14 +458,15 @@ export default function EditProject() {
     const handleImageUpload = async (blockId: string, files: FileList | null) => {
         if (!files || files.length === 0) return
         const fileArray = Array.from(files)
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
+        const allowedTypes = ['image/svg+xml']
         const invalidFile = fileArray.find(file => !allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith(".svg"))
-        if (invalidFile) { toast.error("Only image files are allowed (JPEG, PNG, GIF, WebP, SVG)"); return }
+        if (invalidFile) { toast.error("Only SVG files are allowed for block floor plans"); return }
         const block = formData.blocks.find(b => b.blockId === blockId)
         const currentCount = block?.floorPlanImages?.length || 0
         if (currentCount + fileArray.length > 5) { toast.error('Maximum 5 images allowed per block'); return }
+        const compressedFiles = await compressImages(fileArray, { quality: 0.7, maxWidth: 1920 })
         const formDataUpload = new FormData()
-        fileArray.forEach(file => formDataUpload.append('images', file))
+        compressedFiles.forEach(file => formDataUpload.append('images', file))
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, { headers: { 'Content-Type': 'multipart/form-data' } })
             const newUrls = response.data.data.urls
@@ -476,8 +479,9 @@ export default function EditProject() {
         if (!files || files.length === 0) return
         const currentCount = formData.layoutImages?.length || 0
         if (currentCount + files.length > 5) { toast.error('Maximum 5 layout images allowed'); return }
+        const compressedFiles = await compressImages(Array.from(files), { quality: 0.7, maxWidth: 1920 })
         const formDataUpload = new FormData()
-        Array.from(files).forEach(file => formDataUpload.append('images', file))
+        compressedFiles.forEach(file => formDataUpload.append('images', file))
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, { headers: { 'Content-Type': 'multipart/form-data' } })
             const newUrls = response.data.data.urls
@@ -513,8 +517,9 @@ export default function EditProject() {
             }
         }
 
+        const compressedFile = await compressImage(file, { quality: 0.8, maxWidth: 1200 })
         const formDataUpload = new FormData()
-        formDataUpload.append('images', file)
+        formDataUpload.append('images', compressedFile)
 
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
@@ -540,16 +545,17 @@ export default function EditProject() {
     const handleFloorChartImageUpload = async (blockId: string, floorNumber: number, files: FileList | null) => {
         if (!files || files.length === 0) return
         const fileArray = Array.from(files)
-        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']
+        const allowedTypes = ['image/svg+xml']
         const invalidFile = fileArray.find(f => !allowedTypes.includes(f.type))
-        if (invalidFile) { toast.error('Only PNG, JPG, SVG, and WebP images are allowed'); return }
+        if (invalidFile) { toast.error('Only SVG images are allowed for floor charts'); return }
         const block = formData.blocks.find(b => b.blockId === blockId)
         const floor = block?.floors.find(f => f.floorNumber === floorNumber)
         const currentCount = floor?.floorChartImages?.length || 0
         if (currentCount + fileArray.length > 5) { toast.error(`Maximum 5 images allowed. You can add ${5 - currentCount} more.`); return }
         setFloorImageUploading(true)
+        const compressedFiles = await compressImages(fileArray, { quality: 0.7, maxWidth: 1920 })
         const formDataUpload = new FormData()
-        fileArray.forEach(file => formDataUpload.append('images', file))
+        compressedFiles.forEach(file => formDataUpload.append('images', file))
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, { headers: { 'Content-Type': 'multipart/form-data' } })
             const newUrls = response.data.data.urls
@@ -718,7 +724,7 @@ export default function EditProject() {
                                                                         <div className="space-y-2"><Label>Block Name</Label><Input value={block.blockName} onChange={e => updateBlock(block.blockId, 'blockName', e.target.value)} placeholder="e.g., Block A, Tower 1" className="bg-background dark:bg-[#09090b]" /></div>
                                                                         <div className="space-y-2 col-span-2">
                                                                             <Label>Floor Plan Images (Max 5)</Label>
-                                                                            <div className="flex gap-2"><Input type="file" accept="image/*" multiple onChange={e => handleImageUpload(block.blockId, e.target.files)} className="flex-1 bg-background dark:bg-[#09090b]" /></div>
+                                                                            <div className="flex gap-2"><Input type="file" accept=".svg" multiple onChange={e => handleImageUpload(block.blockId, e.target.files)} className="flex-1 bg-background dark:bg-[#09090b]" /></div>
                                                                             {block.floorPlanImages.length > 0 && (
                                                                                 <ScrollArea className="h-20 mt-2">
                                                                                     <div className="flex gap-2">
@@ -941,7 +947,7 @@ export default function EditProject() {
                                                         </div>
                                                         <div>
                                                             <p className="text-sm font-medium">{(floor.floorChartImages || []).length === 0 ? 'Upload Floor Chart Images' : 'Add More Images'}</p>
-                                                            <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG, SVG, or WebP (max 5)</p>
+                                                            <p className="text-xs text-muted-foreground mt-0.5">SVG only (max 5)</p>
                                                         </div>
                                                         {floorImageUploading && (
                                                             <div className="flex items-center gap-2 text-xs text-primary">
@@ -952,9 +958,9 @@ export default function EditProject() {
                                                     </div>
                                                 </div>
                                             )}
-                                            <input ref={floorImageInputRef} type="file" accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp" multiple className="hidden" onChange={(e) => { handleFloorChartImageUpload(editingFloor.blockId, editingFloor.floorNumber, e.target.files); e.target.value = '' }} />
+                                            <input ref={floorImageInputRef} type="file" accept=".svg" multiple className="hidden" onChange={(e) => { handleFloorChartImageUpload(editingFloor.blockId, editingFloor.floorNumber, e.target.files); e.target.value = '' }} />
                                         </div>
-                                        <div className="border rounded-lg p-4 bg-gradient-to-br from-primary/5 to-primary/10">
+                                        <div className="border rounded-lg p-4 bg-linear-to-br from-primary/5 to-primary/10">
                                             <h5 className="text-sm font-semibold mb-2">Floor Summary</h5>
                                             <div className="space-y-1.5 text-sm">
                                                 <div className="flex justify-between"><span className="text-muted-foreground">Total Units</span><span className="font-medium">{floor.units.length}</span></div>
@@ -1112,7 +1118,7 @@ export default function EditProject() {
                                                                                 <input
                                                                                     id={`unit-img-${unit.unitId}`}
                                                                                     type="file"
-                                                                                    accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+                                                                                    accept=".svg"
                                                                                     multiple
                                                                                     className="hidden"
                                                                                     onChange={(e) => {
@@ -1182,7 +1188,7 @@ export default function EditProject() {
             {/* Image Lightbox Overlay (Task 2: Using Dialog for proper portaling to prevent Drawer closing) */}
             <Dialog open={lightboxImageIndex !== null} onOpenChange={(open) => !open && setLightboxImageIndex(null)}>
                 <DialogContent 
-                    className="max-w-none sm:max-w-none w-screen h-screen bg-black/95 border-none p-0 flex flex-col items-center justify-center rounded-none z-[99999] shadow-none outline-none" 
+                    className="max-w-none sm:max-w-none w-screen h-screen bg-black/95 border-none p-0 flex flex-col items-center justify-center rounded-none z-99999 shadow-none outline-none" 
                     showCloseButton={false}
                     onKeyDown={(e) => {
                         if (!editingFloor) return;
@@ -1206,7 +1212,7 @@ export default function EditProject() {
                             <div className="relative w-full h-full flex flex-col items-center justify-center p-4 md:p-8" onClick={() => setLightboxImageIndex(null)}>
                                 {/* Close Button */}
                                 <button
-                                    className="absolute top-6 right-6 z-[100] h-11 w-11 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group"
+                                    className="absolute top-6 right-6 z-100 h-11 w-11 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group"
                                     onClick={(e) => { e.stopPropagation(); setLightboxImageIndex(null); }}
                                 >
                                     <X className="h-6 w-6 text-white group-hover:scale-110 transition-transform" />
@@ -1215,7 +1221,7 @@ export default function EditProject() {
                                 {/* Previous Arrow (Task 1: Navigation Fixed) */}
                                 {currentIndex > 0 && (
                                     <button
-                                        className="absolute left-6 top-1/2 -translate-y-1/2 z-[100] h-14 w-14 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group shadow-2xl"
+                                        className="absolute left-6 top-1/2 -translate-y-1/2 z-100 h-14 w-14 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group shadow-2xl"
                                         onClick={(e) => { e.stopPropagation(); setLightboxImageIndex(currentIndex - 1); }}
                                     >
                                         <ChevronLeft className="h-8 w-8 text-white group-hover:-translate-x-1 transition-transform" />
@@ -1225,7 +1231,7 @@ export default function EditProject() {
                                 {/* Next Arrow (Task 1: Navigation Fixed) */}
                                 {currentIndex < images.length - 1 && (
                                     <button
-                                        className="absolute right-6 top-1/2 -translate-y-1/2 z-[100] h-14 w-14 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group shadow-2xl"
+                                        className="absolute right-6 top-1/2 -translate-y-1/2 z-100 h-14 w-14 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group shadow-2xl"
                                         onClick={(e) => { e.stopPropagation(); setLightboxImageIndex(currentIndex + 1); }}
                                     >
                                         <ChevronRight className="h-8 w-8 text-white group-hover:translate-x-1 transition-transform" />

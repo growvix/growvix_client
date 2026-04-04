@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { useSearchParams, useLocation } from "react-router-dom"
 import axios from "axios"
-import { API } from "@/config/api"
+import { API, API_URL } from "@/config/api"
 import { getCookie } from "@/utils/cookies"
 import { decodeProjectId } from "@/utils/idEncoder"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import LoaderScreen from "@/components/ui/loader-screen"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Building2, DoorOpen, ImageIcon, X, Maximize2, ChevronLeft, ChevronRight, Layers, Info, User, CalendarClock, CalendarCheck, ExternalLink } from "lucide-react"
+import { Building2, DoorOpen, ImageIcon, X, Maximize2, ChevronLeft, ChevronRight, Layers, Info, User, CalendarClock, CalendarCheck, ExternalLink, Download } from "lucide-react"
 import { BookingDialog } from "@/components/booking-dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
@@ -25,6 +25,16 @@ import {
     DialogContent,
     DialogTitle,
 } from "@/components/ui/dialog"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 // Types
 interface Unit {
@@ -84,6 +94,13 @@ interface Project {
     name: string
     property: string
     location: string
+    img_location?: {
+        logo: string
+        banner: string
+        brochure: string
+        post: string
+        videos: string
+    }
     blocks: Block[]
     plots?: Plot[]
     layoutImages?: string[]
@@ -114,6 +131,7 @@ export default function ProjectShowcase() {
     const [userRole, setUserRole] = useState<string | null>(null)
     const [dragStart, setDragStart] = useState<number | null>(null)
     const [isDragging, setIsDragging] = useState(false)
+    const [brochureConfirmOpen, setBrochureConfirmOpen] = useState(false)
 
     useEffect(() => {
         setUserRole(getCookie("role"))
@@ -126,6 +144,7 @@ export default function ProjectShowcase() {
         plotId?: string
         blockId?: string
         label: string
+        bookedBy?: Unit['bookedBy']
     } | null>(null)
 
     // Get current images based on view mode
@@ -210,50 +229,77 @@ export default function ProjectShowcase() {
         const organization = getCookie('organization')
         try {
             const response = await axios.get(API.getProject(decodedId), {
-                params: { organization }
+                params: { organization, t: Date.now() }
             })
             const projectData = response.data.data
+            // Update selected block/floor/unit/plot from incoming data if already selected
             setProject(projectData)
 
-            // Auto-select based on URL parameters or default to first block
-            if (urlPlotId && projectData.property === 'plots' && projectData.plots) {
-                const matchedPlot = projectData.plots.find((p: Plot) => p.plotId === urlPlotId)
-                if (matchedPlot) {
-                    setSelectedPlot(matchedPlot)
+            if (projectData.property === 'plots') {
+                // Keep selected plot updated if one was already selected
+                if (urlPlotId) {
+                    const matchedPlot = projectData.plots?.find((p: Plot) => p.plotId === urlPlotId)
+                    if (matchedPlot) setSelectedPlot(matchedPlot)
+                } else if (selectedPlot) {
+                    const matchedPlot = projectData.plots?.find((p: Plot) => p.plotId === selectedPlot.plotId)
+                    if (matchedPlot) setSelectedPlot(matchedPlot)
                 }
-            } else if (urlUnitId && projectData.property !== 'plots' && projectData.blocks) {
-                let found = false;
-                for (const block of projectData.blocks) {
-                    for (const floor of (block.floors || [])) {
-                        const matchedUnit = floor.units?.find((u: Unit) => u.unitId === urlUnitId)
-                        if (matchedUnit) {
-                            setSelectedBlock(block)
-                            setSelectedFloor(floor)
-                            setSelectedUnit(matchedUnit)
-                            setViewMode('unit')
-                            found = true;
-                            break;
+            } else {
+                // Apartments/Villas - Keep block/floor/unit updated
+                if (urlUnitId) {
+                    let found = false;
+                    for (const block of projectData.blocks || []) {
+                        for (const floor of (block.floors || [])) {
+                            const matchedUnit = floor.units?.find((u: Unit) => u.unitId === urlUnitId)
+                            if (matchedUnit) {
+                                setSelectedBlock(block)
+                                setSelectedFloor(floor)
+                                setSelectedUnit(matchedUnit)
+                                setViewMode('unit')
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found) break;
+                    }
+                } else if (selectedBlock) {
+                    // Refresh current selection from new data
+                    const newBlock = projectData.blocks?.find((b: Block) => b.blockId === selectedBlock.blockId)
+                    if (newBlock) {
+                        setSelectedBlock(newBlock)
+                        if (selectedFloor) {
+                            const newFloor = newBlock.floors?.find((f: Floor) => f.floorNumber === selectedFloor.floorNumber)
+                            if (newFloor) {
+                                setSelectedFloor(newFloor)
+                                if (selectedUnit) {
+                                    const newUnit = newFloor.units?.find((u: Unit) => u.unitId === selectedUnit.unitId)
+                                    if (newUnit) setSelectedUnit(newUnit)
+                                }
+                            }
                         }
                     }
-                    if (found) break;
+                } else if (projectData.blocks && projectData.blocks.length > 0) {
+                    // Initial load - select first block
+                    setSelectedBlock(projectData.blocks[0])
+                    if (projectData.blocks[0].floors?.length > 0) {
+                        setSelectedFloor(projectData.blocks[0].floors[0])
+                    }
+                    setViewMode('block')
                 }
-            } else if (projectData.blocks && projectData.blocks.length > 0) {
-                setSelectedBlock(projectData.blocks[0])
-                setViewMode('block')
             }
         } catch (error) {
             console.error('Failed to fetch project:', error)
         } finally {
             setLoading(false)
         }
-    }, [projectId])
+    }, [projectId, selectedBlock?.blockId, selectedFloor?.floorNumber, selectedUnit?.unitId, selectedPlot?.plotId, urlPlotId, urlUnitId])
 
     useEffect(() => {
         fetchProject()
     }, [fetchProject])
 
     // Handle booking dialog open
-    const handleOpenBooking = useCallback((target: { unitId?: string; plotId?: string; blockId?: string; label: string }) => {
+    const handleOpenBooking = useCallback((target: { unitId?: string; plotId?: string; blockId?: string; label: string, bookedBy?: Unit['bookedBy'] }) => {
         setBookingTarget(target)
         setBookingOpen(true)
     }, [])
@@ -391,17 +437,30 @@ export default function ProjectShowcase() {
                 {/* ====== LEFT PANEL: Blocks & Floors / Plots ====== */}
                 <Card className="col-span-4 flex flex-col overflow-hidden">
                     <CardHeader className="py-3 flex-shrink-0">
-                        <CardTitle className="text-sm flex items-center gap-2">
-                            {project.property === 'plots' ? (
-                                <>
-                                    <Layers className="h-4 w-4" />
-                                    All Plots ({project.plots?.length || 0})
-                                </>
-                            ) : (
-                                <>
-                                    <Building2 className="h-4 w-4" />
-                                    Blocks & Floors
-                                </>
+                        <CardTitle className="text-sm flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                {project.property === 'plots' ? (
+                                    <>
+                                        <Layers className="h-4 w-4" />
+                                        All Plots ({project.plots?.length || 0})
+                                    </>
+                                ) : (
+                                    <>
+                                        <Building2 className="h-4 w-4" />
+                                        Blocks & Floors
+                                    </>
+                                )}
+                            </div>
+                            {project.img_location?.brochure && (
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-7 text-[10px] gap-1 px-2"
+                                    onClick={() => setBrochureConfirmOpen(true)}
+                                >
+                                    <Download className="h-3 w-3" />
+                                    Brochure
+                                </Button>
                             )}
                         </CardTitle>
                     </CardHeader>
@@ -529,6 +588,14 @@ export default function ProjectShowcase() {
                                                         setCurrentImageIndex(0);
                                                     } else {
                                                         handleUnitClick(unit);
+                                                        if ((unit.status === 'available' || unit.status === 'booked') && selectedBlock) {
+                                                            handleOpenBooking({
+                                                                unitId: unit.unitId,
+                                                                blockId: selectedBlock.blockId,
+                                                                label: `Unit ${unit.unitNumber} (${selectedBlock.blockName})`,
+                                                                bookedBy: unit.status === 'booked' ? unit.bookedBy : undefined
+                                                            })
+                                                        }
                                                     }
                                                 }}
                                                 className={`text-md font-bold transition-all py-0 min-w-10 text-center ${selectedUnit?.unitId === unit.unitId
@@ -670,13 +737,14 @@ export default function ProjectShowcase() {
                                         <div className="w-full pt-2">
                                             <Button
                                                 className="w-full"
-                                                disabled={selectedPlot.status !== 'available'}
+                                                disabled={selectedPlot.status === 'sold'}
                                                 onClick={() => handleOpenBooking({
                                                     plotId: selectedPlot.plotId,
                                                     label: `Plot ${selectedPlot.plotNumber}`,
+                                                    bookedBy: selectedPlot.status === 'booked' ? selectedPlot.bookedBy : undefined
                                                 })}
                                             >
-                                                {selectedPlot.status === 'available' ? 'Book Now' : 'Not Available'}
+                                                {selectedPlot.status === 'available' ? 'Book Now' : selectedPlot.status === 'booked' ? 'View/Reverse Booking' : 'Not Available'}
                                             </Button>
                                         </div>
                                     </div>
@@ -701,11 +769,12 @@ export default function ProjectShowcase() {
                                                     }`}
                                                 onClick={() => {
                                                     handleUnitClick(unit); // Show details in center panel
-                                                    if (unit.status === 'available' && selectedBlock) {
+                                                    if ((unit.status === 'available' || unit.status === 'booked') && selectedBlock) {
                                                         handleOpenBooking({
                                                             unitId: unit.unitId,
                                                             blockId: selectedBlock.blockId,
                                                             label: `Unit ${unit.unitNumber} (${selectedBlock.blockName})`,
+                                                            bookedBy: unit.status === 'booked' ? unit.bookedBy : undefined
                                                         })
                                                     }
                                                 }}
@@ -834,14 +903,45 @@ export default function ProjectShowcase() {
                     open={bookingOpen}
                     onOpenChange={setBookingOpen}
                     projectId={project.product_id}
-                    unitId={bookingTarget.unitId}
-                    plotId={bookingTarget.plotId}
-                    blockId={bookingTarget.blockId}
-                    unitLabel={bookingTarget.label}
+                    unitId={bookingTarget?.unitId}
+                    plotId={bookingTarget?.plotId}
+                    blockId={bookingTarget?.blockId}
+                    unitLabel={bookingTarget?.label || ""}
+                    bookedBy={bookingTarget?.bookedBy}
                     prefilledLead={bookingLead}
                     onBookingComplete={handleBookingComplete}
                 />
             )}
+
+            {/* Brochure Download Confirmation */}
+            <AlertDialog open={brochureConfirmOpen} onOpenChange={setBrochureConfirmOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Download</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to download the project brochure for {project.name}? This will download the file to your device.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => {
+                            if (project.img_location?.brochure) {
+                                const url = project.img_location.brochure;
+                                const fullUrl = url.startsWith('http') ? url : `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+                                const a = document.createElement('a');
+                                a.href = fullUrl;
+                                a.download = url.split('/').pop() || `${project.name.replace(/\s+/g, '_')}_Brochure`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                            }
+                            setBrochureConfirmOpen(false);
+                        }}>
+                            Confirm
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

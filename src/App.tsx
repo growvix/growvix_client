@@ -41,13 +41,20 @@ import CpLayout from "./pages/cp/cp_layout";
 import CpDashboard from "./pages/cp/cp_dashboard";
 import CpProjectShowcase from "./pages/cp/cp_project_showcase";
 import EditProject from "./pages/inventory/edit_project";
+import CpBulkUpload from "./pages/cp/cp_bulkupload";
+import LeadCapture from "./pages/tools/leadcapture";
+import LeadCaptureForm from "./pages/tools/leadcaptureform";
+import CpLeadEntry from "./pages/cp/cp_lead_entry";
 import UpdatesPage from "./pages/updates";
+import AttendanceManagement from "./pages/setting/attendance_management";
+import AvailabilityChart from "./pages/setting/availability_chart";
 
 import Mail from "./pages/setting/mail";
 import MailTemplatesListing from "./pages/setting/mail_templates/mail_listing";
 import CreateTemplate from "./pages/setting/mail_templates/create_template";
 import Automation from "./pages/tools/automation";
 import Campaigns from "./pages/tools/campaigns";
+import CreateCampaign from "./pages/tools/create_campaign";
 import ThirdPartyIntegration from "./pages/tools/third_party_integration";
 import TrackSourceSubsource from "./pages/tools/track_source_subsource";
 
@@ -92,6 +99,9 @@ export default function App() {
           <Route element={<ProtectedRoute allowedRoles={['cp', 'channel_partner', 'cp_user']}><CpLayout /></ProtectedRoute>}>
             <Route path="/cp/dashboard" element={<CpDashboard />} />
             <Route path="/cp/project" element={<CpProjectShowcase />} />
+            <Route path="/cp/bulk_upload" element={<CpBulkUpload />} />
+            <Route path="/cp/lead-entry" element={<CpLeadEntry />} />
+            <Route path="/cp/lead/:id" element={<LeadDetail />} />
           </Route>
           <Route element={<ProtectedRoute blockCpFromApp><SidebarLayout /></ProtectedRoute>}>
             <Route path="/" element={<RoleBasedRedirect />} />
@@ -112,7 +122,12 @@ export default function App() {
             <Route path="/edit_project/:id" element={<EditProject />} />
             <Route path="tools/automation" element={<Automation />} />
             <Route path="automation/campaigns" element={<Campaigns />} />
+            <Route path="automation/campaigns/create" element={<CreateCampaign />} />
+            <Route path="automation/campaigns/edit/:id" element={<CreateCampaign />} />
             <Route path="automation/track_source_subsource" element={<TrackSourceSubsource />} />
+            <Route path="automation/leadcapture" element={<LeadCapture />} />
+            <Route path="automation/leadcapture/leadcaptureform" element={<LeadCaptureForm />} />
+            <Route path="automation/leadcapture/entry" element={<CpLeadEntry />} />
             <Route path="/settings" element={<GeneralSetting />} />
             <Route path="/setting/user_management" element={<UserManagement />} />
             <Route path="/setting/lead_stage_setting" element={<LeadStageSetting />} />
@@ -142,6 +157,8 @@ export default function App() {
             <Route path="/tools/third_party_integration/google_ads" element={<GoogleAdsIntegrationList />} />
             <Route path="/tools/third_party_integration/google_ads/test/:id" element={<GoogleAdsIntegrationTest />} />
             <Route path="/updates" element={<UpdatesPage />} />
+            <Route path="/setting/attendance" element={<AttendanceManagement />} />
+            <Route path="/setting/availability" element={<AvailabilityChart />} />
 
           </Route>
         </Routes>

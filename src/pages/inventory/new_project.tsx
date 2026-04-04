@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import LoaderScreen from '@/components/ui/loader-screen'
 import { useNavigate } from 'react-router-dom'
+import { compressImage, compressImages } from '@/utils/imageCompression'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -435,10 +436,10 @@ export default function NewProject() {
 
         const fileArray = Array.from(files)
         // Allow common image formats
-        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']
+        const allowedTypes = ['image/svg+xml']
         const invalidFile = fileArray.find(f => !allowedTypes.includes(f.type))
         if (invalidFile) {
-            toast.error('Only PNG, JPG, SVG, and WebP images are allowed')
+            toast.error('Only SVG images are allowed for floor charts')
             return
         }
 
@@ -452,8 +453,9 @@ export default function NewProject() {
         }
 
         setFloorImageUploading(true)
+        const compressedFiles = await compressImages(fileArray, { quality: 0.7, maxWidth: 1920 })
         const formDataUpload = new FormData()
-        fileArray.forEach(file => formDataUpload.append('images', file))
+        compressedFiles.forEach(file => formDataUpload.append('images', file))
 
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
@@ -529,10 +531,10 @@ export default function NewProject() {
         if (!files || files.length === 0) return
 
         const fileArray = Array.from(files)
-        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']
+        const allowedTypes = ['image/svg+xml']
         const invalidFile = fileArray.find(f => !allowedTypes.includes(f.type))
         if (invalidFile) {
-            toast.error('Only PNG, JPG, SVG, and WebP images are allowed')
+            toast.error('Only SVG images are allowed for unit plans')
             return
         }
 
@@ -547,8 +549,9 @@ export default function NewProject() {
         }
 
         setUnitImageUploading(unitId)
+        const compressedFiles = await compressImages(fileArray, { quality: 0.7, maxWidth: 1600 })
         const formDataUpload = new FormData()
-        fileArray.forEach(file => formDataUpload.append('images', file))
+        compressedFiles.forEach(file => formDataUpload.append('images', file))
 
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
@@ -649,13 +652,12 @@ export default function NewProject() {
         const fileArray = Array.from(files)
 
         // Allow common image formats
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
+        const allowedTypes = ['image/svg+xml']
         const invalidFile = fileArray.find(
             file => !allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith(".svg")
         )
-
         if (invalidFile) {
-            toast.error("Only image files are allowed (JPEG, PNG, GIF, WebP, SVG)")
+            toast.error("Only SVG files are allowed for block floor plans")
             return
         }
 
@@ -667,8 +669,9 @@ export default function NewProject() {
             return
         }
 
+        const compressedFiles = await compressImages(fileArray, { quality: 0.7, maxWidth: 1920 })
         const formDataUpload = new FormData()
-        fileArray.forEach(file => {
+        compressedFiles.forEach(file => {
             formDataUpload.append('images', file)
         })
 
@@ -702,8 +705,9 @@ export default function NewProject() {
             return
         }
 
+        const compressedFiles = await compressImages(Array.from(files), { quality: 0.7, maxWidth: 1920 })
         const formDataUpload = new FormData()
-        Array.from(files).forEach(file => {
+        compressedFiles.forEach(file => {
             formDataUpload.append('images', file)
         })
 
@@ -759,8 +763,9 @@ export default function NewProject() {
             }
         }
 
+        const compressedFile = await compressImage(file, { quality: 0.8, maxWidth: 1200 })
         const formDataUpload = new FormData()
-        formDataUpload.append('images', file)
+        formDataUpload.append('images', compressedFile)
 
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
@@ -1093,7 +1098,7 @@ export default function NewProject() {
                                                                             <div className="flex gap-2">
                                                                                 <Input
                                                                                     type="file"
-                                                                                    accept="image/*"
+                                                                                    accept=".svg"
                                                                                     multiple
                                                                                     onChange={e => handleImageUpload(block.blockId, e.target.files)}
                                                                                     className="flex-1  text-xs bg-background dark:bg-[#09090b]"
@@ -1151,7 +1156,7 @@ export default function NewProject() {
                                                                                 <Label className="text-xs">Number of Floors</Label>
                                                                                 <Input
                                                                                     type="number"
-                                                                                    className='bg-background/100 dark:bg-background/100'
+                                                                                    className="text-xs bg-background dark:bg-background"
                                                                                     min="1"
                                                                                     max="100"
                                                                                     value={getBlockConfig(block.blockId).floors}
@@ -1164,7 +1169,7 @@ export default function NewProject() {
                                                                                     value={getBlockConfig(block.blockId).pattern}
                                                                                     onValueChange={v => updateBlockConfig(block.blockId, { pattern: v })}
                                                                                 >
-                                                                                    <SelectTrigger className='bg-background/100 dark:bg-background/100 w-full'>
+                                                                                    <SelectTrigger className="bg-background dark:bg-background w-full">
                                                                                         <SelectValue />
                                                                                     </SelectTrigger>
                                                                                     <SelectContent>
@@ -1529,7 +1534,7 @@ export default function NewProject() {
                                                             <p className="text-sm font-medium">
                                                                 {(floor.floorChartImages || []).length === 0 ? 'Upload Floor Chart Images' : 'Add More Images'}
                                                             </p>
-                                                            <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG, SVG, or WebP (max 5)</p>
+                                                            <p className="text-xs text-muted-foreground mt-0.5">SVG only (max 5)</p>
                                                         </div>
                                                         {floorImageUploading && (
                                                             <div className="flex items-center gap-2 text-xs text-primary">
@@ -1545,7 +1550,7 @@ export default function NewProject() {
                                             <input
                                                 ref={floorImageInputRef}
                                                 type="file"
-                                                accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+                                                accept=".svg"
                                                 multiple
                                                 className="hidden"
                                                 onChange={(e) => {
@@ -1556,7 +1561,7 @@ export default function NewProject() {
                                         </div>
 
                                         {/* Floor Summary Card */}
-                                        <div className="border rounded-lg p-4 bg-gradient-to-br from-primary/5 to-primary/10">
+                                        <div className="border rounded-lg p-4 bg-linear-to-br from-primary/5 to-primary/10">
                                             <h5 className="text-sm font-semibold mb-2">Floor Summary</h5>
                                             <div className="space-y-1.5 text-sm">
                                                 <div className="flex justify-between">
@@ -1738,7 +1743,7 @@ export default function NewProject() {
                                                                                 <input
                                                                                     id={`unit-img-${unit.unitId}`}
                                                                                     type="file"
-                                                                                    accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+                                                                                    accept=".svg"
                                                                                     multiple
                                                                                     className="hidden"
                                                                                     onChange={(e) => {
@@ -1854,7 +1859,7 @@ export default function NewProject() {
             {/* Image Lightbox Overlay (Task 2: Using Dialog for proper portaling to prevent Drawer closing) */}
             <Dialog open={lightboxImageIndex !== null} onOpenChange={(open) => !open && setLightboxImageIndex(null)}>
                 <DialogContent
-                    className="max-w-none sm:max-w-none w-screen h-screen bg-black/95 border-none p-0 flex flex-col items-center justify-center rounded-none z-[99999] shadow-none outline-none"
+                    className="max-w-none sm:max-w-none w-screen h-screen bg-black/95 border-none p-0 flex flex-col items-center justify-center rounded-none z-99999 shadow-none outline-none"
                     showCloseButton={false}
                     onKeyDown={(e) => {
                         if (!editingFloor) return;
@@ -1878,7 +1883,7 @@ export default function NewProject() {
                             <div className="relative w-full h-full flex flex-col items-center justify-center p-4 md:p-8" onClick={() => setLightboxImageIndex(null)}>
                                 {/* Close Button */}
                                 <button
-                                    className="absolute top-6 right-6 z-[100] h-11 w-11 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group"
+                                    className="absolute top-6 right-6 z-100 h-11 w-11 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group"
                                     onClick={(e) => { e.stopPropagation(); setLightboxImageIndex(null); }}
                                 >
                                     <X className="h-6 w-6 text-white group-hover:scale-110 transition-transform" />
@@ -1887,7 +1892,7 @@ export default function NewProject() {
                                 {/* Previous Arrow (Task 1: Navigation Fixed) */}
                                 {currentIndex > 0 && (
                                     <button
-                                        className="absolute left-6 top-1/2 -translate-y-1/2 z-[100] h-14 w-14 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group shadow-2xl"
+                                        className="absolute left-6 top-1/2 -translate-y-1/2 z-100 h-14 w-14 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group shadow-2xl"
                                         onClick={(e) => { e.stopPropagation(); setLightboxImageIndex(currentIndex - 1); }}
                                     >
                                         <ChevronLeft className="h-8 w-8 text-white group-hover:-translate-x-1 transition-transform" />
@@ -1897,7 +1902,7 @@ export default function NewProject() {
                                 {/* Next Arrow (Task 1: Navigation Fixed) */}
                                 {currentIndex < images.length - 1 && (
                                     <button
-                                        className="absolute right-6 top-1/2 -translate-y-1/2 z-[100] h-14 w-14 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group shadow-2xl"
+                                        className="absolute right-6 top-1/2 -translate-y-1/2 z-100 h-14 w-14 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 border border-white/10 group shadow-2xl"
                                         onClick={(e) => { e.stopPropagation(); setLightboxImageIndex(currentIndex + 1); }}
                                     >
                                         <ChevronRight className="h-8 w-8 text-white group-hover:translate-x-1 transition-transform" />

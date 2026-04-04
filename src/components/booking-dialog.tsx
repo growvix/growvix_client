@@ -35,6 +35,7 @@ import {
     Loader2,
     BookOpen,
     AlertCircle,
+    CalendarClock,
 } from "lucide-react"
 
 interface LeadSearchResult {
@@ -60,6 +61,14 @@ interface BookingDialogProps {
     blockId?: string
     unitLabel: string
     prefilledLead?: PrefilledLead | null
+    bookedBy?: {
+        leadName: string;
+        profileId?: number;
+        leadUuid?: string;
+        phone?: string;
+        userName?: string;
+        bookedAt?: string;
+    } | null;
     onBookingComplete?: () => void
 }
 
@@ -72,9 +81,11 @@ export function BookingDialog({
     blockId,
     unitLabel,
     prefilledLead,
+    bookedBy,
     onBookingComplete,
 }: BookingDialogProps) {
     const organization = getCookie("organization") || ""
+    const isCpUser = getCookie("role") === "cp_user"
 
     // Lead search state
     const [searchQuery, setSearchQuery] = useState("")
@@ -91,8 +102,9 @@ export function BookingDialog({
     // Booking state
     const [booking, setBooking] = useState(false)
 
-    // Cancel confirmation state
+    // Confirmation states
     const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+    const [showReverseConfirm, setShowReverseConfirm] = useState(false)
 
     // Reset all state when dialog opens/closes
     useEffect(() => {
@@ -106,6 +118,16 @@ export function BookingDialog({
             setEditedPhone("")
             setBooking(false)
             setSearching(false)
+        } else if (bookedBy) {
+            // Case where unit is already booked - show current booker
+            setSelectedLead({
+                _id: bookedBy.leadUuid || "",
+                profile_id: bookedBy.profileId || 0,
+                name: bookedBy.leadName,
+                phone: bookedBy.phone,
+            })
+            setPhoneNumber(bookedBy.phone || "")
+            setEditedPhone(bookedBy.phone || "")
         } else if (prefilledLead) {
             // Auto-select the prefilled lead when dialog opens
             setSelectedLead({
@@ -117,7 +139,7 @@ export function BookingDialog({
             setPhoneNumber(prefilledLead.phone || "")
             setEditedPhone(prefilledLead.phone || "")
         }
-    }, [open, prefilledLead])
+    }, [open, prefilledLead, bookedBy])
 
     // Debounced lead search
     useEffect(() => {
@@ -219,6 +241,31 @@ export function BookingDialog({
         toast.info("Booking cancelled")
     }
 
+    const handleConfirmReverseBooking = async () => {
+        setShowReverseConfirm(false)
+        setBooking(true)
+        try {
+            await axios.post(API.reverseBook(projectId), {
+                organization,
+                unitId: unitId || undefined,
+                plotId: plotId || undefined,
+                blockId: blockId || undefined,
+            })
+
+            toast.success(
+                `Successfully reversed booking for ${unitLabel}`,
+                { duration: 4000 }
+            )
+            onOpenChange(false)
+            onBookingComplete?.()
+        } catch (err: any) {
+            const message = err.response?.data?.message || "Failed to reverse booking"
+            toast.error(message)
+        } finally {
+            setBooking(false)
+        }
+    }
+
     // Submit booking
     const handleBooking = async () => {
         if (!selectedLead || !phoneNumber) {
@@ -259,18 +306,20 @@ export function BookingDialog({
     return (
         <>
             <Dialog open={open} onOpenChange={(val) => {
-                if (!val) handleCancel()
-                else onOpenChange(val)
+                if (!val) {
+                    if (bookedBy) onOpenChange(false) // Don't show "unsaved" warning if just viewing booking
+                    else handleCancel()
+                } else onOpenChange(val)
             }}>
                 <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden">
                     {/* Header */}
                     <div className="bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 px-6 py-5">
                         <DialogTitle className="text-lg font-semibold flex items-center gap-2">
                             <BookOpen className="h-5 w-5 text-primary" />
-                            Book {unitLabel}
+                            {bookedBy ? `Booking Details: ${unitLabel}` : `Book ${unitLabel}`}
                         </DialogTitle>
                         <DialogDescription className="text-sm text-muted-foreground mt-1">
-                            Search for a lead and confirm the booking details below.
+                            {bookedBy ? "Current booking information and management options." : "Search for a lead and confirm the booking details below."}
                         </DialogDescription>
                     </div>
 
@@ -312,10 +361,10 @@ export function BookingDialog({
                                             <User className="h-5 w-5" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-medium truncate">{searchResult.name}</p>
+                                            <p className="font-medium">{searchResult.name}</p>
                                             <p className="text-xs text-muted-foreground">
                                                 #{searchResult.profile_id}
-                                                {searchResult.phone && ` · ${searchResult.phone}`}
+                                                {searchResult.phone && ` · ${isCpUser ? "*******" + String(searchResult.phone).slice(-3) : searchResult.phone}`}
                                             </p>
                                         </div>
                                         <Badge variant="outline" className="text-xs shrink-0">
@@ -342,19 +391,21 @@ export function BookingDialog({
                                 {/* Selected Lead Details */}
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-sm font-medium">Lead Details</Label>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => {
-                                                setSelectedLead(null)
-                                                setPhoneNumber("")
-                                                setIsEditingPhone(false)
-                                            }}
-                                            className="text-xs h-7 text-muted-foreground hover:text-foreground"
-                                        >
-                                            Change Lead
-                                        </Button>
+                                        <Label className="text-sm font-medium">{bookedBy ? "Existing Booking" : "Lead Details"}</Label>
+                                        {!bookedBy && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSelectedLead(null)
+                                                    setPhoneNumber("")
+                                                    setIsEditingPhone(false)
+                                                }}
+                                                className="text-xs h-7 text-muted-foreground hover:text-foreground"
+                                            >
+                                                Change Lead
+                                            </Button>
+                                        )}
                                     </div>
 
                                     <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
@@ -429,21 +480,41 @@ export function BookingDialog({
                                                 ) : (
                                                     <div className="flex items-center gap-2">
                                                         <p className="font-medium text-sm">
-                                                            {phoneNumber || "Not provided"}
+                                                            {isCpUser ? "*******" + String(phoneNumber).slice(-3) : (phoneNumber || "Not provided")}
                                                         </p>
-                                                        <Button
-                                                            size="icon"
-                                                            variant="ghost"
-                                                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                                            onClick={handleStartEditPhone}
-                                                            aria-label="Edit phone number"
-                                                        >
-                                                            <Pencil className="h-3 w-3" />
-                                                        </Button>
+                                                        {!bookedBy && (
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                                                onClick={handleStartEditPhone}
+                                                                aria-label="Edit phone number"
+                                                            >
+                                                                <Pencil className="h-3 w-3" />
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
+
+                                        {bookedBy && (
+                                            <>
+                                                <Separator />
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-orange-500/10">
+                                                        <CalendarClock className="h-4 w-4 text-orange-500" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground">Booked Details</p>
+                                                        <p className="font-medium text-xs">
+                                                            {bookedBy.userName && `By ${bookedBy.userName}`}
+                                                            {bookedBy.bookedAt && ` on ${new Date(bookedBy.bookedAt).toLocaleDateString()}`}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 
@@ -452,25 +523,25 @@ export function BookingDialog({
                                     <Button
                                         variant="outline"
                                         className="flex-1"
-                                        onClick={handleCancel}
+                                        onClick={() => onOpenChange(false)}
                                         disabled={booking}
-                                        aria-label="Cancel booking"
+                                        aria-label="Cancel action"
                                     >
-                                        Cancel
+                                        Close
                                     </Button>
                                     <Button
                                         className="flex-1"
-                                        onClick={handleBooking}
-                                        disabled={booking || !phoneNumber}
-                                        aria-label="Confirm booking"
+                                        onClick={bookedBy ? () => setShowReverseConfirm(true) : handleBooking}
+                                        disabled={booking || (!bookedBy && !phoneNumber)}
+                                        aria-label={bookedBy ? "Reverse Booking" : "Confirm Booking"}
                                     >
                                         {booking ? (
                                             <>
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Booking...
+                                                {bookedBy ? "Reversing..." : "Booking..."}
                                             </>
                                         ) : (
-                                            "Confirm Booking"
+                                            bookedBy ? "Reverse Booking" : "Confirm Booking"
                                         )}
                                     </Button>
                                 </div>
@@ -510,6 +581,30 @@ export function BookingDialog({
                             className="bg-destructive text-white hover:bg-destructive/90"
                         >
                             Yes, Cancel
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Reverse Booking Confirmation Alert */}
+            <AlertDialog open={showReverseConfirm} onOpenChange={setShowReverseConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-destructive flex items-center gap-2">
+                            <AlertCircle className="h-5 w-5" />
+                            Reverse Booking?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to reverse the booking for <strong>{unitLabel}</strong>? This will make the unit available again for other leads.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>No, Keep Booked</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleConfirmReverseBooking}
+                            className="bg-destructive text-white hover:bg-destructive/90"
+                        >
+                            Yes, Reverse Booking
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

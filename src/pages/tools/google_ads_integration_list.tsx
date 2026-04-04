@@ -25,13 +25,13 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { 
-    Plus, 
-    MoreHorizontal, 
-    Trash2, 
-    ExternalLink, 
-    ArrowLeft, 
-    Globe, 
+import {
+    Plus,
+    MoreHorizontal,
+    Trash2,
+    ExternalLink,
+    ArrowLeft,
+    Globe,
     RefreshCcw,
     CircleCheck,
     CircleX,
@@ -51,7 +51,7 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { type ColumnDef } from "@tanstack/react-table"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import {Info} from "lucide-react"
+import { Info } from "lucide-react"
 
 export default function GoogleAdsIntegrationList() {
     const navigate = useNavigate()
@@ -61,12 +61,12 @@ export default function GoogleAdsIntegrationList() {
     const [isStepperOpen, setIsStepperOpen] = useState(false)
     const [viewingIntegration, setViewingIntegration] = useState<any | null>(null)
     const [isDetailsOpen, setIsDetailsOpen] = useState(false)
-    
+
     useEffect(() => {
         setBreadcrumbs([
             { label: "Third-Party Integration", href: "/tools/third_party_integration" },
             { label: "Google Ads Integration" },
-            {label: <TooltipProvider><Tooltip><TooltipTrigger><Info className="h-4.5 w-4.5 mt-1.5" /></TooltipTrigger><TooltipContent><p>Google Ads Integration</p></TooltipContent></Tooltip></TooltipProvider>}
+            { label: <TooltipProvider><Tooltip><TooltipTrigger><Info className="h-4.5 w-4.5 mt-1.5" /></TooltipTrigger><TooltipContent><p>Google Ads Integration</p></TooltipContent></Tooltip></TooltipProvider> }
 
         ])
         fetchIntegrations()
@@ -148,7 +148,7 @@ export default function GoogleAdsIntegrationList() {
                 </div>
             )
         },
-         {
+        {
             accessorKey: "sub_source",
             header: "SUB SOURCE",
             meta: { label: "Sub Source" },
@@ -168,7 +168,7 @@ export default function GoogleAdsIntegrationList() {
                 </div>
             )
         },
-       
+
         {
             accessorKey: "createdAt",
             header: "CREATED AT",
@@ -196,7 +196,7 @@ export default function GoogleAdsIntegrationList() {
             header: "STATUS",
             meta: { label: "Status" },
             cell: ({ row }) => (
-                <button 
+                <button
                     onClick={() => toggleStatus(row.original._id, row.original.status)}
                     className="focus:outline-none transition-transform active:scale-95"
                 >
@@ -227,19 +227,19 @@ export default function GoogleAdsIntegrationList() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 shadow-lg border-slate-200 dark:border-white/10 p-1">
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                                 className="gap-2 cursor-pointer py-2 focus:bg-slate-100 dark:focus:bg-slate-800"
                                 onClick={() => handleViewDetails(row.original)}
                             >
-                                <ExternalLink className="h-4 w-4 text-blue-500" /> 
+                                <ExternalLink className="h-4 w-4 text-blue-500" />
                                 <span className="font-medium">View Details</span>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-800" />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                                 className="gap-2 text-destructive focus:text-destructive cursor-pointer py-2 font-semibold flex items-center focus:bg-red-50 dark:focus:bg-red-950/20"
                                 onClick={() => handleDelete(row.original._id)}
                             >
-                                <Trash2 className="h-4 w-4" /> 
+                                <Trash2 className="h-4 w-4" />
                                 <span>Delete</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -253,9 +253,9 @@ export default function GoogleAdsIntegrationList() {
         <div className="flex flex-1 flex-col gap-6 px-8 py-6 max-w-[1400px] mx-auto w-full">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
+                    <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => navigate("/tools/third_party_integration")}
                         className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
@@ -267,17 +267,17 @@ export default function GoogleAdsIntegrationList() {
                     </div>
                 </div>
                 <div className="flex gap-3">
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
+                    <Button
+                        variant="outline"
+                        size="sm"
                         onClick={fetchIntegrations}
                         disabled={loading}
                         className="gap-2 font-semibold h-10 border-slate-200 dark:border-white/10"
                     >
                         <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                     </Button>
-                    <Button 
-                        size="sm" 
+                    <Button
+                        size="sm"
                         onClick={() => setIsStepperOpen(true)}
                         className="gap-2 font-semibold h-10 shadow-md transition-all hover:scale-[1.02]"
                     >
@@ -287,8 +287,8 @@ export default function GoogleAdsIntegrationList() {
                 </div>
             </div>
 
-            <Card className="shadow-sm border-slate-200 dark:border-gray-900 overflow-hidden">
-                <CardContent className="p-0">
+            <Card className="border-slate-200 dark:border-gray-900 overflow-hidden">
+                <CardContent className="px-5">
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-4">
                             <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -303,7 +303,7 @@ export default function GoogleAdsIntegrationList() {
                             <p className="text-muted-foreground max-w-sm mb-8 leading-relaxed">
                                 Connect your first Google Ads lead form to start automatically syncing leads into your CRM.
                             </p>
-                            <Button 
+                            <Button
                                 onClick={() => setIsStepperOpen(true)}
                                 className="gap-2 font-bold px-8 h-12 rounded-xl"
                             >
@@ -312,9 +312,9 @@ export default function GoogleAdsIntegrationList() {
                             </Button>
                         </div>
                     ) : (
-                        <DataTable 
-                            columns={columns} 
-                            data={integrations} 
+                        <DataTable
+                            columns={columns}
+                            data={integrations}
                             filterPlaceholder="Search by campaign, source, or sub-source..."
                         />
                     )}
@@ -338,7 +338,7 @@ export default function GoogleAdsIntegrationList() {
 
                     <div className="p-8 space-y-6">
                         <div className="bg-gray-50 dark:bg-muted/30 rounded-2xl border border-slate-200 dark:border-white/10 p-6 shadow-sm overflow-hidden relative">
-                             {/* Status Badge */}
+                            {/* Status Badge */}
                             <div className="absolute top-6 right-6">
                                 {viewingIntegration?.status ? (
                                     <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400 font-bold text-[10px] uppercase tracking-wider">
@@ -391,14 +391,14 @@ export default function GoogleAdsIntegrationList() {
                             </div>
                         </div>
 
-                       
+
                     </div>
                 </DialogContent>
             </Dialog>
 
-               <GoogleAdsStepper 
-                open={isStepperOpen} 
-                onOpenChange={setIsStepperOpen} 
+            <GoogleAdsStepper
+                open={isStepperOpen}
+                onOpenChange={setIsStepperOpen}
                 onSuccess={fetchIntegrations}
             />
         </div>

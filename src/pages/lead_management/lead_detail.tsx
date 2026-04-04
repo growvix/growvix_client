@@ -56,7 +56,7 @@ import {
     ArrowLeft,
     Image as ImageIcon
 } from "lucide-react";
-import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables, GetLeadStagesQueryResponse, GetLeadStagesQueryVariables, GetOrganizationUsersQueryResponse, GetOrganizationUsersQueryVariables } from "@/types"
+import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables, GetLeadStagesQueryResponse, GetLeadStagesQueryVariables, GetOrganizationUsersQueryResponse, GetOrganizationUsersQueryVariables, DeleteLeadMutationResponse, DeleteLeadMutationVariables } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -116,38 +116,38 @@ import { cn } from "@/lib/utils"
 
 // GraphQL query to get lead details by ID
 const GET_LEAD_BY_ID = gql` 
-    query GetLeadById($organization: String!, $id: String!) {
-        getLeadById(organization: $organization, id: $id) {
-            _id
-            profile_id
-            organization
-            profile {
-                name
-                email
-                phone
-                location
-            }
-            stage
-            status
-            prefered {
-                location
-                budget
-            }
-            pretype {
-                type
-            }
-            propertyRequirement {
-                sqft
-                bhk
-                floor
-                balcony
-                bathroom_count
-                parking_needed
-                parking_count
-                price_min
-                price_max
-                furniture
-                facing
+        query GetLeadById($organization: String!, $id: String!) {
+            getLeadById(organization: $organization, id: $id) {
+                _id
+                profile_id
+                organization
+                profile {
+                    name
+                    email
+                    phone
+                    location
+                }
+                stage
+                status
+                prefered {
+                    location
+                    budget
+                }
+                pretype {
+                    type
+                }
+                propertyRequirement {
+                    sqft
+                    bhk
+                    floor
+                    balcony
+                    bathroom_count
+                    parking_needed
+                    parking_count
+                    price_min
+                    price_max
+                    furniture
+                    facing
                 plot_type
             }
             project
@@ -165,7 +165,7 @@ const GET_LEAD_BY_ID = gql`
                 medium
                 _id
             }
-            createdAt
+            createdAt   
             updatedAt
             exe_user
             exe_user_name
@@ -764,6 +764,7 @@ export default function LeadDetail() {
     const [loading, setLoading] = useState(true)
     const [togglingImportantId, setTogglingImportantId] = useState<string | null>(null)
     const [leadDetail, setLeadDetail] = useState<Lead | null>(null)
+    const [activeExeIndex, setActiveExeIndex] = useState(0)
     const { id } = useParams()
     const navigate = useNavigate()
     const [, setLeadId] = useState<string | undefined>(undefined);
@@ -1451,6 +1452,9 @@ export default function LeadDetail() {
 
                                 {/* Avatar */}
                                 <Avatar className="size-12 sm:size-14 ring-2 ring-primary/20 shadow">
+                                    {leadDetail?.profile?.profileImagePath && (
+                                        <AvatarImage src={getSanitizedAvatarUrl(leadDetail.profile.profileImagePath)} alt={leadName} />
+                                    )}
                                     <AvatarFallback className="text-xl sm:text-2xl font-semibold uppercase">
                                         {initials}
                                     </AvatarFallback>
@@ -3029,148 +3033,6 @@ export default function LeadDetail() {
                         </CardContent>
                     </Card>
                 </div>
-                <div className="xl:col-span-1 lg:col-span-2">
-                    {(() => {
-                        const nameMap = new Map<string, { mainId: string; name: string; image: string; altIds: string[] }>();
-
-                        // 1. Add current assigned executive
-                        if (leadDetail?.exe_user && leadDetail?.exe_user_name) {
-                            const name = leadDetail.exe_user_name;
-                            nameMap.set(name, {
-                                mainId: leadDetail.exe_user,
-                                name,
-                                image: leadDetail.exe_user_image || "",
-                                altIds: []
-                            });
-                        }
-
-                        // 2. Add and merge with historical executives from activities
-                        if (leadDetail?.activities) {
-                            leadDetail.activities.forEach((activity: any) => {
-                                if (!activity.user_name) return;
-
-                                const name = activity.user_name;
-                                const existing = nameMap.get(name);
-
-                                if (existing) {
-                                    // If we find an image in an activity but missed it in lead record, use it
-                                    if (!existing.image && activity.user_image) {
-                                        existing.image = activity.user_image;
-                                    }
-                                    // Collect alternative IDs for stat calculation (UUID vs profile_id)
-                                    if (activity.user_id && activity.user_id !== existing.mainId) {
-                                        if (!existing.altIds.includes(activity.user_id)) {
-                                            existing.altIds.push(activity.user_id);
-                                        }
-                                    }
-                                } else {
-                                    nameMap.set(name, {
-                                        mainId: activity.user_id || "",
-                                        name: name,
-                                        image: activity.user_image || "",
-                                        altIds: []
-                                    });
-                                }
-                            });
-                        }
-
-                        const executives = Array.from(nameMap.values());
-                        if (executives.length === 0) {
-                            executives.push({ mainId: 'unassigned', name: 'Unassigned', image: '', altIds: [] });
-                        }
-
-                        const renderCardContent = (exe: { mainId: string; name: string; image: string; altIds: string[] }) => {
-                            const initials = getUserAvatar(exe.name);
-                            const exeStats = { whatsapp: 0, mail: 0, call: 0, sms: 0 };
-
-                            // Calculate stats by checking all IDs associated with this name
-                            if (leadDetail?.activities) {
-                                leadDetail.activities.forEach(a => {
-                                    const matchesId = a.user_id === exe.mainId || exe.altIds.includes(a.user_id);
-                                    if (matchesId || a.user_name === exe.name) {
-                                        const up = a.updates?.toLowerCase();
-                                        if (up === 'whatsapp') exeStats.whatsapp++;
-                                        if (up === 'mail') exeStats.mail++;
-                                        if (up === 'phonecall' || up === 'call') exeStats.call++;
-                                        if (up === 'sms') exeStats.sms++;
-                                    }
-                                });
-                            }
-
-                            return (
-                                <Card className="border-2 shadow-none dark:bg-input/50 pt-3 h-full">
-                                    <CardContent>
-                                        <div className="grid grid-cols-6 pl-2">
-                                            <div className="col-span-1">
-                                                <Avatar className="size-12 ring-2 ring-primary/20 shadow">
-                                                    {exe.image ? <AvatarImage src={getSanitizedAvatarUrl(exe.image)} alt={exe.name} /> : null}
-                                                    <AvatarFallback className="text-xl sm:text-2xl font-semibold uppercase">
-                                                        {exe.name !== 'Unassigned' ? initials : 'UN'}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                            </div>
-                                            <div className="col-span-5 px-3">
-                                                <CardTitle className="text-lg sm:text-xl md:text-2xl font-semibold truncate" title={exe.name}>
-                                                    {exe.name}
-                                                </CardTitle>
-                                                <CardDescription className="text-xs sm:text-sm opacity-70 tracking-wide capitalize">
-                                                    Active Executive
-                                                </CardDescription>
-                                            </div>
-                                        </div>
-                                        <ScrollArea className="h-44 mt-5 pl-2">
-                                            <div className="text-sm flex gap-10 items-center ps-5">
-                                                <FontAwesomeIcon icon={faWhatsapp} className="text-zinc-700 dark:text-zinc-300 pointer-events-none" style={{ fontSize: "1.2rem" }} />
-                                                <span className="ml-10">Whatsapp Engaged</span>
-                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.whatsapp}</Button>
-                                            </div>
-                                            <Separator className="ms-4 me-4 mt-1 mb-3" />
-                                            <div className="text-sm flex gap-10 items-center ps-5">
-                                                <Mail className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" />
-                                                <span className="ml-10">Mail Engaged</span>
-                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.mail}</Button>
-                                            </div>
-                                            <Separator className="ms-4 me-8 mt-1 mb-3" />
-                                            <div className="text-sm flex gap-10 items-center ps-5">
-                                                <PhoneCall className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" />
-                                                <span className="ml-10">Phone Call Engaged</span>
-                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.call}</Button>
-                                            </div>
-                                            <Separator className="ms-4 me-8 mt-1 mb-3" />
-                                            <div className="text-sm flex gap-10 items-center ps-5">
-                                                <MessagesSquare className="size-4 sm:size-5 text-zinc-700 dark:text-zinc-300" />
-                                                <span className="ml-10">SMS Engaged</span>
-                                                <Button className="ml-auto me-8 h-8 font-bold" variant={"outline"}>{exeStats.sms}</Button>
-                                            </div>
-                                            <Separator className="ms-4 me-8 mt-1 mb-3" />
-                                        </ScrollArea>
-                                    </CardContent>
-                                </Card>
-                            );
-                        };
-
-                        if (executives.length <= 1) {
-                            return renderCardContent(executives[0] || { mainId: 'unassigned', name: 'Unassigned', image: '', altIds: [] });
-                        }
-
-                        return (
-                            <Carousel
-                                opts={{ align: "start", loop: true }}
-                                className="w-full h-full"
-                            >
-                                <CarouselContent className="h-full">
-                                    {executives.map((exe, idx) => (
-                                        <CarouselItem key={exe.mainId + idx.toString()} className="h-full">
-                                            {renderCardContent(exe)}
-                                        </CarouselItem>
-                                    ))}
-                                </CarouselContent>
-                                <CarouselPrevious className="left-2" />
-                                <CarouselNext className="right-2" />
-                            </Carousel>
-                        );
-                    })()}
-                </div>
                 <div className="xl:col-span-2 lg:col-span-3">
                     <Card className="border-2 shadow-none dark:bg-input/50 pt-2 gap-0 pb-0 h-full">
                         <CardHeader className="mt-0 pt-0 pb-0">
@@ -3422,6 +3284,175 @@ export default function LeadDetail() {
                             </Carousel>
                         </CardContent>
                     </Card>
+                </div>
+                <div className="xl:col-span-1 lg:col-span-2">
+                    {(() => {
+                        const nameMap = new Map<string, { mainId: string; name: string; image: string; altIds: string[] }>();
+
+                        // 1. Add current assigned executive
+                        if (leadDetail?.exe_user && leadDetail?.exe_user_name) {
+                            const name = leadDetail.exe_user_name;
+                            nameMap.set(name, {
+                                mainId: leadDetail.exe_user,
+                                name,
+                                image: leadDetail.exe_user_image || "",
+                                altIds: []
+                            });
+                        }
+
+                        // 2. Add and merge with historical executives from activities
+                        if (leadDetail?.activities) {
+                            leadDetail.activities.forEach((activity: any) => {
+                                if (!activity.user_name) return;
+
+                                const name = activity.user_name;
+                                const existing = nameMap.get(name);
+
+                                if (existing) {
+                                    // If we find an image in an activity but missed it in lead record, use it
+                                    if (!existing.image && activity.user_image) {
+                                        existing.image = activity.user_image;
+                                    }
+                                    // Collect alternative IDs for stat calculation (UUID vs profile_id)
+                                    if (activity.user_id && activity.user_id !== existing.mainId) {
+                                        if (!existing.altIds.includes(activity.user_id)) {
+                                            existing.altIds.push(activity.user_id);
+                                        }
+                                    }
+                                } else {
+                                    nameMap.set(name, {
+                                        mainId: activity.user_id || "",
+                                        name: name,
+                                        image: activity.user_image || "",
+                                        altIds: []
+                                    });
+                                }
+                            });
+                        }
+
+                        const executives = Array.from(nameMap.values());
+                        if (executives.length === 0) {
+                            executives.push({ mainId: 'unassigned', name: 'Unassigned', image: '', altIds: [] });
+                        }
+
+                        const renderCardContent = (exe: { mainId: string; name: string; image: string; altIds: string[] }) => {
+                            const initials = getUserAvatar(exe.name);
+                            const exeStats = { whatsapp: 0, mail: 0, call: 0, sms: 0 };
+
+                            if (leadDetail?.activities) {
+                                leadDetail.activities.forEach(a => {
+                                    const matchesId = a.user_id === exe.mainId || exe.altIds.includes(a.user_id);
+                                    if (matchesId || a.user_name === exe.name) {
+                                        const up = a.updates?.toLowerCase();
+                                        if (up === 'whatsapp') exeStats.whatsapp++;
+                                        if (up === 'mail') exeStats.mail++;
+                                        if (up === 'phonecall' || up === 'call') exeStats.call++;
+                                        if (up === 'sms') exeStats.sms++;
+                                    }
+                                });
+                            }
+
+                            return (
+                                <Card className="border-2 shadow-none dark:bg-input/50 pt-4 h-full relative overflow-hidden">
+                                    <CardContent className="p-4 pt-0">
+                                        <div className="flex items-center justify-between gap-2 mb-4 border-b border-muted/30 pb-2.5">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12 sm:size-12 ring-2 ring-primary/10 shadow-sm border border-primary/5">
+                                                    {exe.image ? <AvatarImage src={getSanitizedAvatarUrl(exe.image)} alt={exe.name} /> : null}
+                                                    <AvatarFallback className="text-xl font-bold uppercase bg-primary/5 text-primary">
+                                                        {exe.name !== 'Unassigned' ? initials : 'UN'}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div className="space-y-0">
+                                                    <CardTitle className="text-lg sm:text-xl md:text-xl font-bold tracking-tight truncate max-w-[140px] sm:max-w-[180px]" title={exe.name}>
+                                                        {exe.name}
+                                                    </CardTitle>
+                                                    <CardDescription className="text-[10px] sm:text-xs font-semibold opacity-50 uppercase tracking-widest">
+                                                        Active Executive
+                                                    </CardDescription>
+                                                </div>
+                                            </div>
+
+                                            {/* Stacked Avatars Selector */}
+                                            {executives.length > 1 && (
+                                                <div className="flex -space-x-3 sm:-space-x-4 pr-1">
+                                                    {executives.slice(0, 3).map((e, idx) => (
+                                                        <TooltipProvider key={idx}>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Avatar
+                                                                        className={cn(
+                                                                            "size-9 sm:size-11 border-2 border-background cursor-pointer hover:-translate-y-1 transition-all duration-300 shadow-md",
+                                                                            activeExeIndex === idx ? "ring-2 ring-primary z-30 scale-110 shadow-lg" : "hover:z-20 opacity-90"
+                                                                        )}
+                                                                        onClick={(ev) => {
+                                                                            ev.stopPropagation();
+                                                                            setActiveExeIndex(idx);
+                                                                        }}
+                                                                    >
+                                                                        {e.image ? <AvatarImage src={getSanitizedAvatarUrl(e.image)} /> : null}
+                                                                        <AvatarFallback className="text-[10px] font-black bg-zinc-100 dark:bg-zinc-800">
+                                                                            {getUserAvatar(e.name)}
+                                                                        </AvatarFallback>
+                                                                    </Avatar>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent className="text-[10px] font-bold uppercase">{e.name}</TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    ))}
+                                                    {executives.length > 3 && (
+                                                        <div className="size-9 sm:size-11 border-2 border-background rounded-full bg-secondary flex items-center justify-center text-[10px] font-black shadow-md z-0">
+                                                            +{executives.length - 3}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <ScrollArea className="h-44 pr-2">
+                                            <div className="space-y-1">
+                                                <div className="text-sm flex gap-10 items-center ps-2">
+                                                    <FontAwesomeIcon icon={faWhatsapp} className="text-zinc-500 dark:text-zinc-400" style={{ fontSize: "1.1rem" }} />
+                                                    <span className="font-medium text-muted-foreground">Whatsapp Engaged</span>
+                                                    <Button className="ml-auto h-7 w-12 font-bold bg-muted/30" variant="ghost" size="sm">{exeStats.whatsapp}</Button>
+                                                </div>
+                                                <Separator className="my-2 opacity-50" />
+                                                <div className="text-sm flex gap-10 items-center ps-2">
+                                                    <Mail className="size-4 text-zinc-500 dark:text-zinc-400" />
+                                                    <span className="font-medium text-muted-foreground">Mail Engaged</span>
+                                                    <Button className="ml-auto h-7 w-12 font-bold bg-muted/30" variant="ghost" size="sm">{exeStats.mail}</Button>
+                                                </div>
+                                                <Separator className="my-2 opacity-50" />
+                                                <div className="text-sm flex gap-10 items-center ps-2">
+                                                    <PhoneCall className="size-4 text-zinc-500 dark:text-zinc-400" />
+                                                    <span className="font-medium text-muted-foreground">Phone Call Engaged</span>
+                                                    <Button className="ml-auto h-7 w-12 font-bold bg-muted/30" variant="ghost" size="sm">{exeStats.call}</Button>
+                                                </div>
+                                                <Separator className="my-2 opacity-50" />
+                                                <div className="text-sm flex gap-10 items-center ps-2">
+                                                    <MessagesSquare className="size-4 text-zinc-500 dark:text-zinc-400" />
+                                                    <span className="font-medium text-muted-foreground">SMS Engaged</span>
+                                                    <Button className="ml-auto h-7 w-12 font-bold bg-muted/30" variant="ghost" size="sm">{exeStats.sms}</Button>
+                                                </div>
+                                                <Separator className="my-2 opacity-50" />
+                                            </div>
+                                        </ScrollArea>
+                                    </CardContent>
+                                </Card>
+                            );
+                        };
+
+                        return (
+                            <div className="h-full">
+                                <div
+                                    key={`exe-card-${activeExeIndex}`}
+                                    className="h-full transition-all animate-in fade-in slide-in-from-right-2 duration-400"
+                                >
+                                    {renderCardContent(executives[activeExeIndex] || executives[0])}
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
                 <div className="xl:col-span-3 lg:col-span-3">
                     <Card className="border-2 pt-0 gap-2 shadow-none dark:bg-primary-foreground/50">

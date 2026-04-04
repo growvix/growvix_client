@@ -63,8 +63,10 @@ interface DataTableProps<TData, TValue> {
     totalCount?: number
     pageIndex?: number
     pageSize?: number
+    pagination?: { pageIndex: number; pageSize: number }
     pageCount?: number
     onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
+    isLoading?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -81,8 +83,10 @@ export function DataTable<TData, TValue>({
     totalCount = 0,
     pageIndex,
     pageSize,
+    pagination: paginationProp,
     pageCount,
     onPaginationChange,
+    isLoading,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -90,19 +94,24 @@ export function DataTable<TData, TValue>({
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
     const [pagination, setPagination] = React.useState<PaginationState>({
-        pageIndex: pageIndex ?? 0,
-        pageSize: pageSize ?? initialPageSize,
+        pageIndex: paginationProp?.pageIndex ?? pageIndex ?? 0,
+        pageSize: paginationProp?.pageSize ?? pageSize ?? initialPageSize,
     })
 
     // Handle external pagination updates
     React.useEffect(() => {
-        if (manualPagination && (pageIndex !== undefined || pageSize !== undefined)) {
-            setPagination({
-                pageIndex: pageIndex ?? 0,
-                pageSize: pageSize ?? initialPageSize,
-            })
+        if (manualPagination) {
+            const nextPageIndex = paginationProp?.pageIndex ?? pageIndex;
+            const nextPageSize = paginationProp?.pageSize ?? pageSize;
+            
+            if (nextPageIndex !== undefined || nextPageSize !== undefined) {
+                setPagination({
+                    pageIndex: nextPageIndex ?? 0,
+                    pageSize: nextPageSize ?? initialPageSize,
+                })
+            }
         }
-    }, [manualPagination, pageIndex, pageSize, initialPageSize])
+    }, [manualPagination, pageIndex, pageSize, paginationProp, initialPageSize])
 
     const handlePaginationChange = React.useCallback(
         (updater: any) => {
@@ -281,7 +290,17 @@ export function DataTable<TData, TValue>({
                         ))}
                     </TableHeader>
                     <TableBody>
-                        {table.getRowModel().rows?.length ? (
+                        {isLoading ? (
+                            Array.from({ length: pageSize ?? initialPageSize ?? 5 }).map((_, i) => (
+                                <TableRow key={i}>
+                                    {columns.map((_, j) => (
+                                        <TableCell key={j} className="h-12 py-3 px-4">
+                                            <div className="h-4 bg-muted animate-pulse rounded w-full" />
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))
+                        ) : table.getRowModel().rows?.length ? (
                             table.getRowModel().rows.map((row) => (
                                 <TableRow
                                     key={row.id}

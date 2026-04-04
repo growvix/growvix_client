@@ -22,6 +22,7 @@ export interface GetAllLeadsRequest {
         name?: string;
         source?: string;
         campaign?: string;
+        sub_source?: string;
         status?: string;
         stage?: string;
         assignedTo?: string;

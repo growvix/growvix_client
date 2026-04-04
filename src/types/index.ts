@@ -98,6 +98,7 @@ export interface Lead {
     email?: string;
     phone: string;
     location?: string;
+    profileImagePath?: string;
   };
   prefered?: {
     location?: string;
@@ -122,11 +123,13 @@ export interface Lead {
   status?: string;
   exe_user?: string;
   exe_user_name?: string;
+  exe_user_image?: string;
   exe_user_department?: string;
   activities?: {
     id: string;
     user_id: string;
     user_name: string;
+    user_image?: string;
     updates: string;
     stage: string;
     status: string;
@@ -171,6 +174,7 @@ export interface UpdateLeadInput {
   stage?: string;
   status?: string;
   exe_user?: string;
+  cp_user?: string;
 }
 
 export interface UpdateLeadMutationResponse {
@@ -265,4 +269,16 @@ export interface GetProjectBookedUnitsQueryResponse {
 export interface GetProjectBookedUnitsQueryVariables {
   organization: string;
   id: number;
+}
+
+export interface DeleteLeadMutationResponse {
+  deleteLead: {
+    success: boolean;
+    deletedCount: number;
+  };
+}
+
+export interface DeleteLeadMutationVariables {
+  organization: string;
+  profileId: number;
 }

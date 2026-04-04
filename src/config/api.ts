@@ -34,13 +34,19 @@ export const API = {
     LEADS: `${API_URL}/api/leads`,
     TEAMS: `${API_URL}/api/teams`,
     CAMPAIGNS: `${API_URL}/api/campaigns`,
+    getCampaign: (id: string) => `${API_URL}/api/campaigns/${id}`,
+    addCampaignSource: (id: string) => `${API_URL}/api/campaigns/${id}/sources`,
+    addCampaignSubSource: (id: string, sourceId: string) => `${API_URL}/api/campaigns/${id}/sources/${sourceId}/sub-sources`,
+    getCampaignStages: `${API_URL}/api/campaigns/stages`,
     SOURCES: `${API_URL}/api/sources`,
+    LEAD_CAPTURE_CONFIGS: `${API_URL}/api/lead-capture-configs`,
 
     // Project specific endpoints
     getProject: (id: number | string) => `${API_URL}/api/projects/${id}`,
     getProjectBlocks: (id: number | string) => `${API_URL}/api/projects/${id}/blocks`,
     updateProject: (id: number | string) => `${API_URL}/api/projects/${id}`,
     bookUnit: (projectId: number | string) => `${API_URL}/api/projects/${projectId}/book`,
+    reverseBook: (projectId: number | string) => `${API_URL}/api/projects/${projectId}/reverse-book`,
     getProjectBookedUnits: (projectId: number | string) => `${API_URL}/api/projects/${projectId}/booked`,
     getAllBookedUnits: () => `${API_URL}/api/projects/booked/all`,
 
@@ -79,6 +85,21 @@ export const API = {
     MAIL: `${API_URL}/api/mail`,
     MAIL_TEMPLATES: `${API_URL}/api/mail/templates`,
     getMailTemplate: (id: string) => `${API_URL}/api/mail/templates/${id}`,
+
+    // Attendance endpoints
+    ATTENDANCE: {
+        TODAY: `${API_URL}/api/attendance/today`,
+        TOGGLE_ONLINE: `${API_URL}/api/attendance/toggle-online`,
+        TOGGLE_OFFLINE: `${API_URL}/api/attendance/toggle-offline`,
+        AUTO_LOGOUT: `${API_URL}/api/attendance/auto-logout`,
+    },
+    getMonthlyAttendance: (userId: string) => `${API_URL}/api/attendance/monthly/${userId}`,
+
+    // Availability endpoints
+    AVAILABILITY: {
+        WEEKLY: `${API_URL}/api/availability/weekly`,
+        TOGGLE: `${API_URL}/api/availability/toggle`,
+    },
 };
 
 export default API;

@@ -106,11 +106,6 @@ export function GoogleAdsStepper({
             setCampaigns(campaignsRes.data || [])
             setSources(sourcesRes.data || [])
             setProjects(projectsRes.data || [])
-            
-            // Set default source if available
-            if (sourcesRes.data?.length > 0) {
-                setFormData(prev => ({ ...prev, source: sourcesRes.data[0].name }));
-            }
         } catch (error) {
             toast.error("Failed to fetch campaigns, sources or projects")
         } finally {
@@ -151,7 +146,11 @@ export function GoogleAdsStepper({
     }
 
     const selectedCampaign = campaigns.find(c => c._id === formData.campaign_id)
-    const selectedProject = projects.find(p => p._id === formData.project_id)
+    const availableSources = selectedCampaign?.sources || []
+    const selectedSourceObj = availableSources.find((s: any) => s.sourceName === formData.source)
+    const availableSubSources = selectedSourceObj?.subSources || []
+    const selectedSubSource = availableSubSources.find((ss: any) => ss.subSourceName === formData.sub_source)
+    const selectedProject = projects.find(p => p._id === formData.project_id) || projects.find(p => p.product_id?.toString() === formData.project_id)
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -216,7 +215,7 @@ export function GoogleAdsStepper({
                                             <Label className="text-sm font-semibold">Select Campaign</Label>
                                             <Select 
                                                 value={formData.campaign_id} 
-                                                onValueChange={(v) => setFormData({ ...formData, campaign_id: v })}
+                                                onValueChange={(v) => setFormData({ ...formData, campaign_id: v, source: "", sub_source: "", project_id: "" })}
                                             >
                                                 <SelectTrigger className="h-12 text-left">
                                                     <SelectValue placeholder="Select campaign" />
@@ -235,15 +234,16 @@ export function GoogleAdsStepper({
                                             <Label className="text-sm font-semibold">Select Source</Label>
                                             <Select 
                                                 value={formData.source} 
-                                                onValueChange={(v) => setFormData({ ...formData, source: v })}
+                                                onValueChange={(v) => setFormData({ ...formData, source: v, sub_source: "", project_id: "" })}
+                                                disabled={!formData.campaign_id}
                                             >
                                                 <SelectTrigger className="h-12 text-left">
                                                     <SelectValue placeholder="Select source" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {sources.map((s) => (
-                                                        <SelectItem key={s._id} value={s.name}>
-                                                            {s.name}
+                                                    {availableSources.map((s: any, idx: number) => (
+                                                        <SelectItem key={idx} value={s.sourceName}>
+                                                            {s.sourceName}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
@@ -256,12 +256,26 @@ export function GoogleAdsStepper({
                                     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                                         <div className="space-y-3">
                                             <Label className="text-sm font-semibold">Google Ad Form Name (Sub-Source)</Label>
-                                            <Input 
-                                                placeholder="Enter form name as it appears in Google Ads" 
-                                                className="h-12"
-                                                value={formData.sub_source}
-                                                onChange={(e) => setFormData({ ...formData, sub_source: e.target.value })}
-                                            />
+                                            <Select 
+                                                value={formData.sub_source} 
+                                                onValueChange={(v) => {
+                                                    const ss = availableSubSources.find((sub: any) => sub.subSourceName === v);
+                                                    const pIdRaw = ss?.project?.projectId || selectedCampaign?.project?.projectId || "";
+                                                    const matchedProj = projects.find(p => p.product_id?.toString() === pIdRaw || p._id === pIdRaw);
+                                                    setFormData({ ...formData, sub_source: v, project_id: matchedProj?._id?.toString() || "" })
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-12 text-left">
+                                                    <SelectValue placeholder="Select Google Ads form" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {availableSubSources.map((ss: any, idx: number) => (
+                                                        <SelectItem key={idx} value={ss.subSourceName}>
+                                                            {ss.subSourceName}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                             <p className="text-xs text-muted-foreground">This value will be stored as <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">sub_source</code></p>
                                         </div>
 
@@ -269,19 +283,20 @@ export function GoogleAdsStepper({
                                             <Label className="text-sm font-semibold">Inventory Project</Label>
                                             <Select 
                                                 value={formData.project_id} 
-                                                onValueChange={(v) => setFormData({ ...formData, project_id: v })}
+                                                disabled
                                             >
-                                                <SelectTrigger className="h-12">
-                                                    <SelectValue placeholder="Select project to map leads" />
+                                                <SelectTrigger className="h-12 disabled:opacity-70 disabled:cursor-not-allowed">
+                                                    <SelectValue placeholder="Auto-assigned project" />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {projects.map((p) => (
-                                                        <SelectItem key={p._id} value={p._id}>
+                                                        <SelectItem key={p._id} value={p._id.toString()}>
                                                             {p.name}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
+                                            <p className="text-xs text-muted-foreground">Project is automatically inherited from the selected sub-source or campaign.</p>
                                         </div>
                                     </div>
                                 )}
