@@ -143,7 +143,7 @@ export function NavUser({
       // Save admin session before impersonating
       if (canImpersonate && !isAdminImpersonating) {
         setCookie('admin_user_id', getCookie('user_id') as string);
-        setCookie('admin_profile_id', getCookie('profile_id') as string);
+        setCookie ('admin_profile_id', getCookie('profile_id') as string);
         setCookie('admin_organization', getCookie('organization') as string);
         setCookie('admin_userName', getCookie('userName') as string);
         setCookie('admin_email', getCookie('email') as string);

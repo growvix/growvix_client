@@ -39,6 +39,7 @@ export const API = {
     addCampaignSubSource: (id: string, sourceId: string) => `${API_URL}/api/campaigns/${id}/sources/${sourceId}/sub-sources`,
     getCampaignStages: `${API_URL}/api/campaigns/stages`,
     SOURCES: `${API_URL}/api/sources`,
+    LEAD_CAPTURE_CONFIGS: `${API_URL}/api/lead-capture-configs`,
 
     // Project specific endpoints
     getProject: (id: number | string) => `${API_URL}/api/projects/${id}`,

@@ -42,6 +42,9 @@ import CpDashboard from "./pages/cp/cp_dashboard";
 import CpProjectShowcase from "./pages/cp/cp_project_showcase";
 import EditProject from "./pages/inventory/edit_project";
 import CpBulkUpload from "./pages/cp/cp_bulkupload";
+import LeadCapture from "./pages/tools/leadcapture";
+import LeadCaptureForm from "./pages/tools/leadcaptureform";
+import CpLeadEntry from "./pages/cp/cp_lead_entry";
 import UpdatesPage from "./pages/updates";
 import AttendanceManagement from "./pages/setting/attendance_management";
 import AvailabilityChart from "./pages/setting/availability_chart";
@@ -97,6 +100,8 @@ export default function App() {
             <Route path="/cp/dashboard" element={<CpDashboard />} />
             <Route path="/cp/project" element={<CpProjectShowcase />} />
             <Route path="/cp/bulk_upload" element={<CpBulkUpload />} />
+            <Route path="/cp/lead-entry" element={<CpLeadEntry />} />
+            <Route path="/cp/lead/:id" element={<LeadDetail />} />
           </Route>
           <Route element={<ProtectedRoute blockCpFromApp><SidebarLayout /></ProtectedRoute>}>
             <Route path="/" element={<RoleBasedRedirect />} />
@@ -120,6 +125,9 @@ export default function App() {
             <Route path="automation/campaigns/create" element={<CreateCampaign />} />
             <Route path="automation/campaigns/edit/:id" element={<CreateCampaign />} />
             <Route path="automation/track_source_subsource" element={<TrackSourceSubsource />} />
+            <Route path="automation/leadcapture" element={<LeadCapture />} />
+            <Route path="automation/leadcapture/leadcaptureform" element={<LeadCaptureForm />} />
+            <Route path="automation/leadcapture/entry" element={<CpLeadEntry />} />
             <Route path="/settings" element={<GeneralSetting />} />
             <Route path="/setting/user_management" element={<UserManagement />} />
             <Route path="/setting/lead_stage_setting" element={<LeadStageSetting />} />
