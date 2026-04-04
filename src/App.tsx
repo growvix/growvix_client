@@ -51,6 +51,7 @@ import MailTemplatesListing from "./pages/setting/mail_templates/mail_listing";
 import CreateTemplate from "./pages/setting/mail_templates/create_template";
 import Automation from "./pages/tools/automation";
 import Campaigns from "./pages/tools/campaigns";
+import CreateCampaign from "./pages/tools/create_campaign";
 import ThirdPartyIntegration from "./pages/tools/third_party_integration";
 import TrackSourceSubsource from "./pages/tools/track_source_subsource";
 
@@ -116,6 +117,8 @@ export default function App() {
             <Route path="/edit_project/:id" element={<EditProject />} />
             <Route path="tools/automation" element={<Automation />} />
             <Route path="automation/campaigns" element={<Campaigns />} />
+            <Route path="automation/campaigns/create" element={<CreateCampaign />} />
+            <Route path="automation/campaigns/edit/:id" element={<CreateCampaign />} />
             <Route path="automation/track_source_subsource" element={<TrackSourceSubsource />} />
             <Route path="/settings" element={<GeneralSetting />} />
             <Route path="/setting/user_management" element={<UserManagement />} />
