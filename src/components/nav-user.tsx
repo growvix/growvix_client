@@ -7,6 +7,7 @@ import {
   LogOut,
   Users,
   Loader2,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Link } from "react-router-dom"
@@ -291,6 +292,21 @@ export function NavUser({
                 <Link
                   to={isAdminImpersonating ? "#" : "/login"}
                   onClick={handleLogout}
+                <Link 
+                  to="/updates" 
+                  className="flex items-center gap-2"
+                  onClick={() => {
+                    setOpen(false)
+                    setOpenMobile(false)
+                  }}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>Updates</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link 
+                  to="/profile" 
                   className="flex items-center gap-2"
                 >
                   <LogOut className="h-4 w-4" />
