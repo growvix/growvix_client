@@ -41,6 +41,7 @@ import CpLayout from "./pages/cp/cp_layout";
 import CpDashboard from "./pages/cp/cp_dashboard";
 import CpProjectShowcase from "./pages/cp/cp_project_showcase";
 import EditProject from "./pages/inventory/edit_project";
+import CpBulkUpload from "./pages/cp/cp_bulkupload";
 
 import Mail from "./pages/setting/mail";
 import MailTemplatesListing from "./pages/setting/mail_templates/mail_listing";
@@ -91,6 +92,7 @@ export default function App() {
           <Route element={<ProtectedRoute allowedRoles={['cp', 'channel_partner', 'cp_user']}><CpLayout /></ProtectedRoute>}>
             <Route path="/cp/dashboard" element={<CpDashboard />} />
             <Route path="/cp/project" element={<CpProjectShowcase />} />
+            <Route path="/cp/bulk_upload" element={<CpBulkUpload />} />
           </Route>
           <Route element={<ProtectedRoute blockCpFromApp><SidebarLayout /></ProtectedRoute>}>
             <Route path="/" element={<RoleBasedRedirect />} />

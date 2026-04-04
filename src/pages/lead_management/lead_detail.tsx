@@ -1451,6 +1451,9 @@ export default function LeadDetail() {
 
                                 {/* Avatar */}
                                 <Avatar className="size-12 sm:size-14 ring-2 ring-primary/20 shadow">
+                                    {leadDetail?.profile?.profileImagePath && (
+                                        <AvatarImage src={getSanitizedAvatarUrl(leadDetail.profile.profileImagePath)} alt={leadName} />
+                                    )}
                                     <AvatarFallback className="text-xl sm:text-2xl font-semibold uppercase">
                                         {initials}
                                     </AvatarFallback>
