@@ -174,6 +174,7 @@ export interface UpdateLeadInput {
   stage?: string;
   status?: string;
   exe_user?: string;
+  cp_user?: string;
 }
 
 export interface UpdateLeadMutationResponse {
@@ -268,4 +269,16 @@ export interface GetProjectBookedUnitsQueryResponse {
 export interface GetProjectBookedUnitsQueryVariables {
   organization: string;
   id: number;
+}
+
+export interface DeleteLeadMutationResponse {
+  deleteLead: {
+    success: boolean;
+    deletedCount: number;
+  };
+}
+
+export interface DeleteLeadMutationVariables {
+  organization: string;
+  profileId: number;
 }

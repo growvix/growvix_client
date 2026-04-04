@@ -290,7 +290,7 @@ export function NavUser({
 
               <DropdownMenuItem asChild>
 
-                {/* <Link
+                <Link
                   to="/updates"
                   className="flex items-center gap-2"
                   onClick={() => {
@@ -301,8 +301,6 @@ export function NavUser({
                   <Sparkles className="h-4 w-4" />
                   <span>Updates</span>
                 </Link>
-                 */}
-
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link

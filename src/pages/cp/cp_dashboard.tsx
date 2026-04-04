@@ -1,402 +1,185 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
-import axios from "axios"
-import { getCookie, setCookie } from "@/utils/cookies"
-import { API } from "@/config/api"
-import { encodeProjectId } from "@/utils/idEncoder"
+import { getCookie } from "@/utils/cookies"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Building2, MapPin, Layers, Package, List, LayoutGrid, ArrowUpDown, Search, Download } from "lucide-react"
+import { 
+    Search, 
+    Calendar, 
+    Target, 
+    Users, 
+    Settings2, 
+    Loader2, 
+    ChevronRight,
+    ClipboardIcon,
+    RefreshCcw,
+    Plus
+} from "lucide-react"
 import { DataTable } from "@/components/ui/data-table"
 import { type ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-
-interface AllowedProject {
-    project_id: number
-    project_name: string
-}
-
-interface ProjectDetail {
-    product_id: number
-    name: string
-    location: string
-    property: string
-    totalUnits: number
-    bookedCount: number
-    blockCount: number
-    createdAt: string
-}
+import { API } from "@/config/api"
+import axios from "axios"
+import { toast } from "sonner"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 
 export default function CpDashboard() {
     const navigate = useNavigate()
-    const [projects, setProjects] = useState<ProjectDetail[]>([])
+    const [forms, setForms] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
-    const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
-    const [unitDetailsOpen, setUnitDetailsOpen] = useState(false)
-    const isDebug = new URLSearchParams(window.location.search).get('debug') === 'true'
+    const currentUserId = getCookie('user_id')
 
-    const filteredProjects = projects.filter(project => 
-        project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (project.location && project.location.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
+    useEffect(() => {
+        fetchForms()
+    }, [])
 
-    const fetchProjectDetails = useCallback(async () => {
+    const fetchForms = async () => {
+        setLoading(true)
         try {
-            setLoading(true)
-            const organization = getCookie("organization")
-            const token = getCookie("token")
-            const userId = getCookie("user_id")
-
-            if (!organization || !token || !userId) {
-                setProjects([])
-                setLoading(false)
-                return
+            const org = getCookie('organization')
+            const userId = getCookie('user_id')
+            const token = getCookie('token')
+            
+            // Build query params, excluding 'undefined' or empty values
+            const params = new URLSearchParams()
+            if (org && org !== 'undefined' && org !== 'null') {
+                params.append('organization', org)
             }
-
-            // Step 1: Fetch fresh allowed_projects from CP User profile (live from DB)
-            let allowedProjects: AllowedProject[] = []
-            try {
-                // We use the CP User ID from the cookie but fetch the REAL live data from the backend
-                // to avoid stale project lists when an admin adds one.
-                const profileRes = await axios.get(`${API.CP_USERS}/${userId}?organization=${encodeURIComponent(organization)}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                })
-                
-                const profileData = profileRes.data.data
-                allowedProjects = profileData?.allowed_projects || []
-                
-                // Update the stale cookie with the new live data for other parts of the app
-                setCookie("allowed_projects", encodeURIComponent(JSON.stringify(allowedProjects)))
-                
-                if (isDebug) {
-                    console.log("CP Live Profile Fetched:", {
-                        userId,
-                        allowed_projects: allowedProjects
-                    })
-                }
-            } catch (profileErr) {
-                console.warn("CP Dashboard: Failed to fetch fresh profile. Falling back to cookie or empty.", profileErr)
-                const raw = getCookie("allowed_projects")
-                allowedProjects = raw ? JSON.parse(decodeURIComponent(raw)) : []
+            if (userId && userId !== 'undefined' && userId !== 'null') {
+                params.append('userId', userId)
             }
-
-            // Step 2: Fetch all projects in the organization
-            const res = await axios.get(`${API.PROJECTS}?organization=${encodeURIComponent(organization)}`, {
-                headers: { Authorization: `Bearer ${token}` },
+            
+            const res = await axios.get(`${API.LEAD_CAPTURE_CONFIGS}?${params.toString()}`, {
+                headers: { Authorization: `Bearer ${token}` }
             })
-            const allProjects: ProjectDetail[] = res.data.data || []
-            
-            if (isDebug) {
-                console.log("CP Dashboard Project Sync:", {
-                    allowedFromBackend: allowedProjects.map(p => p.project_id),
-                    allOrgProjects: allProjects.map(p => p.product_id)
-                })
-            }
-            
-            // Step 3: Match organization projects with user's allowed projects
-            if (allowedProjects.length > 0) {
-                const allowedIds = new Set(allowedProjects.map(p => Number(p.project_id)))
-                const filtered = allProjects.filter(p => {
-                    // Using Number to ensure strict equality works if one is a string
-                    return allowedIds.has(Number(p.product_id))
-                })
-                
-                setProjects(filtered)
-                
-                if (filtered.length === 0 && allProjects.length > 0) {
-                    console.warn("CP Dashboard: No match found between CP assigned IDs and Org Project product_ids.", {
-                        assignedIds: Array.from(allowedIds),
-                        orgIds: allProjects.map(p => p.product_id)
-                    })
-                }
-            } else {
-                setProjects([])
-            }
-        } catch (err) {
-            console.error("Dashboard Sync Failed:", err)
-            setProjects([])
+            setForms(res.data.data || [])
+        } catch (error) {
+            console.error("Failed to fetch forms:", error)
+            setForms([])
         } finally {
             setLoading(false)
         }
-    }, [isDebug])
-
-    useEffect(() => {
-        fetchProjectDetails()
-    }, [fetchProjectDetails])
-
-    const handleProjectClick = (project: ProjectDetail) => {
-        // Restricted access for CP users: just show the project, don't give access to open
-        const role = getCookie("role")
-        if (role === "cp_user") {
-            return
-        }
-        
-        const encodedId = encodeProjectId(project.product_id)
-        navigate(`/cp/project?id=${encodedId}`)
     }
 
-    const getPropertyIcon = (property: string) => {
-        switch (property) {
-            case "plots":
-                return <Layers className="h-5 w-5" />
-            default:
-                return <Building2 className="h-5 w-5" />
-        }
-    }
-
-    const columns: ColumnDef<ProjectDetail>[] = [
-        {
-            accessorKey: "product_id",
-            header: ({ column }) => (
-                <Button 
-                    variant="ghost" 
-                    className="p-0 hover:bg-transparent font-semibold text-xs uppercase tracking-wider"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    ID <ArrowUpDown className="ml-2 h-3 w-3" />
-                </Button>
-            ),
-            meta:{
-                label:"ID"
-            },
-            cell: ({ row }) => <div className="text-xs font-medium text-muted-foreground">{row.getValue("product_id")}</div>,
-        },
+    const columns: ColumnDef<any>[] = useMemo(() => [
         {
             accessorKey: "name",
-            header: ({ column }) => (
-                <Button 
-                    variant="ghost" 
-                    className="p-0 hover:bg-transparent font-semibold text-xs uppercase tracking-wider"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Project Name <ArrowUpDown className="ml-2 h-3 w-3" />
-                </Button>
-            ),
-            meta:{
-                label:"Project Name"
-            },
+            header: "FORM NAME & SOURCE",
             cell: ({ row }) => (
-                <div className="flex items-center gap-2">
-                    <div className="font-semibold text-sm">{row.getValue("name")}</div>
+                <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center shrink-0 border border-purple-100 dark:border-purple-900/30 shadow-sm">
+                        <ClipboardIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                        <div className="font-bold text-zinc-900 dark:text-zinc-100 text-sm leading-tight">{row.original.name || 'Manual Lead Form'}</div>
+                        <div className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500 mt-1">{row.original.source || 'MANUAL'}</div>
+                    </div>
                 </div>
-            ),
+            )
         },
         {
-            accessorKey: "location",
-            header: () => <div className="font-semibold text-xs uppercase tracking-wider">Location</div>,
-            meta:{
-                label:"Location"
-            },
+            accessorKey: "project_id.name",
+            header: "TARGET PROJECT",
             cell: ({ row }) => (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <MapPin className="h-3 w-3" />
-                    {row.getValue("location")}
+                <div className="inline-flex items-center gap-2 bg-slate-50 dark:bg-zinc-900/50 border border-slate-100 dark:border-zinc-800/50 px-3 py-1.5 rounded-xl">
+                    <div className="h-6 w-6 rounded-full bg-purple-100 dark:bg-purple-950/30 flex items-center justify-center">
+                        <Target className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <span className="font-bold text-slate-700 dark:text-slate-200 text-xs">{row.original.project_id?.name || 'All Projects'}</span>
                 </div>
-            ),
+            )
         },
         {
-            accessorKey: "property",
-            header: () => <div className="font-semibold text-xs uppercase tracking-wider">Property</div>,
-            meta:{
-                label:"Property"
-            },
+            accessorKey: "createdAt",
+            header: "CREATED AT",
             cell: ({ row }) => (
-                <Badge variant="outline" className="capitalize text-[10px] px-2 py-0 font-medium bg-muted/30">
-                    {row.getValue("property")}
+                <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 font-bold ">
+                    <Calendar className="h-3.5 w-3.5 text-slate-300 dark:text-slate-600" />
+                    {row.original.createdAt ? format(new Date(row.original.createdAt), "MMM dd, yyyy") : 'Recently'}
+                </div>
+            )
+        },
+        {
+            accessorKey: "status",
+            header: "STATUS",
+            cell: ({ row }) => (
+                <Badge className={cn("px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider shadow-none border-none", row.original.status === 'Active' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/50' : 'bg-slate-100 dark:bg-zinc-900 text-slate-400 dark:text-zinc-600 hover:bg-slate-200 dark:hover:bg-zinc-800')}>
+                    {row.original.status || 'Active'}
                 </Badge>
-            ),
+            )
         },
         {
-            accessorKey: "totalUnits",
-            header: () => <div className="text-center font-semibold text-xs uppercase tracking-wider">Total Units</div>,
-            meta:{
-                label:"Total Units"
-            },
-            cell: ({ row }) => (
-                <div className="text-center font-medium">
-                    {row.getValue("totalUnits") || 0}
-                </div>
-            ),
-        },
-        {
-            accessorKey: "bookedCount",
-            header: () => <div className="text-center font-semibold text-xs uppercase tracking-wider">Status</div>,
-            meta:{
-                label:"Status"
-            },
+            id: "actions",
+            header: "",
             cell: ({ row }) => {
-                const booked = Number(row.getValue("bookedCount")) || 0
-                const total = Number(row.original.totalUnits) || 0
-                const percentage = total > 0 ? Math.round((booked / total) * 100) : 0
+                const assigned = row.original.assigned_people || []
+                const isAssigned = assigned.some((p: any) => p.id === currentUserId)
                 
                 return (
-                    <div className="flex flex-col items-center gap-1">
-                        <Badge 
-                            variant="secondary" 
-                            className={`px-2 py-0.5 text-[10px] font-bold ${
-                                booked > 0 
-                                ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" 
-                                : "bg-muted text-muted-foreground"
-                            }`}
+                    <div className="flex items-center justify-end pr-4">
+                        <Button 
+                            variant={isAssigned ? "default" : "secondary"} 
+                            className={cn(
+                                "h-10 px-6 rounded-xl font-bold text-xs uppercase shadow-md transition-all",
+                                isAssigned ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100" : "bg-slate-100 dark:bg-zinc-900 text-slate-400 dark:text-zinc-600 cursor-not-allowed opacity-70"
+                            )}
+                            onClick={() => isAssigned && navigate(`/cp/lead-entry?id=${row.original._id}`)}
+                            disabled={!isAssigned}
                         >
-                            {booked} Booked
-                        </Badge>
-                        {total > 0 && (
-                            <div className="text-[9px] text-muted-foreground font-medium">
-                                {percentage}% Occupied
-                            </div>
-                        )}
+                            {isAssigned ? "Fill Form" : "Locked"}
+                        </Button>
                     </div>
                 )
-            },
-        },
-    ]
+            }
+        }
+    ], [navigate, currentUserId])
 
     return (
-        <div className="px-4 md:px-6 py-6 max-w-7xl mx-auto">
-            {/* Debug Panel */}
-            {isDebug && (
-                <Card className="mb-4 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200">
-                    <CardHeader className="py-2">
-                        <CardTitle className="text-sm">Debug Info</CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-xs space-y-2">
-                        <p><strong>Org:</strong> {getCookie("organization")}</p>
-                        <p><strong>Allowed (Cookie):</strong> {getCookie("allowed_projects")}</p>
-                        <p><strong>All Projects (API):</strong> {projects.length} / {projects.length > 0 ? "Found" : "Empty"}</p>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* View Mode Toggle */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-               <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-               <div className="flex items-center gap-4">
-                   {viewMode === "grid" && (
-                       <div className="relative">
-                           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                           <Input
-                               type="text"
-                               placeholder="Search projects by name..."
-                               className="w-full sm:w-[250px] pl-9 bg-background h-9 text-sm"
-                               value={searchTerm}
-                               onChange={(e) => setSearchTerm(e.target.value)}
-                           />
-                       </div>
-                   )}
-                   <div className="flex items-center gap-2">
-                       <h2 className="font-semibold">Projects ({filteredProjects.length})</h2>
-                       <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
-                    <ToggleGroup
-                        type="single"
-                        value={viewMode}
-                        onValueChange={(value) => {
-                            if (value) setViewMode(value as "grid" | "table")
-                        }}
-                    >
-                        <ToggleGroupItem value="grid" className="h-8 w-8 p-0">
-                            <LayoutGrid className="h-4 w-4" />
-                        </ToggleGroupItem>
-                        <ToggleGroupItem value="table" className="h-8 w-8 p-0">
-                            <List className="h-4 w-4" />
-                        </ToggleGroupItem>
-                    </ToggleGroup>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => navigate("/cp/bulk_upload")}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Import Leads
-                </Button>
-                </div>
-                </div>
-            </div>
-
-            {/* Project Cards */}
-            {loading ? (
-                <div className="flex items-center justify-center py-20">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                </div>
-            ) : projects.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className="bg-muted p-6 rounded-2xl shadow-sm mb-4">
-                        <Package className="h-10 w-10 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-1">No Projects Available</h3>
-                    <p className="text-sm text-muted-foreground max-w-sm">
-                        You don't have access to any inventory projects yet. Contact your administrator to get project access.
-                    </p>
-                </div>
-            ) : viewMode === "grid" ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filteredProjects.length > 0 ? filteredProjects.map((project) => (
-                        <Card
-                            key={project.product_id}
-                            className={`flex flex-col relative transition-all duration-300 group ${getCookie("role") === "cp_user" ? "cursor-default" : "cursor-pointer hover:shadow-lg border-2 hover:border-primary/40"}`}
-                            onClick={() => handleProjectClick(project)}
-                        >
-                            <CardHeader className="pb-2">
-                                <div className="flex items-start justify-between">
-                                    <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                                        {getPropertyIcon(project.property)}
-                                    </div>
-                                    <Badge variant="outline" className="capitalize text-xs">
-                                        {project.property || "—"}
-                                    </Badge>
-                                </div>
-                                <CardTitle className="text-base mt-3 group-hover:text-primary transition-colors">
-                                    {project.name}
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="pt-0">
-                                {project.location && (
-                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
-                                        <MapPin className="h-3 w-3 shrink-0" />
-                                        <span className="truncate">{project.location}</span>
-                                    </div>
-                                )}
-                                <div className="flex items-center gap-3 pt-2 border-t">
-                                    {project.totalUnits != null && (
-                                        <div className="text-xs">
-                                            <span className="font-semibold text-foreground">{project.totalUnits}</span>
-                                            <span className="text-muted-foreground ml-1">units</span>
-                                        </div>
-                                    )}
-                                    {project.blockCount != null && (
-                                        <div className="text-xs">
-                                            <span className="font-semibold text-foreground">{project.blockCount}</span>
-                                            <span className="text-muted-foreground ml-1">blocks</span>
-                                        </div>
-                                    )}
-                                    {project.bookedCount != null && project.bookedCount > 0 && (
-                                        <Badge className="ml-auto text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 hover:bg-orange-200">
-                                            {project.bookedCount} booked
-                                        </Badge>
-                                    )}
-                                </div>
-                                
-                            </CardContent>
-                        </Card>
-                    )) : (
-                        <div className="col-span-full py-12 text-center text-muted-foreground">
-                            No projects match your search "{searchTerm}".
+        <div className="flex flex-1 flex-col gap-10 px-10 py-10 max-w-[1500px] mx-auto w-full bg-slate-50/50 dark:bg-zinc-950/50 min-h-screen">
+           
+                <CardContent className="p-0">
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center py-40 gap-8">
+                            <div className="relative">
+                                <Loader2 className="h-16 w-16 animate-spin text-zinc-900 dark:text-zinc-100" />
+                                <Settings2 className="h-8 w-8 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 animate-pulse" />
+                            </div>
+                            <p className="text-sm font-bold text-slate-300 dark:text-slate-600 uppercase">Authenticating configurations...</p>
                         </div>
-                    )}
-                </div>
-            ) : (
-                <Card className="border-muted-foreground/10 overflow-hidden">
-                    <CardContent className="px-3 py-0">
-                        <DataTable
-                            columns={columns}
-                            data={projects}
-                            onRowClick={(project) => handleProjectClick(project)}
-                            filterColumn="name"
-                            filterPlaceholder="Filter by project name..."
+                    ) : forms.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-40 px-10 text-center">
+                            <div className="h-28 w-28 rounded-4xl bg-slate-50 dark:bg-zinc-900 flex items-center justify-center mb-10 border-2 border-dashed border-slate-200 dark:border-zinc-800 shadow-inner">
+                                <Users className="h-12 w-12 text-slate-200 dark:text-zinc-700" />
+                            </div>
+                            <h3 className="text-3xl font-bold mb-4 text-zinc-900 dark:text-zinc-100">No Access</h3>
+                            <p className="text-slate-400 dark:text-zinc-500 font-medium max-w-sm leading-relaxed ">
+                                You don't have any lead capture configurations assigned yet. Contact your administrator to get started.
+                            </p>
+                        </div>
+                    ) : (
+                        <DataTable 
+                            columns={columns} 
+                            data={forms} 
+                            filterPlaceholder="Search configurations..."
+                            topRightContent={
+                                <div className="flex items-center gap-3">
+                                    <Button 
+                                        variant="outline" 
+                                        className="h-8 w-8 p-0 rounded-xl border border-slate-200 dark:border-zinc-800 hover:bg-white dark:hover:bg-zinc-900 bg-white/50 dark:bg-zinc-900/50"
+                                        onClick={fetchForms}
+                                    >
+                                        <RefreshCcw className={cn("h-4 w-4 text-slate-400 dark:text-stone-600", loading && "animate-spin")} />
+                                    </Button>
+                                </div>
+                            }
                         />
-                    </CardContent>
-                </Card>
-            )}
+                    )}
+                </CardContent>
+          
         </div>
     )
 }
+

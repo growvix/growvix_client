@@ -77,7 +77,7 @@ export default function Automation() {
             bgClass: "bg-emerald-100 dark:bg-emerald-900/40",
             hoverBorder: "hover:border-emerald-300 dark:hover:border-emerald-800",
             hoverGradient: "from-emerald-50/50 dark:from-emerald-950/20",
-            path: "/automation/lead_capture_forms",
+            path: "/automation/leadcapture",
         },
         {
             title: "Track Source and Subsource",
