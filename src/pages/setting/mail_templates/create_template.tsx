@@ -26,6 +26,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import { getCookie } from "@/utils/cookies"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { API } from "@/config/api"
+import { compressImage, compressImages } from "@/utils/imageCompression"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import {
@@ -328,19 +329,33 @@ function SortableDesignBlockItem({
                             type="file"
                             accept="image/*"
                             className="hidden"
-                            onChange={(e) => {
-                                const file = e.target.files?.[0]
-                                if (file) {
-                                    const reader = new FileReader()
-                                    reader.onload = (ev) => {
-                                        onUpdate({
-                                            ...block,
-                                            content: ev.target?.result as string,
-                                        })
+                                onChange={async (e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file) {
+                                        try {
+                                            const compressedFile = await compressImage(file, { quality: 0.7, maxWidth: 1200 });
+                                            const reader = new FileReader()
+                                            reader.onload = (ev) => {
+                                                onUpdate({
+                                                    ...block,
+                                                    content: ev.target?.result as string,
+                                                })
+                                            }
+                                            reader.readAsDataURL(compressedFile)
+                                        } catch (err) {
+                                            console.error("Compression failed", err);
+                                            // Fallback to original
+                                            const reader = new FileReader()
+                                            reader.onload = (ev) => {
+                                                onUpdate({
+                                                    ...block,
+                                                    content: ev.target?.result as string,
+                                                })
+                                            }
+                                            reader.readAsDataURL(file)
+                                        }
                                     }
-                                    reader.readAsDataURL(file)
-                                }
-                            }}
+                                }}
                         />
                     </label>
                 )
@@ -570,9 +585,16 @@ export default function CreateTemplate() {
     }
 
     // ── File upload ──
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || [])
-        setUploadedFiles((prev) => [...prev, ...files])
+        try {
+            const compressedFiles = await compressImages(files, { quality: 0.7, maxWidth: 1600 });
+            setUploadedFiles((prev) => [...prev, ...compressedFiles])
+        } catch (err) {
+            console.error("Compression failed", err);
+            setUploadedFiles((prev) => [...prev, ...files])
+        }
+        
         if (fileInputRef.current) {
             fileInputRef.current.value = ""
         }

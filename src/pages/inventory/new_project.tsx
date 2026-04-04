@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import LoaderScreen from '@/components/ui/loader-screen'
 import { useNavigate } from 'react-router-dom'
+import { compressImage, compressImages } from '@/utils/imageCompression'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -452,8 +453,9 @@ export default function NewProject() {
         }
 
         setFloorImageUploading(true)
+        const compressedFiles = await compressImages(fileArray, { quality: 0.7, maxWidth: 1920 })
         const formDataUpload = new FormData()
-        fileArray.forEach(file => formDataUpload.append('images', file))
+        compressedFiles.forEach(file => formDataUpload.append('images', file))
 
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
@@ -547,8 +549,9 @@ export default function NewProject() {
         }
 
         setUnitImageUploading(unitId)
+        const compressedFiles = await compressImages(fileArray, { quality: 0.7, maxWidth: 1600 })
         const formDataUpload = new FormData()
-        fileArray.forEach(file => formDataUpload.append('images', file))
+        compressedFiles.forEach(file => formDataUpload.append('images', file))
 
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
@@ -667,8 +670,9 @@ export default function NewProject() {
             return
         }
 
+        const compressedFiles = await compressImages(fileArray, { quality: 0.7, maxWidth: 1920 })
         const formDataUpload = new FormData()
-        fileArray.forEach(file => {
+        compressedFiles.forEach(file => {
             formDataUpload.append('images', file)
         })
 
@@ -702,8 +706,9 @@ export default function NewProject() {
             return
         }
 
+        const compressedFiles = await compressImages(Array.from(files), { quality: 0.7, maxWidth: 1920 })
         const formDataUpload = new FormData()
-        Array.from(files).forEach(file => {
+        compressedFiles.forEach(file => {
             formDataUpload.append('images', file)
         })
 
@@ -759,8 +764,9 @@ export default function NewProject() {
             }
         }
 
+        const compressedFile = await compressImage(file, { quality: 0.8, maxWidth: 1200 })
         const formDataUpload = new FormData()
-        formDataUpload.append('images', file)
+        formDataUpload.append('images', compressedFile)
 
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {
