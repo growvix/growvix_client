@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { 
     Plus, 
     MoreHorizontal, 
@@ -41,12 +42,13 @@ import {
     ClipboardIcon
 } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
-import { API } from "@/config/api"
+import { API, getSanitizedAvatarUrl } from "@/config/api"
 import axios from "axios"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { type ColumnDef } from "@tanstack/react-table"
 import { cn } from "@/lib/utils"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 const getCookie = (name: string): string => {
     const value = `; ${document.cookie}`
@@ -119,6 +121,9 @@ export default function LeadCapture() {
         {
             accessorKey: "name",
             header: "FORM NAME & SOURCE",
+            meta: {
+               label: "FORM NAME & SOURCE"
+            },
             cell: ({ row }) => (
                 <div className="flex items-center gap-4">
                     <div className="h-10 w-10 rounded-xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center shrink-0 border border-purple-100 dark:border-purple-900/30 shadow-sm">
@@ -135,6 +140,9 @@ export default function LeadCapture() {
         },
         {
             accessorKey: "project_id.name",
+            meta: {
+               label: "TARGET PROJECT"
+            },
             header: "TARGET PROJECT",
             cell: ({ row }) => (
                 <div className="inline-flex items-center gap-2 bg-slate-50 dark:bg-zinc-900/50 border border-slate-100 dark:border-zinc-800/50 px-3 py-1.5 rounded-xl">
@@ -147,28 +155,75 @@ export default function LeadCapture() {
         },
         {
             accessorKey: "assigned_people",
+            meta: {
+               label: "ASSIGNED"
+            },
             header: "ASSIGNED",
             cell: ({ row }) => {
                 const assigned = row.original.assigned_people || []
                 return (
                     <div className="flex -space-x-1.5 items-center">
                         {assigned.slice(0, 3).map((p: any, i: number) => (
-                            <div 
-                                key={i} 
-                                className={cn(
-                                    "h-7 w-7 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[9px] font-bold uppercase shadow-sm", 
-                                    i === 0 ? "bg-slate-200 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400" : i === 1 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" : "bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400"
-                                )}
-                                title={`${p.name} (${p.category})`}
-                            >
-                                {p.name[0]}
-                            </div>
+                            <Popover key={i}>
+                                <PopoverTrigger asChild>
+                                    <Avatar className="h-7 w-7 border-2 border-white dark:border-zinc-900 cursor-pointer hover:scale-110 active:scale-95 transition-all shadow-sm">
+                                        {p.image && (
+                                            <AvatarImage src={getSanitizedAvatarUrl(p.image)} alt={p.name} />
+                                        )}
+                                        <AvatarFallback 
+                                            className={cn(
+                                                "text-[9px] font-bold uppercase", 
+                                                i === 0 ? "bg-slate-200 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400" : i === 1 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" : "bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400"
+                                            )}
+                                        >
+                                            {p.name[0]}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                </PopoverTrigger>
+                                <PopoverContent side="bottom" align="start" className="w-80 p-0 rounded-3xl overflow-hidden border-slate-100 dark:border-zinc-800 shadow-2xl shadow-zinc-200 dark:shadow-none">
+                                    <div className="bg-zinc-900 dark:bg-zinc-100 p-6">
+                                        <div className="flex items-center gap-4">
+                                            <Avatar className="h-12 w-12 rounded-2xl border-none ring-offset-zinc-900 ring-white/10 ring-2">
+                                                {p.image && (
+                                                    <AvatarImage src={getSanitizedAvatarUrl(p.image)} alt={p.name} />
+                                                )}
+                                                <AvatarFallback className="bg-white/10 dark:bg-zinc-900/10 text-lg font-bold text-white dark:text-zinc-900">
+                                                    {p.name[0]}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <div className="text-white dark:text-zinc-900 font-bold text-base leading-tight">{p.name}</div>
+                                                <div className="text-emerald-400 dark:text-emerald-600 text-[10px] font-black uppercase tracking-widest mt-1">{p.category || 'EXECUTIVE'}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                         ))}
                         {assigned.length === 0 && <span className="text-[11px] text-slate-300 dark:text-slate-600 font-bold tracking-tight uppercase">Unassigned</span>}
                         {assigned.length > 3 && (
-                            <div className="h-7 w-7 rounded-full border-2 border-white dark:border-zinc-900 bg-slate-50 dark:bg-zinc-800 flex items-center justify-center text-[9px] font-bold text-slate-400">
-                                +{assigned.length - 3}
-                            </div>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <div className="h-7 w-7 rounded-full border-2 border-white dark:border-zinc-900 bg-slate-50 dark:bg-zinc-800 flex items-center justify-center text-[9px] font-bold text-slate-400 cursor-pointer hover:bg-slate-100 transition-colors">
+                                        +{assigned.length - 3}
+                                    </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 p-3 rounded-2xl border-slate-100 dark:border-zinc-800 shadow-xl overflow-y-auto max-h-60">
+                                    <div className="space-y-2">
+                                        {assigned.slice(3).map((p: any, idx: number) => (
+                                            <div key={idx} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-zinc-900 rounded-xl transition-all group">
+                                                <div className="h-8 w-8 rounded-full bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-[10px] font-bold text-white dark:text-zinc-900 group-hover:scale-105 transition-transform">
+                                                    {p.name[0]}
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">{p.name}</span>
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase truncate">{p.category}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                         )}
                     </div>
                 )
@@ -176,6 +231,9 @@ export default function LeadCapture() {
         },
         {
             accessorKey: "status",
+            meta: {
+               label: "STATUS"
+            },
             header: "STATUS",
             cell: ({ row }) => (
                 <Badge className={cn("px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider shadow-none border-none", row.original.status === 'Active' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/50' : 'bg-slate-100 dark:bg-zinc-900 text-slate-400 dark:text-zinc-600 hover:bg-slate-200 dark:hover:bg-zinc-800')}>
@@ -185,6 +243,9 @@ export default function LeadCapture() {
         },
         {
             accessorKey: "createdAt",
+            meta: {
+               label: "CREATED AT"
+            },
             header: "CREATED AT",
             cell: ({ row }) => (
                 <div className="text-xs text-slate-500 flex items-center gap-1.5 font-bold ">
@@ -195,6 +256,9 @@ export default function LeadCapture() {
         },
         {
             id: "actions",
+            meta: {
+               label: "ACTIONS"
+            },
             header: "",
             cell: ({ row }) => {
                 const assigned = row.original.assigned_people || []
@@ -202,18 +266,6 @@ export default function LeadCapture() {
                 
                 return (
                     <div className="flex items-center justify-end gap-3 pr-4">
-                        <Button 
-                            variant={isAssigned ? "default" : "secondary"} 
-                            size="sm" 
-                            className={cn(
-                                "h-10 px-6 rounded-xl font-bold text-xs uppercase shadow-md flex items-center gap-2 transition-all",
-                                isAssigned ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200" : "bg-slate-100 dark:bg-zinc-900 text-slate-400 dark:text-zinc-600 cursor-not-allowed opacity-70"
-                            )}
-                            onClick={() => isAssigned && navigate(`/automation/leadcapture/entry?id=${row.original._id}`)}
-                            disabled={!isAssigned}
-                        >
-                            {isAssigned ? "Fill Form" : "Locked"}
-                        </Button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-10 w-10 p-0 rounded-2xl hover:bg-slate-50 dark:hover:bg-zinc-900 text-slate-200 dark:text-zinc-600 group">
@@ -290,7 +342,7 @@ export default function LeadCapture() {
                             data={forms} 
                             filterPlaceholder="Search configurations..."
                             topRightContent={
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
                                     <Button 
                                         variant="outline" 
                                         className="h-10 w-10 p-0 rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm hover:bg-white dark:hover:bg-zinc-900 bg-white/50 dark:bg-zinc-900/50"
@@ -299,7 +351,7 @@ export default function LeadCapture() {
                                         <RefreshCcw className={cn("h-4 w-4 text-slate-400 dark:text-zinc-600", loading && "animate-spin")} />
                                     </Button>
                                     <Button 
-                                        className="h-10 px-6 font-bold uppercase bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl shadow-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all border-b-2 border-zinc-950 dark:border-zinc-300"
+                                        className="h-10 px-4 font-bold uppercase bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl shadow-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all border-b-2 border-zinc-950 dark:border-zinc-300"
                                         onClick={() => navigate("/automation/leadcapture/leadcaptureform")}
                                     >
                                         <Plus className="h-4 w-4 mr-2 text-emerald-400" /> New Form

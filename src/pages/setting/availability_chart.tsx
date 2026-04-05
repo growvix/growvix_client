@@ -139,7 +139,6 @@ export default function AvailabilityChart() {
     useEffect(() => {
         setBreadcrumbs([
             { label: "Settings", href: "/settings" },
-            { label: "User Management", href: "/setting/user_management" },
             { label: "Availability & Leave" },
             {
                 label: (

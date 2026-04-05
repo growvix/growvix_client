@@ -212,7 +212,7 @@ export default function SubSourceLevelReport() {
                                     ))}
                                 </tr>
                             </thead>
-                            <tbody className="bg-background">
+                            <tbody className="bg-background ">
                                 {filteredSources.map(source => {
                                     const visibleSubs = SUBSOURCES[source].filter(sub => subSourceFilter === "all" || subSourceFilter === sub)
                                     if (visibleSubs.length === 0) return null
@@ -225,13 +225,13 @@ export default function SubSourceLevelReport() {
                                                 METRICS.forEach((_, i) => { if (![2, 8, 10, 12].includes(i)) grandTotal[i] += data[i] })
                                                 
                                                 return (
-                                                    <tr key={sub} className="group hover:bg-primary/5 transition-all duration-200 border-b">
+                                                    <tr key={sub} className="group hover:bg-primary/5 dark:bg-black   transition-all duration-200 border-b">
                                                         {idx === 0 && (
-                                                            <td rowSpan={visibleSubs.length} className="font-bold px-6 py-4 text-xs text-foreground border-r border-muted/20 bg-white group-hover:bg-primary/5 uppercase align-middle">
+                                                            <td rowSpan={visibleSubs.length} className="font-bold px-6 py-4  dark:bg-black text-xs text-foreground border-r border-muted/20 bg-white group-hover:bg-primary/5 uppercase align-middle">
                                                                 {source}
                                                             </td>
                                                         )}
-                                                        <td className="px-6 py-4 text-xs italic text-muted-foreground border-r border-muted/20">
+                                                        <td className="px-6 py-4 text-xs italic text-muted-foreground border-r border-muted/20 ">
                                                             {sub}
                                                         </td>
                                                         {data.map((val: number, vIdx: number) => (
@@ -248,7 +248,7 @@ export default function SubSourceLevelReport() {
                                 {/* Grand Total for the Group */}
                                 {hasVisibleData && (
                                     <tr className="bg-primary/5 font-bold border-t-2 border-primary/20">
-                                        <td colSpan={2} className="px-6 py-4 text-xs uppercase tracking-wider text-primary text-center">
+                                        <td colSpan={2} className="px-6 py-4 text-xs uppercase tracking-wider  text-primary text-center">
                                             GRAND TOTAL ({title})
                                         </td>
                                         {calculateRates(grandTotal).map((val: number, vIdx: number) => (

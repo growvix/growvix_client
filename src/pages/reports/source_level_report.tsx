@@ -283,7 +283,7 @@ export default function SourceLevelReport() {
                             <tbody className="bg-background">
                                 {groupData.sources.map((source: string) => (
                                     <tr key={source} className="group hover:bg-primary/5 transition-all duration-200 border-b">
-                                        <td className="font-bold px-6 py-4 text-sm text-foreground border-r border-muted/20 bg-white group-hover:bg-primary/5 uppercase">
+                                        <td className="font-bold px-6 py-4 text-sm text-foreground border-r border-muted/20 dark:bg-black group-hover:bg-primary/5 uppercase">
                                             {source}
                                         </td>
                                         {sourceTotals[source].map((val: number, vIdx: number) => (
