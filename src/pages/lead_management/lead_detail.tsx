@@ -3170,13 +3170,13 @@ export default function LeadDetail() {
                                                                             {projectDetail?.property || 'PROJ'}
                                                                         </Badge>
                                                                     </div>
-                                                                    
+
                                                                     {canEdit && (
                                                                         <AlertDialog>
                                                                             <AlertDialogTrigger asChild>
-                                                                                <Button 
-                                                                                    variant="ghost" 
-                                                                                    size="icon" 
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
                                                                                     className="h-8 w-8 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-red-500/10 hover:border-red-500/20 group transition-all shrink-0"
                                                                                     disabled={removingProjectId === ip.project_id}
                                                                                 >
@@ -3574,7 +3574,7 @@ export default function LeadDetail() {
                     </Card>
                 </div>
                 <div className="xl:col-span-2 lg:col-span-3 flex flex-col gap-2 shadow-0 tracking-tighter ">
-                    <Card className="border-2 shadow-none dark:bg-input/10 bg-background">
+                    <Card className="border-2 shadow-none dark:border-zinc-800 dark:bg-black bg-background">
                         <CardHeader className="mt-0">
                             <Tabs defaultValue="all" className="">
                                 <TabsList className="w-full mb-4 py-2 h-11 dark:bg-input/50">
