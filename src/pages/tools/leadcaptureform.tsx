@@ -49,6 +49,7 @@ import {
     Target,
     SlidersHorizontal,
     FileEdit,
+    FileText,
     ShieldCheck,
     X,
     ChevronsUpDown,
@@ -102,7 +103,7 @@ interface AssignedPerson {
 const STEPS = [
     { id: 1, title: 'STEP 1', icon: <Target className="w-6 h-6" />, label: 'Form Builder' },
     { id: 2, title: 'STEP 2', icon: <SlidersHorizontal className="w-6 h-6" />, label: 'Routing Options' },
-    { id: 3, title: 'STEP 3', icon: <ShieldCheck className="w-6 h-6" />, label: 'Preview & Save' },
+    { id: 3, title: 'STEP 3', icon: <FileText className="w-6 h-6" />, label: 'Preview & Save' },
 ]
 
 const FieldSelector = ({ fieldId, isSelected, onClick, children }: any) => (
@@ -151,6 +152,11 @@ export default function LeadCaptureForm() {
         parking_needed: '',
     })
 
+    // Fill Mode State
+    const [isFillMode, setIsFillMode] = useState(false)
+    const [leadData, setLeadData] = useState<any>({})
+    const [submittingLead, setSubmittingLead] = useState(false)
+
     // Step 2: Requirements
     const [selectedFields, setSelectedFields] = useState<string[]>([
         'budget', 'preferred_location', 'preferred_floor', 'interested_projects'
@@ -190,24 +196,32 @@ export default function LeadCaptureForm() {
     const [searchQuery, setSearchQuery] = useState('')
 
     useEffect(() => {
-        setBreadcrumbs([
-           
+        const urlParams = new URLSearchParams(window.location.search)
+        const mode = urlParams.get('mode')
+        const id = urlParams.get('id')
+        const org = getCookie('organization')
+
+        setBreadcrumbs(mode === 'fill' ? [
+            { label: "New Lead", href: "NewLead" },
+            { label: "Project Entry", href: "" }
+        ] : [
             { label: "Automation", href: "tools/automation" },
             { label: "Lead Capture", href: "automation/leadcapture" },
             { label: "Configure Form", href: "tools/automation/leadcapture/leadcaptureform" },
         ])
-        
-        const org = getCookie('organization')
-        const urlParams = new URLSearchParams(window.location.search)
-        const id = urlParams.get('id')
+
+        if (mode === 'fill') {
+            setIsFillMode(true)
+            setCurrentStep(3)
+        }
 
         if (org) {
             setOrganization(org)
-            fetchData(org, id)
+            fetchData(org, id, mode)
         }
     }, [])
 
-    const fetchData = async (org: string, id: string | null) => {
+    const fetchData = async (org: string, id: string | null, mode: string | null) => {
         setFetchingData(true)
         try {
             const token = getCookie('token')
@@ -226,9 +240,29 @@ export default function LeadCaptureForm() {
                 })
                 const config = configRes.data.data
                 if (config) {
-                    setContactInfo(config.contact_info)
+                    const loadedContactInfo = config.contact_info || {}
+                    if (mode === 'fill') {
+                        setContactInfo({
+                            ...loadedContactInfo,
+                            name: '',
+                            email: '',
+                            phone: '',
+                            location: '',
+                            bhk: '',
+                            furniture: '',
+                            facing: '',
+                            sqft: '',
+                            bathroom_count: '',
+                            parking_needed: '',
+                            preferred_floor: '',
+                            interested_projects: '',
+                            preferred_location: ''
+                        })
+                    } else {
+                        setContactInfo(loadedContactInfo)
+                    }
                     setSelectedFields(config.selected_fields)
-                    setManualRequirements(config.manual_requirements)
+                    setManualRequirements(config.manual_requirements?.map((m: any) => ({ ...m, value: '' })) || [])
                     setAssignedPeople(config.assigned_people)
                     setSelectedProject(config.project_id)
                 }
@@ -291,72 +325,131 @@ export default function LeadCaptureForm() {
                 status: 'Active'
             }
             
-            if (id) {
-                await axios.put(`${API.LEAD_CAPTURE_CONFIGS}/${id}`, payload, {
+            if (isFillMode) {
+                // Submit as a Lead
+                const leadPayload = {
+                    organization: finalOrg,
+                    profile: {
+                        name: contactInfo.name,
+                        email: contactInfo.email,
+                        phone: contactInfo.phone,
+                        location: contactInfo.location,
+                    },
+                    requirement: {
+                        budget: contactInfo.budget,
+                        location: contactInfo.preferred_location,
+                        floor: contactInfo.preferred_floor,
+                        bhk: contactInfo.bhk,
+                        sqft: contactInfo.sqft,
+                        facing: contactInfo.facing,
+                        furniture: contactInfo.furniture,
+                    },
+                    project: [selectedProject.name],
+                    acquired: [{
+                        campaign: contactInfo.campaign,
+                        source: contactInfo.source,
+                        sub_source: 'Lead Capture Form',
+                        medium: 'Web Form',
+                        received: new Date().toISOString(),
+                        created_at: new Date().toISOString(),
+                    }],
+                    exe_user: getCookie('user_id'),
+                    notes: manualRequirements.map(m => `${m.key}: ${m.value}`).join(' | ')
+                }
+
+                const response = await axios.post(API.LEADS, leadPayload, {
                     headers: { Authorization: `Bearer ${token}` }
                 })
+                toast.success(response.data.message || 'Lead captured successfully!')
+                navigate('/all_leads')
             } else {
-                await axios.post(API.LEAD_CAPTURE_CONFIGS, payload, {
-                    headers: { Authorization: `Bearer ${token}` }
-                })
+                // Submit as a Configuration
+                const configPayload = {
+                    ...payload,
+                    is_active: true
+                }
+                
+                let response
+                if (id) {
+                    response = await axios.put(`${API.LEAD_CAPTURE_CONFIGS}/${id}`, configPayload, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    })
+                } else {
+                    response = await axios.post(API.LEAD_CAPTURE_CONFIGS, configPayload, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    })
+                }
+                toast.success(response.data.message || 'Form configuration saved!')
+                navigate('/automation/leadcapture')
             }
-            
-            toast.success(id ? 'Lead Form updated successfully!' : 'Lead Form Configuration saved successfully!')
-            navigate('/automation/leadcapture')
         } catch (error: any) {
-            console.error(error)
-            toast.error(error.response?.data?.message || 'Failed to save configuration')
+            console.error('Save failed:', error)
+            toast.error(error.response?.data?.message || 'Failed to save data')
         } finally {
+            setSubmittingLead(false)
             setLoading(false)
         }
     }
 
     return (
         <div className="min-h-screen flex flex-col bg-background p-4 md:p-8">
-            {/* Horizontal Stepper (Screenshot 2 Style) */}
-            <div className="max-w-4xl mx-auto w-full mb-12 relative flex items-center justify-between px-10">
-                <div className="absolute top-1/2 left-20 right-20 h-0.5 bg-slate-100 dark:bg-zinc-800 -z-10 -translate-y-1/2" />
-                {STEPS.map((step) => {
-                    const isActive = currentStep === step.id
-                    const isCompleted = currentStep > step.id
-                    return (
-                        <div key={step.id} className="flex flex-col items-center gap-3 relative">
-                            <div 
-                                className={cn(
-                                    "w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 border-2",
-                                    isActive ? "bg-zinc-900 dark:bg-white border-zinc-900 dark:border-white text-white dark:text-zinc-900 shadow-xl scale-110" : 
-                                    isCompleted ? "bg-white dark:bg-zinc-900 border-primary/20 dark:border-zinc-700 text-primary dark:text-zinc-100 shadow-md" : 
-                                    "bg-white dark:bg-zinc-950 border-slate-100 dark:border-zinc-900 text-slate-300 dark:text-zinc-700"
-                                )}
-                                onClick={() => (isCompleted || isActive) && setCurrentStep(step.id)}
-                            >
-                                {step.icon}
+            <div className="max-w-6xl mx-auto w-full">
+            {/* Horizontal Stepper (Screenshot 2 Style) - Hidden in Fill Mode */}
+            {!isFillMode && (
+                <div className="max-w-4xl mx-auto w-full mb-12 relative flex items-center justify-between px-10">
+                    {/* Horizontal Line Background (Continuous) */}
+                    <div className="absolute top-[32px] left-[72px] right-[72px] h-1 bg-slate-100 dark:bg-zinc-800 z-0" />
+                    
+                    {/* Progress Fill Line */}
+                    <div 
+                        className="absolute top-[32px] left-[72px] h-1 bg-emerald-500 z-0 transition-all duration-500" 
+                        style={{ 
+                            width: currentStep === 1 ? '0%' : currentStep === 2 ? 'calc(50% - 72px)' : 'calc(100% - 144px)' 
+                        }}
+                    />
+
+                    {STEPS.map((step) => {
+                        const isActive = currentStep === step.id
+                        const isCompleted = currentStep > step.id
+                        return (
+                            <div key={step.id} className="flex flex-col items-center gap-3 relative z-10">
+                                <div 
+                                    className={cn(
+                                        "w-16 h-16 rounded-full flex items-center justify-center transition-all duration-500 border-[3px] shadow-sm cursor-pointer",
+                                        isCompleted 
+                                            ? "bg-emerald-500 border-emerald-500 text-white shadow-emerald-200 dark:shadow-none" 
+                                            : isActive 
+                                                ? "bg-zinc-900 dark:bg-white border-zinc-900 dark:border-white text-white dark:text-zinc-900 shadow-xl scale-110" 
+                                                : "bg-white dark:bg-zinc-950 border-slate-100 dark:border-zinc-800 text-slate-300 dark:text-zinc-700"
+                                    )}
+                                    onClick={() => (isCompleted || isActive) && setCurrentStep(step.id)}
+                                >
+                                    {isActive ? step.icon : isCompleted ? <Check className="w-8 h-8"/> : <span className="text-xl font-black">{step.id}</span>}
+                                </div>
+                                <div className="text-center group">
+                                    <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-0.5", isActive ? "text-zinc-900 dark:text-zinc-100" : "text-slate-300 dark:text-zinc-600")}>{step.title}</p>
+                                    <p className={cn("text-xs font-black uppercase tracking-widest", isActive ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-zinc-500")}>{step.label}</p>
+                                </div>
                             </div>
-                            <span className={cn(
-                                "text-[10px] font-bold uppercase transition-colors duration-300",
-                                isActive ? "text-zinc-900 dark:text-zinc-100" : "text-slate-400 dark:text-zinc-600"
-                            )}>
-                                {step.title}
-                            </span>
-                        </div>
-                    )
-                })}
-            </div>
+                        )
+                    })}
+                </div>
+            )}
             
             <main className="flex-1 overflow-auto">
                 <div className="max-w-5xl mx-auto">
                     {currentStep === 1 && (
-                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 bg-white dark:bg-zinc-900 p-8 md:p-12 rounded-4xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-slate-100/50 dark:ring-zinc-800/50">
-                            <div className="max-w-4xl mx-auto space-y-12">
+                        <div className="animate-in fade-in slide-induration-500 bg-white dark:bg-zinc-900 p-8 md:p-12 rounded-4xl">
+                            <div className="max-w-4xl mx-auto space-y-12 border-2 border-slate-100 dark:border-zinc-800 p-6 rounded-3xl ">
                                 {/* Contact Section */}
-                                <section className="space-y-6">
+                                <section className="space-y-6 ">
                                     <div className="flex items-center gap-3">
                                         <div className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400" />
                                         <h3 className="font-bold text-zinc-900 dark:text-zinc-100">Contact Information</h3>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                                         <div className="space-y-2.5">
-                                            <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400 flex items-center gap-1">Full Name <span className="text-red-500">*</span></Label>
+                                            <Label className="text-[13px] font-bold text-zinc-900 dark:text-zinc-400 flex items-center gap-1">Full Name <span className="text-red-500">*</span></Label>
                                             <Input 
                                                 placeholder="Enter full name" 
                                                 className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm rounded-xl shadow-sm"
@@ -487,24 +580,26 @@ export default function LeadCaptureForm() {
                                             </div>
                                         )}
                                         {selectedFields.includes('bhk') && (
-                                            <div className="space-y-2.5 relative group col-span-2 md:col-span-1">
-                                                <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-zinc-500 ">Type (BHK)</Label>
-                                                <div className="relative border border-slate-100 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-950 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.02)] flex items-center gap-6 overflow-x-auto no-scrollbar pr-12">
+                                            <div className="space-y-3 relative group col-span-2 md:col-span-1">
+                                                <Label className="text-[11px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400 flex items-center justify-between">
+                                                    Type (BHK)
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-red-500 hover:bg-red-50" onClick={() => toggleField('bhk')}><Trash2 className="w-3 h-3" /></Button>
+                                                </Label>
+                                                <div className="flex flex-wrap gap-2">
                                                     {['1BHK', '2BHK', '3BHK', '4BHK', '5BHK+'].map(type => (
-                                                        <label key={type} className="flex items-center gap-2.5 cursor-pointer group/item shrink-0" onClick={() => setContactInfo({...contactInfo, bhk: type})}>
-                                                            <div className={cn(
-                                                                "w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center",
-                                                                contactInfo.bhk === type ? "border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/30" : "border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 group-hover/item:border-slate-300 dark:group-hover/item:border-zinc-700"
-                                                            )}>
-                                                                {contactInfo.bhk === type && <div className="w-2 h-2 rounded-full bg-purple-500 dark:bg-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.4)]" />}
-                                                            </div>
-                                                            <span className={cn(
-                                                                "text-[13px] font-bold transition-colors",
-                                                                contactInfo.bhk === type ? "text-purple-600 dark:text-purple-400" : "text-slate-500 dark:text-zinc-500"
-                                                            )}>{type}</span>
-                                                        </label>
+                                                        <div 
+                                                            key={type} 
+                                                            className={cn(
+                                                                "px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all border",
+                                                                contactInfo.bhk === type 
+                                                                    ? "bg-zinc-900 text-white border-zinc-900 shadow-lg scale-105" 
+                                                                    : "bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400 hover:border-slate-300 dark:hover:border-zinc-700"
+                                                            )}
+                                                            onClick={() => setContactInfo({...contactInfo, bhk: type})}
+                                                        >
+                                                            {type}
+                                                        </div>
                                                     ))}
-                                                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-300 dark:text-zinc-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl" onClick={() => toggleField('bhk')}><Trash2 className="w-4 h-4" /></Button>
                                                 </div>
                                             </div>
                                         )}
@@ -523,60 +618,74 @@ export default function LeadCaptureForm() {
                                             </div>
                                         )}
                                         {selectedFields.includes('parking_needed') && (
-                                            <div className="space-y-2.5 relative group">
-                                                <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Parking Needed</Label>
-                                                <div className="relative">
-                                                    <Input 
-                                                        placeholder="Parking preference" 
-                                                        className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm rounded-xl shadow-sm pr-12" 
-                                                        value={contactInfo.parking_needed}
-                                                        onChange={(e) => setContactInfo({...contactInfo, parking_needed: e.target.value})}
-                                                    />
-                                                    <Button variant="ghost" size="icon" className="absolute right-1 top-1 text-slate-300 hover:text-red-500 hover:bg-red-50" onClick={() => toggleField('parking_needed')}><Trash2 className="w-4 h-4" /></Button>
+                                            <div className="space-y-3 relative group col-span-2 md:col-span-1">
+                                                <Label className="text-[11px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400 flex items-center justify-between">
+                                                    Parking
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-red-500 hover:bg-red-50" onClick={() => toggleField('parking_needed')}><Trash2 className="w-3 h-3" /></Button>
+                                                </Label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {['Required', 'Not Required'].map(opt => (
+                                                        <div 
+                                                            key={opt} 
+                                                            className={cn(
+                                                                "px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all border",
+                                                                contactInfo.parking_needed === opt 
+                                                                    ? "bg-zinc-900 text-white border-zinc-900 shadow-lg scale-105" 
+                                                                    : "bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400 hover:border-slate-300 dark:hover:border-zinc-700"
+                                                            )}
+                                                            onClick={() => setContactInfo({...contactInfo, parking_needed: opt})}
+                                                        >
+                                                            {opt}
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
                                         )}
                                         {selectedFields.includes('furniture') && (
-                                            <div className="space-y-2.5 relative group col-span-2 md:col-span-1">
-                                                <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-zinc-500 ">Furniture</Label>
-                                                <div className="relative border border-slate-100 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-950 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.02)] flex items-center gap-6 overflow-x-auto no-scrollbar pr-12">
+                                            <div className="space-y-3 relative group col-span-2 md:col-span-1">
+                                                <Label className="text-[11px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400 flex items-center justify-between">
+                                                    Furnishing
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-red-500 hover:bg-red-50" onClick={() => toggleField('furniture')}><Trash2 className="w-3 h-3" /></Button>
+                                                </Label>
+                                                <div className="flex flex-wrap gap-2">
                                                     {['Furnished', 'Unfurnished', 'Semi-Furnished'].map(type => (
-                                                        <label key={type} className="flex items-center gap-2.5 cursor-pointer group/item shrink-0" onClick={() => setContactInfo({...contactInfo, furniture: type})}>
-                                                            <div className={cn(
-                                                                "w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center",
-                                                                contactInfo.furniture === type ? "border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/30" : "border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 group-hover/item:border-slate-300 dark:group-hover/item:border-zinc-700"
-                                                            )}>
-                                                                {contactInfo.furniture === type && <div className="w-2 h-2 rounded-full bg-purple-500 dark:bg-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.4)]" />}
-                                                            </div>
-                                                            <span className={cn(
-                                                                "text-[13px] font-bold transition-colors",
-                                                                contactInfo.furniture === type ? "text-purple-600 dark:text-purple-400" : "text-slate-500 dark:text-zinc-500"
-                                                            )}>{type}</span>
-                                                        </label>
+                                                        <div 
+                                                            key={type} 
+                                                            className={cn(
+                                                                "px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all border",
+                                                                contactInfo.furniture === type 
+                                                                    ? "bg-zinc-900 text-white border-zinc-900 shadow-lg scale-105" 
+                                                                    : "bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400 hover:border-slate-300 dark:hover:border-zinc-700"
+                                                            )}
+                                                            onClick={() => setContactInfo({...contactInfo, furniture: type})}
+                                                        >
+                                                            {type}
+                                                        </div>
                                                     ))}
-                                                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-300 dark:text-zinc-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl" onClick={() => toggleField('furniture')}><Trash2 className="w-4 h-4" /></Button>
                                                 </div>
                                             </div>
                                         )}
                                         {selectedFields.includes('facing') && (
-                                            <div className="space-y-2.5 relative group col-span-2 md:col-span-1">
-                                                <Label className="text-[11px] font-bold uppercase text-slate-500 dark:text-zinc-500 ">Facing</Label>
-                                                <div className="relative border border-slate-100 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-950 p-4 shadow-[0_2px_10px_rgba(0,0,0,0.02)] flex flex-wrap gap-x-6 gap-y-4 pr-12">
-                                                    {['East', 'West', 'North', 'South', 'North-East'].map(type => (
-                                                        <label key={type} className="flex items-center gap-2.5 cursor-pointer group/item shrink-0" onClick={() => setContactInfo({...contactInfo, facing: type})}>
-                                                            <div className={cn(
-                                                                "w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center",
-                                                                contactInfo.facing === type ? "border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/30" : "border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 group-hover/item:border-slate-300 dark:group-hover/item:border-zinc-700"
-                                                            )}>
-                                                                {contactInfo.facing === type && <div className="w-2 h-2 rounded-full bg-purple-500 dark:border-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.4)]" />}
-                                                            </div>
-                                                            <span className={cn(
-                                                                "text-[13px] font-bold transition-colors",
-                                                                contactInfo.facing === type ? "text-purple-600 dark:text-purple-400" : "text-slate-500 dark:text-zinc-500"
-                                                            )}>{type}</span>
-                                                        </label>
+                                            <div className="space-y-3 relative group col-span-2 md:col-span-1">
+                                                <Label className="text-[11px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400 flex items-center justify-between">
+                                                    Facing
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-red-500 hover:bg-red-50" onClick={() => toggleField('facing')}><Trash2 className="w-3 h-3" /></Button>
+                                                </Label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {['East', 'West', 'North', 'South', 'North-East'].map(dir => (
+                                                        <div 
+                                                            key={dir} 
+                                                            className={cn(
+                                                                "px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all border",
+                                                                contactInfo.facing === dir 
+                                                                    ? "bg-zinc-900 text-white border-zinc-900 shadow-lg scale-105" 
+                                                                    : "bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400 hover:border-slate-300 dark:hover:border-zinc-700"
+                                                            )}
+                                                            onClick={() => setContactInfo({...contactInfo, facing: dir})}
+                                                        >
+                                                            {dir}
+                                                        </div>
                                                     ))}
-                                                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-300 dark:text-zinc-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl" onClick={() => toggleField('facing')}><Trash2 className="w-4 h-4" /></Button>
                                                 </div>
                                             </div>
                                         )}
@@ -802,7 +911,7 @@ export default function LeadCaptureForm() {
                             {assignedPeople.length > 0 && (
                                 <div className="flex flex-wrap gap-2 pt-4">
                                     {assignedPeople.map(p => (
-                                        <Badge key={p.id} className="px-4 py-2 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl text-sm font-bold flex items-center gap-2 shadow-none">
+                                        <Badge key={p.id} className="px-4 py-2 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl text-sm font-bold flex items-center gap-2">
                                             {p.name}
                                             <X className="w-4 h-4 cursor-pointer text-slate-400 dark:text-zinc-500 hover:text-red-500" onClick={() => setAssignedPeople(assignedPeople.filter(x => x.id !== p.id))} />
                                         </Badge>
@@ -815,7 +924,7 @@ export default function LeadCaptureForm() {
                                     <ArrowLeft className="mr-3 w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back
                                 </Button>
                                 <Button 
-                                    className="h-12 px-10 font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 rounded-xl shadow-lg shadow-zinc-200 dark:shadow-none" 
+                                    className="h-12 px-10 font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 rounded-xl border border-zinc-200 dark:border-zinc-700" 
                                     onClick={() => {
                                         if(!selectedProject) {
                                             toast.error('Please select a project')
@@ -831,86 +940,114 @@ export default function LeadCaptureForm() {
                     )}
 
                     {currentStep === 3 && (
-                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-[1100px] mx-auto">
-                            <Card className="border-none shadow-2xl rounded-4xl overflow-hidden bg-white dark:bg-zinc-900 ring-1 ring-slate-100 dark:ring-zinc-800">
-                                <CardHeader className="bg-slate-50 dark:bg-zinc-950 p-8 border-b border-slate-100 dark:border-zinc-800">
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <CardTitle className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Preview Form Details</CardTitle>
-                                            <CardDescription className="font-bold text-slate-400 dark:text-zinc-500 mt-1">Review the form structure and assigned members.</CardDescription>
+                        <div className="max-w-[1100px] mx-auto">
+                            <Card className="rounded-2xl overflow-hidden bg-white dark:bg-black border border-zinc-250 dark:border-zinc-800 p-0">
+                                <CardHeader className="bg-slate-50 dark:bg-black px-6 pt-4 pb-4 border-b border-slate-100 dark:border-zinc-800">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <CardTitle className="text-2xl font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-tighter">
+                                                    {isFillMode ? `Website Lead Form - ${selectedProject?.name || 'Project'}` : 'Review Configured Form'}
+                                                </CardTitle>
+                                                <CardDescription className="font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 uppercase tracking-widest text-[11px]">
+                                                    {isFillMode ? `New lead for ${selectedProject?.name}` : 'Review the structure and team assignments before finalizing the capture config.'}
+                                                </CardDescription>
+                                            </div>
                                         </div>
-                                    </div>
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="flex flex-col divide-y divide-slate-100 dark:divide-zinc-800">
-                                        <div className="p-10 space-y-12">
+                                        <div className="p-6 space-y-12">
                                             {/* Compact Summary Header */}
-                                            <div className="flex flex-wrap items-center gap-x-12 gap-y-6 p-6 bg-slate-50/50 dark:bg-zinc-950/50 rounded-3xl border border-slate-100 dark:border-zinc-800/50 mb-8">
-                                                <div className="space-y-1.5">
-                                                    <div className="flex items-center gap-2">
-                                                        <Target className="w-3.5 h-3.5 text-zinc-400" />
-                                                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Target Project</p>
+                                            {/* Compact Summary Header - Hidden in Fill Mode */}
+                                            {!isFillMode && (
+                                                <div className="flex flex-wrap items-center gap-x-12 gap-y-6 p-6 bg-slate-50/50 dark:bg-zinc-950/50 rounded-3xl border border-slate-100 dark:border-zinc-800/50 mb-8">
+                                                    <div className="space-y-1.5">
+                                                        <div className="flex items-center gap-2">
+                                                            <Target className="w-3.5 h-3.5 text-zinc-400" />
+                                                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Target Project</p>
+                                                        </div>
+                                                        <p className="font-bold text-sm text-zinc-900 dark:text-zinc-100 pl-5">{selectedProject?.name || 'No project selected'}</p>
                                                     </div>
-                                                    <p className="font-bold text-sm text-zinc-900 dark:text-zinc-100 pl-5">{selectedProject?.name || 'No project selected'}</p>
-                                                </div>
-                                                
-                                                <div className="space-y-2.5 flex-1 min-w-[300px]">
-                                                    <div className="flex items-center gap-2">
-                                                        <Users className="w-3.5 h-3.5 text-zinc-400" />
-                                                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Assigned Team</p>
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-2 pl-5">
-                                                        {assignedPeople.map(p => (
-                                                            <div key={p.id} className="relative group/badge">
-                                                                <Badge 
-                                                                    className={cn(
-                                                                        "px-3 py-1 rounded-lg text-[10px] font-bold border-none shadow-sm flex items-center gap-2",
-                                                                        p.type === 'cp' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900"
-                                                                    )}
-                                                                >
-                                                                    {p.name} <span className="opacity-50 font-medium">({p.category})</span>
-                                                                    <button 
-                                                                        type="button"
-                                                                        className="p-1 -mr-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-colors leading-none"
-                                                                        onClick={(e) => {
-                                                                            e.preventDefault();
-                                                                            e.stopPropagation();
-                                                                            setAssignedPeople(prev => prev.filter(x => x.id !== p.id));
-                                                                        }}
+                                                    
+                                                    <div className="space-y-2.5 flex-1 min-w-[300px]">
+                                                        <div className="flex items-center gap-2">
+                                                            <Users className="w-3.5 h-3.5 text-zinc-400" />
+                                                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Assigned Team</p>
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2 pl-5">
+                                                            {assignedPeople.map(p => (
+                                                                <div key={p.id} className="relative group/badge">
+                                                                    <Badge 
+                                                                        className={cn(
+                                                                            "px-3 py-1 rounded-lg text-[10px] font-bold border border-slate-200 dark:border-zinc-800 flex items-center gap-2",
+                                                                            p.type === 'cp' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900"
+                                                                        )}
                                                                     >
-                                                                        <X className="w-3 h-3 opacity-40 hover:opacity-100 hover:text-red-500 transition-all" />
-                                                                    </button>
-                                                                </Badge>
-                                                            </div>
-                                                        ))}
-                                                        {assignedPeople.length === 0 && <span className="text-xs text-slate-400 italic">No team members assigned</span>}
+                                                                        {p.name} <span className="opacity-50 font-medium">({p.category})</span>
+                                                                        <button 
+                                                                            type="button"
+                                                                            className="p-1 -mr-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-colors leading-none"
+                                                                            onClick={(e) => {
+                                                                                e.preventDefault();
+                                                                                e.stopPropagation();
+                                                                                setAssignedPeople(prev => prev.filter(x => x.id !== p.id));
+                                                                            }}
+                                                                        >
+                                                                            <X className="w-3 h-3 opacity-40 hover:opacity-100 hover:text-red-500 transition-all" />
+                                                                        </button>
+                                                                    </Badge>
+                                                                </div>
+                                                            ))}
+                                                            {assignedPeople.length === 0 && <span className="text-xs text-slate-400 italic">No team members assigned</span>}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
+                                            )}
 
 
                                             {/* Preview: Contact Section */}
                                             <section className="space-y-6">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.6)]" />
-                                                    <h3 className="text-xs font-bold uppercase text-blue-500 ">Contact Information</h3>
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 border border-blue-400 shadow-sm" />
+                                                    <h3 className="text-xs font-black uppercase text-blue-500 tracking-wider">Contact Information</h3>
                                                 </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 opacity-70 pointer-events-none">
-                                                    <div className="space-y-2.5">
-                                                        <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400 flex items-center gap-1">Full Name <span className="text-red-500">*</span></Label>
-                                                        <Input placeholder="Enter full name" className="h-12 bg-slate-50 dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-sm rounded-xl shadow-sm" value={contactInfo.name} disabled />
+                                                <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10 px-4", !isFillMode && "opacity-70 pointer-events-none")}>
+                                                    <div className="space-y-3.5">
+                                                        <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400 flex items-center gap-1.5">Full Name <span className="text-red-500">*</span></Label>
+                                                        <Input 
+                                                            placeholder="Enter lead full name" 
+                                                            className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-zinc-900" 
+                                                            value={contactInfo.name} 
+                                                            onChange={(e) => setContactInfo({...contactInfo, name: e.target.value})}
+                                                            disabled={!isFillMode && false} 
+                                                        />
                                                     </div>
-                                                    <div className="space-y-2.5">
-                                                        <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Email Address</Label>
-                                                        <Input placeholder="Enter email address" className="h-12 bg-slate-50 dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-sm rounded-xl shadow-sm" value={contactInfo.email} disabled />
+                                                    <div className="space-y-3.5">
+                                                        <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Email Address</Label>
+                                                        <Input 
+                                                            placeholder="Enter lead email address" 
+                                                            className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-zinc-900" 
+                                                            value={contactInfo.email} 
+                                                            onChange={(e) => setContactInfo({...contactInfo, email: e.target.value})}
+                                                        />
                                                     </div>
-                                                    <div className="space-y-2.5">
-                                                        <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400 flex items-center gap-1">Phone Number <span className="text-red-500">*</span></Label>
-                                                        <Input placeholder="Enter phone number" className="h-12 bg-slate-50 dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-sm rounded-xl shadow-sm" value={contactInfo.phone} disabled />
+                                                    <div className="space-y-3.5">
+                                                        <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400 flex items-center gap-1.5">Phone Number <span className="text-red-500">*</span></Label>
+                                                        <Input 
+                                                            placeholder="Enter lead phone number" 
+                                                            className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-zinc-900" 
+                                                            value={contactInfo.phone} 
+                                                            onChange={(e) => setContactInfo({...contactInfo, phone: e.target.value})}
+                                                        />
                                                     </div>
-                                                    <div className="space-y-2.5">
-                                                        <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Current Location</Label>
-                                                        <Input placeholder="Enter current location" className="h-12 bg-slate-50 dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-sm rounded-xl shadow-sm" value={contactInfo.location} disabled />
+                                                    <div className="space-y-3.5">
+                                                        <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Current Location</Label>
+                                                        <Input 
+                                                            placeholder="Enter lead location" 
+                                                            className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-zinc-900" 
+                                                            value={contactInfo.location} 
+                                                            onChange={(e) => setContactInfo({...contactInfo, location: e.target.value})}
+                                                        />
                                                     </div>
                                                 </div>
                                             </section>
@@ -920,47 +1057,79 @@ export default function LeadCaptureForm() {
                                             {/* Preview: Requirements Section */}
                                             <section className="space-y-6">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.6)]" />
-                                                    <h3 className="text-xs font-bold uppercase text-purple-500 ">Requirements</h3>  
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-purple-500 border border-purple-400 shadow-sm" />
+                                                    <h3 className="text-xs font-black uppercase text-purple-500 tracking-wider">Project Requirements</h3>  
                                                 </div>
                                                 
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 opacity-70 pointer-events-none">
+                                                <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10 px-4", !isFillMode && "opacity-70 pointer-events-none")}>
                                                     {selectedFields.includes('budget') && (
-                                                        <div className="space-y-2.5">
-                                                            <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Budget Range</Label>
-                                                            <Input placeholder="e.g. 50L - 1Cr" className="h-12 bg-slate-50 border-slate-200 text-sm rounded-xl shadow-sm" disabled />
+                                                        <div className="space-y-3.5">
+                                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Budget Range</Label>
+                                                            <Input 
+                                                                placeholder="e.g. 50L - 1Cr" 
+                                                                className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-zinc-900" 
+                                                                value={contactInfo.budget}
+                                                                onChange={(e) => setContactInfo({...contactInfo, budget: e.target.value})}
+                                                            />
                                                         </div>
                                                     )}
                                                     {selectedFields.includes('preferred_location') && (
-                                                        <div className="space-y-2.5">
-                                                            <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Preferred Location</Label>
-                                                            <Input placeholder="Enter preferred location" className="h-12 bg-slate-50 border-slate-200 text-sm rounded-xl shadow-sm" disabled />
+                                                        <div className="space-y-3.5">
+                                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Preferred Location</Label>
+                                                            <Input 
+                                                                placeholder="Enter preferred area" 
+                                                                className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm" 
+                                                                value={contactInfo.preferred_location}
+                                                                onChange={(e) => setContactInfo({...contactInfo, preferred_location: e.target.value})}
+                                                            />
                                                         </div>
                                                     )}
                                                     {selectedFields.includes('preferred_floor') && (
-                                                        <div className="space-y-2.5">
-                                                            <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Preferred Floor</Label>
-                                                            <Input placeholder="e.g. Higher floor, 5th floor" className="h-12 bg-slate-50 border-slate-200 text-sm rounded-xl shadow-sm" disabled />
+                                                        <div className="space-y-3.5">
+                                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Preferred Floor</Label>
+                                                            <Input 
+                                                                placeholder="e.g. 5th floor, Penthouse" 
+                                                                className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm" 
+                                                                value={contactInfo.preferred_floor}
+                                                                onChange={(e) => setContactInfo({...contactInfo, preferred_floor: e.target.value})}
+                                                            />
                                                         </div>
                                                     )}
                                                     {selectedFields.includes('interested_projects') && (
-                                                        <div className="space-y-2.5">
-                                                            <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Interested Projects / Types</Label>
-                                                            <Input placeholder="e.g. 2BHK, 3BHK, Villa" className="h-12 bg-slate-50 border-slate-200 text-sm rounded-xl shadow-sm" disabled />
+                                                        <div className="space-y-3.5">
+                                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Interested Variants</Label>
+                                                            <Input 
+                                                                placeholder="e.g. 2BHK Corner, 3BHK Loft" 
+                                                                className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm" 
+                                                                value={contactInfo.interested_projects}
+                                                                onChange={(e) => setContactInfo({...contactInfo, interested_projects: e.target.value})}
+                                                            />
                                                         </div>
                                                     )}
                                                     {selectedFields.includes('sqft') && (
-                                                        <div className="space-y-2.5">
-                                                            <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Square Footage (sqft)</Label>
-                                                            <Input placeholder="Enter square footage" className="h-12 bg-slate-50 border-slate-200 text-sm rounded-xl shadow-sm" disabled />
+                                                        <div className="space-y-3.5">
+                                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Area (sqft)</Label>
+                                                            <Input 
+                                                                placeholder="Enter square footage" 
+                                                                className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm" 
+                                                                value={contactInfo.sqft}
+                                                                onChange={(e) => setContactInfo({...contactInfo, sqft: e.target.value})}
+                                                            />
                                                         </div>
                                                     )}
                                                      {selectedFields.includes('bhk') && (
-                                                        <div className="space-y-2.5">
-                                                            <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Type (BHK)</Label>
+                                                        <div className="space-y-3.5">
+                                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Type (BHK)</Label>
                                                             <div className="flex flex-wrap gap-2 mt-2">
                                                                 {['1BHK', '2BHK', '3BHK', '4BHK', '5BHK+'].map(type => (
-                                                                    <div key={type} className="px-4 py-2 rounded-xl text-[10px] font-bold bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 text-slate-400 dark:text-zinc-500">
+                                                                    <div 
+                                                                        key={type} 
+                                                                        className={cn(
+                                                                            "px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all border",
+                                                                            contactInfo.bhk === type ? "bg-zinc-900 text-white border-zinc-900 shadow-xl scale-105" : "bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400 hover:border-slate-300 dark:hover:border-zinc-700"
+                                                                        )}
+                                                                        onClick={() => isFillMode && setContactInfo({...contactInfo, bhk: type})}
+                                                                    >
                                                                         {type}
                                                                     </div>
                                                                 ))}
@@ -968,17 +1137,29 @@ export default function LeadCaptureForm() {
                                                         </div>
                                                     )}
                                                     {selectedFields.includes('bathroom_count') && (
-                                                        <div className="space-y-2.5">
-                                                            <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Bathrooms</Label>
-                                                            <Input placeholder="Enter number of bathrooms" className="h-12 bg-slate-50 border-slate-200 text-sm rounded-xl shadow-sm" disabled />
+                                                        <div className="space-y-3.5">
+                                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Bathrooms</Label>
+                                                            <Input 
+                                                                placeholder="Enter number of bathrooms" 
+                                                                className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm" 
+                                                                value={contactInfo.bathroom_count}
+                                                                onChange={(e) => setContactInfo({...contactInfo, bathroom_count: e.target.value})}
+                                                            />
                                                         </div>
                                                     )}
                                                     {selectedFields.includes('parking_needed') && (
-                                                        <div className="space-y-2.5">
-                                                            <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Parking Needed</Label>
+                                                        <div className="space-y-3.5">
+                                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Parking</Label>
                                                             <div className="flex gap-2 mt-2">
                                                                 {['Required', 'Not Required'].map(opt => (
-                                                                    <div key={opt} className="px-4 py-2 rounded-xl text-[10px] font-bold bg-white dark:bg-zinc-950 border border-slate-100 dark:border-zinc-800 text-slate-400 dark:text-zinc-500">
+                                                                    <div 
+                                                                        key={opt} 
+                                                                        className={cn(
+                                                                            "px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all border",
+                                                                            contactInfo.parking_needed === opt ? "bg-zinc-900 text-white border-zinc-900 shadow-xl scale-105" : "bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400 hover:border-slate-300 dark:hover:border-zinc-700"
+                                                                        )}
+                                                                        onClick={() => isFillMode && setContactInfo({...contactInfo, parking_needed: opt})}
+                                                                    >
                                                                         {opt}
                                                                     </div>
                                                                 ))}
@@ -986,11 +1167,18 @@ export default function LeadCaptureForm() {
                                                         </div>
                                                     )}
                                                     {selectedFields.includes('furniture') && (
-                                                        <div className="space-y-2.5">
-                                                            <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Furniture Preference</Label>
+                                                        <div className="space-y-3.5">
+                                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Furnishing</Label>
                                                             <div className="flex flex-wrap gap-2 mt-2">
                                                                 {['Furnished', 'Unfurnished', 'Semi-Furnished'].map(type => (
-                                                                    <div key={type} className="px-4 py-2 rounded-xl text-[10px] font-bold bg-white dark:bg-zinc-950 border border-slate-100 dark:border-zinc-800 text-slate-400 dark:text-zinc-500">
+                                                                    <div 
+                                                                        key={type} 
+                                                                        className={cn(
+                                                                            "px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all border",
+                                                                            contactInfo.furniture === type ? "bg-zinc-900 text-white border-zinc-900 shadow-xl scale-105" : "bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400 hover:border-slate-300 dark:hover:border-zinc-700"
+                                                                        )}
+                                                                        onClick={() => isFillMode && setContactInfo({...contactInfo, furniture: type})}
+                                                                    >
                                                                         {type}
                                                                     </div>
                                                                 ))}
@@ -998,11 +1186,18 @@ export default function LeadCaptureForm() {
                                                         </div>
                                                     )}
                                                     {selectedFields.includes('facing') && (
-                                                        <div className="space-y-2.5">
-                                                            <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Facing Directions</Label>
+                                                        <div className="space-y-3.5">
+                                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Facing</Label>
                                                             <div className="grid grid-cols-4 gap-2 mt-2">
                                                                 {['North', 'South', 'East', 'West'].map(dir => (
-                                                                    <div key={dir} className="px-3 py-2 rounded-xl text-[10px] font-bold bg-white dark:bg-zinc-950 border border-slate-100 dark:border-zinc-800 text-slate-400 dark:text-zinc-500 text-center">
+                                                                    <div 
+                                                                        key={dir} 
+                                                                        className={cn(
+                                                                            "px-3 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all text-center border",
+                                                                            contactInfo.facing === dir ? "bg-zinc-900 text-white border-zinc-900 shadow-xl scale-105" : "bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400 hover:border-slate-300 dark:hover:border-zinc-700"
+                                                                        )}
+                                                                        onClick={() => isFillMode && setContactInfo({...contactInfo, facing: dir})}
+                                                                    >
                                                                         {dir}
                                                                     </div>
                                                                 ))}
@@ -1010,9 +1205,18 @@ export default function LeadCaptureForm() {
                                                         </div>
                                                     )}
                                                     {manualRequirements.map((req, idx) => (
-                                                        <div key={idx} className="space-y-2.5">
-                                                            <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">{req.key}</Label>
-                                                            <Input placeholder={`Enter ${req.key.toLowerCase()}`} className="h-12 bg-slate-50 dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-sm rounded-xl shadow-sm" disabled />
+                                                        <div key={idx} className="space-y-3.5">
+                                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">{req.key}</Label>
+                                                            <Input 
+                                                                placeholder={`Enter ${req.key.toLowerCase()}`} 
+                                                                className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm" 
+                                                                value={req.value}
+                                                                onChange={(e) => {
+                                                                    const updated = [...manualRequirements]
+                                                                    updated[idx].value = e.target.value
+                                                                    setManualRequirements(updated)
+                                                                }}
+                                                            />
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1022,30 +1226,46 @@ export default function LeadCaptureForm() {
 
                                             {/* Preview: Acquisition Source */}
                                             <section className="space-y-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
-                                                    <h3 className="text-xs font-bold uppercase text-emerald-500 ">Acquisition Source</h3>
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 opacity-70 pointer-events-none">
-                                                    <div className="space-y-2.5">
-                                                        <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Campaign Name</Label>
-                                                        <Input placeholder="Enter campaign name" className="h-12 bg-slate-50 border-slate-200 text-sm rounded-xl shadow-sm" value={contactInfo.campaign} disabled />
-                                                    </div>
-                                                    <div className="space-y-2.5">
-                                                        <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Source</Label>
-                                                        <Input placeholder="e.g. Facebook, Google" className="h-12 bg-slate-50 border-slate-200 text-sm rounded-xl shadow-sm" value={contactInfo.source} disabled />
-                                                    </div>
-                                                </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-emerald-400 shadow-sm" />
+                                        <h3 className="text-xs font-black uppercase text-emerald-500 tracking-wider">Source Context</h3>
+                                    </div>
+                                    <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10 px-4", !isFillMode && "opacity-70 pointer-events-none")}>
+                                        <div className="space-y-3.5">
+                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Campaign</Label>
+                                            <Input 
+                                                className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm" 
+                                                value={contactInfo.campaign} 
+                                                onChange={(e) => setContactInfo({...contactInfo, campaign: e.target.value})}
+                                            />
+                                        </div>
+                                        <div className="space-y-3.5">
+                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Lead Source</Label>
+                                            <Input 
+                                                className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm" 
+                                                value={contactInfo.source} 
+                                                onChange={(e) => setContactInfo({...contactInfo, source: e.target.value})}
+                                            />
+                                        </div>
+                                    </div>
                                             </section>
                                         </div>
                                     </div>
                                 </CardContent>
-                                <CardFooter className="flex justify-between p-8 bg-slate-50 dark:bg-zinc-950 border-t border-slate-100 dark:border-zinc-800">
-                                    <Button variant="outline" className="h-12 px-8 font-bold text-slate-500 dark:text-zinc-400 border-slate-200 dark:border-zinc-800 rounded-xl hover:text-zinc-900 dark:hover:text-zinc-100 bg-white dark:bg-zinc-900 group" onClick={() => setCurrentStep(2)}>
-                                        <ArrowLeft className="mr-3 w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back
+                                <CardFooter className="flex justify-between p-8 bg-slate-50 dark:bg-black border-t border-slate-100 dark:border-zinc-800">
+                                    <Button 
+                                        variant="outline" 
+                                        className="h-14 px-10 font-black text-rose-500 border-rose-100 dark:border-rose-900/30 bg-white dark:bg-rose-950/10 rounded-2xl hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all uppercase text-[11px] tracking-widest group" 
+                                        onClick={() => isFillMode ? navigate('/NewLead') : setCurrentStep(2)}
+                                    >
+                                        <ArrowLeft className="mr-4 w-4 h-4 group-hover:-translate-x-1 transition-transform" /> {isFillMode ? 'Discard Entry' : 'Back to Routing'}
                                     </Button>
-                                    <Button className="h-12 px-12 font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl shadow-xl shadow-zinc-200 dark:shadow-none hover:scale-105 active:scale-95 transition-all outline-none" onClick={handleConfirm}>
-                                        Save configuration <Check className="ml-3 w-5 h-5" />
+                                    <Button 
+                                        className="h-14 px-14 font-black bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl border border-zinc-900 dark:border-zinc-200 hover:scale-105 active:scale-95 transition-all outline-none uppercase text-[11px] tracking-widest" 
+                                        onClick={handleConfirm}
+                                        disabled={submittingLead}
+                                    >
+                                        {submittingLead ? 'Capturing...' : isFillMode ? 'Persist Lead Data' : 'Finalize Configuration'} <Check className="ml-4 w-5 h-5 font-black" />
                                     </Button>
                                 </CardFooter>
                             </Card>
@@ -1084,23 +1304,35 @@ export default function LeadCaptureForm() {
                     {reqTab === 'prebuilt' ? (
                         <div className="space-y-6 p-4">
                             {/* Square Footage */}
-                            <div className={cn("p-4 rounded-xl border transition-all", selectedFields.includes('sqft') ? "border-primary bg-primary/5 shadow-sm" : "border-slate-100 dark:border-zinc-800")}>
+                            <div 
+                                className={cn(
+                                    "p-4 rounded-xl border transition-all cursor-pointer", 
+                                    selectedFields.includes('sqft') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
+                                )}
+                                onClick={() => toggleField('sqft')}
+                            >
                                 <div className="flex items-center justify-between mb-3">
-                                    <Label className="font-bold">Square Footage (sqft)</Label>
+                                    <Label className="font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">Square Footage (sqft)</Label>
                                     <Checkbox checked={selectedFields.includes('sqft')} onCheckedChange={() => toggleField('sqft')} className="w-5 h-5 rounded-md" />
                                 </div>
-                                <Input disabled placeholder="e.g. 1200" className="h-10 bg-muted/50" />
+                                <Input disabled={!selectedFields.includes('sqft')} placeholder="e.g. 1200" className="h-10 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-400  " />
                             </div>
 
                             {/* BHK */}
-                            <div className={cn("p-4 rounded-xl border transition-all", selectedFields.includes('bhk') ? "border-primary bg-primary/5 shadow-sm" : "border-slate-100 dark:border-zinc-800")}>
-                                <div className="flex items-center justify-between mb-3">
-                                    <Label className="font-bold">Type (BHK)</Label>
+                            <div 
+                                className={cn(
+                                    "p-4 rounded-xl border transition-all cursor-pointer", 
+                                    selectedFields.includes('bhk') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
+                                )}
+                                onClick={() => toggleField('bhk')}
+                            >
+                                <div className="flex items-center justify-between mb-3 text-zinc-900 dark:text-zinc-100">
+                                    <Label className="font-bold cursor-pointer">Type (BHK)</Label>
                                     <Checkbox checked={selectedFields.includes('bhk')} onCheckedChange={() => toggleField('bhk')} className="w-5 h-5 rounded-md" />
                                 </div>
-                                <div className="flex flex-wrap gap-3 mt-1 opacity-50">
+                                <div className={cn("flex flex-wrap gap-3 mt-1 transition-opacity", selectedFields.includes('bhk') ? "opacity-100" : "opacity-40")}>
                                     {['1BHK', '2BHK', '3BHK', '4BHK', '5BHK+'].map(opt => (
-                                        <label key={opt} className="flex items-center gap-1.5 text-sm cursor-not-allowed">
+                                        <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer text-zinc-600 dark:text-zinc-400" onClick={(e) => e.stopPropagation()}>
                                             <Checkbox disabled checked={false} />
                                             {opt}
                                         </label>
@@ -1109,39 +1341,63 @@ export default function LeadCaptureForm() {
                             </div>
 
                             {/* Floor */}
-                            <div className={cn("p-4 rounded-xl border transition-all", selectedFields.includes('preferred_floor') ? "border-primary bg-primary/5 shadow-sm" : "border-slate-100 dark:border-zinc-800")}>
+                            <div 
+                                className={cn(
+                                    "p-4 rounded-xl border transition-all cursor-pointer", 
+                                    selectedFields.includes('preferred_floor') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
+                                )}
+                                onClick={() => toggleField('preferred_floor')}
+                            >
                                 <div className="flex items-center justify-between mb-3">
-                                    <Label className="font-bold">Floor Preference</Label>
+                                    <Label className="font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">Floor Preference</Label>
                                     <Checkbox checked={selectedFields.includes('preferred_floor')} onCheckedChange={() => toggleField('preferred_floor')} className="w-5 h-5 rounded-md" />
                                 </div>
                                 <Input disabled placeholder="e.g. Higher floor, 5th floor" className="h-10 bg-muted/50" />
                             </div>
 
                             {/* Bathrooms */}
-                            <div className={cn("p-4 rounded-xl border transition-all", selectedFields.includes('bathroom_count') ? "border-primary bg-primary/5 shadow-sm" : "border-slate-100 dark:border-zinc-800")}>
+                            <div 
+                                className={cn(
+                                    "p-4 rounded-xl border transition-all cursor-pointer", 
+                                    selectedFields.includes('bathroom_count') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
+                                )}
+                                onClick={() => toggleField('bathroom_count')}
+                            >
                                 <div className="flex items-center justify-between mb-3">
-                                    <Label className="font-bold">Bathrooms</Label>
+                                    <Label className="font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">Bathrooms</Label>
                                     <Checkbox checked={selectedFields.includes('bathroom_count')} onCheckedChange={() => toggleField('bathroom_count')} className="w-5 h-5 rounded-md" />
                                 </div>
                                 <Input disabled placeholder="e.g. 2" className="h-10 bg-muted/50" />
                             </div>
 
                             {/* Parking */}
-                            <div className={cn("p-4 rounded-xl border transition-all", selectedFields.includes('parking_needed') ? "border-primary bg-primary/5 shadow-sm" : "border-slate-100 dark:border-zinc-800")}>
+                            <div 
+                                className={cn(
+                                    "p-4 rounded-xl border transition-all cursor-pointer", 
+                                    selectedFields.includes('parking_needed') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
+                                )}
+                                onClick={() => toggleField('parking_needed')}
+                            >
                                 <div className="flex items-center justify-between mb-3">
-                                    <Label className="font-bold">Parking Needed</Label>
+                                    <Label className="font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">Parking Needed</Label>
                                     <Checkbox checked={selectedFields.includes('parking_needed')} onCheckedChange={() => toggleField('parking_needed')} className="w-5 h-5 rounded-md" />
                                 </div>
-                                <label className="flex items-center gap-2 opacity-50 cursor-not-allowed">
-                                    <Checkbox disabled checked={false} />
+                                <label className={cn("flex items-center gap-2 cursor-pointer text-zinc-600 dark:text-zinc-400", selectedFields.includes('parking_needed') ? "opacity-100" : "opacity-40")} onClick={(e) => e.stopPropagation()}>
+                              
                                     <span className="text-sm font-medium">Include Parking Field</span>
                                 </label>
                             </div>
 
                             {/* Price Range */}
-                            <div className={cn("p-4 rounded-xl border transition-all", selectedFields.includes('budget') ? "border-primary bg-primary/5 shadow-sm" : "border-slate-100 dark:border-zinc-800")}>
+                            <div 
+                                className={cn(
+                                    "p-4 rounded-xl border transition-all cursor-pointer", 
+                                    selectedFields.includes('budget') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
+                                )}
+                                onClick={() => toggleField('budget')}
+                            >
                                 <div className="flex items-center justify-between mb-3">
-                                    <Label className="font-bold">Price Range (₹)</Label>
+                                    <Label className="font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">Price Range (₹)</Label>
                                     <Checkbox checked={selectedFields.includes('budget')} onCheckedChange={() => toggleField('budget')} className="w-5 h-5 rounded-md" />
                                 </div>
                                 <div className="flex gap-2 mt-1 opacity-50">
@@ -1152,14 +1408,20 @@ export default function LeadCaptureForm() {
                             </div>
 
                             {/* Furniture */}
-                            <div className={cn("p-4 rounded-xl border transition-all", selectedFields.includes('furniture') ? "border-primary bg-primary/5 shadow-sm" : "border-slate-100 dark:border-zinc-800")}>
-                                <div className="flex items-center justify-between mb-3">
-                                    <Label className="font-bold">Furniture</Label>
+                            <div 
+                                className={cn(
+                                    "p-4 rounded-xl border transition-all cursor-pointer", 
+                                    selectedFields.includes('furniture') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
+                                )}
+                                onClick={() => toggleField('furniture')}
+                            >
+                                <div className="flex items-center justify-between mb-3 text-zinc-900 dark:text-zinc-100">
+                                    <Label className="font-bold cursor-pointer">Furniture</Label>
                                     <Checkbox checked={selectedFields.includes('furniture')} onCheckedChange={() => toggleField('furniture')} className="w-5 h-5 rounded-md" />
                                 </div>
-                                <div className="flex flex-wrap gap-3 mt-1 opacity-50">
+                                <div className={cn("flex flex-wrap gap-3 mt-1 transition-opacity", selectedFields.includes('furniture') ? "opacity-100" : "opacity-40")}>
                                     {['Semi-furnished', 'Fully furnished', 'Both', 'No furniture'].map(opt => (
-                                        <label key={opt} className="flex items-center gap-1.5 text-sm cursor-not-allowed">
+                                        <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer text-zinc-600 dark:text-zinc-400" onClick={(e) => e.stopPropagation()}>
                                             <Checkbox disabled checked={false} />
                                             {opt}
                                         </label>
@@ -1168,14 +1430,20 @@ export default function LeadCaptureForm() {
                             </div>
 
                             {/* Facing */}
-                            <div className={cn("p-4 rounded-xl border transition-all", selectedFields.includes('facing') ? "border-primary bg-primary/5 shadow-sm" : "border-slate-100 dark:border-zinc-800")}>
-                                <div className="flex items-center justify-between mb-3">
-                                    <Label className="font-bold">Facing</Label>
+                            <div 
+                                className={cn(
+                                    "p-4 rounded-xl border transition-all cursor-pointer", 
+                                    selectedFields.includes('facing') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
+                                )}
+                                onClick={() => toggleField('facing')}
+                            >
+                                <div className="flex items-center justify-between mb-3 text-zinc-900 dark:text-zinc-100">
+                                    <Label className="font-bold cursor-pointer">Facing</Label>
                                     <Checkbox checked={selectedFields.includes('facing')} onCheckedChange={() => toggleField('facing')} className="w-5 h-5 rounded-md" />
                                 </div>
-                                <div className="flex flex-wrap gap-3 mt-1 opacity-50">
+                                <div className={cn("flex flex-wrap gap-3 mt-1 transition-opacity", selectedFields.includes('facing') ? "opacity-100" : "opacity-40")}>
                                     {['North', 'South', 'East', 'West'].map(opt => (
-                                        <label key={opt} className="flex items-center gap-1.5 text-sm cursor-not-allowed">
+                                        <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer text-zinc-600 dark:text-zinc-400" onClick={(e) => e.stopPropagation()}>
                                             <Checkbox disabled checked={false} />
                                             {opt}
                                         </label>
@@ -1256,6 +1524,7 @@ export default function LeadCaptureForm() {
                     )}
                 </SheetContent>
             </Sheet>
+            </div>
         </div>
     )
 }

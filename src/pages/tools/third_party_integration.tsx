@@ -126,6 +126,8 @@ export default function ThirdPartyIntegration() {
                                         e.stopPropagation();
                                         if (card.title === "Google Workspace") {
                                             navigate("/tools/third_party_integration/google_ads");
+                                        } else if (card.title === "Meta (Facebook/Instagram)") {
+                                            navigate("/tools/third_party_integration/meta_ads");
                                         }
                                     }}
                                 >

@@ -48,53 +48,71 @@ import React from "react"
 // Constants
 const SOURCES = ["META", "Google", "Incoming Calls", "Magic Bricks", "Housing.com", "99 Acres", "Website"]
 const PROJECTS = ["P1", "P2", "P3", "P4"]
-const METRICS = ["New Leads", "RNR", "Prospect", "Not Connected", "Lost", "SVS", "SV Done", "Booking"]
+const METRICS = [
+    "Budget Spent", 
+    "Number of Leads", 
+    "CPL", 
+    "RNR", 
+    "Prospect", 
+    "Unqualified", 
+    "Lost", 
+    "SVS", 
+    "Cost per SVS", 
+    "SV", 
+    "Cost per SV", 
+    "Booking", 
+    "Cost per Booking"
+]
 
-// Static Raw Data Map (Ensures data consistency and satisfying the "statis data" requirement)
+// Static Raw Data Map (Indices correspond to METRICS above)
+// Values: [Budget, Leads, CPL, RNR, Prospect, Unqual, Lost, SVS, CpSVS, SV, CpSV, Booking, CpBooking]
 const MOCK_SOURCE_DATA: any = {
     "META": {
-        "P1": [120, 45, 50, 5, 6, 4, 7, 3],
-        "P2": [81, 30, 35, 2, 4, 3, 5, 2],
-        "P3": [64, 25, 28, 1, 3, 2, 4, 1],
-        "P4": [41, 15, 18, 1, 2, 1, 3, 1]
+        "P1": [12000, 120, 100, 45, 50, 5, 6, 4, 3000, 7, 1714, 3, 4000],
+        "P2": [8000, 81, 98, 30, 35, 2, 4, 3, 2666, 5, 1600, 2, 4000],
+        "P3": [6000, 64, 93, 25, 28, 1, 3, 2, 3000, 4, 1500, 1, 6000],
+        "P4": [4000, 41, 97, 15, 18, 1, 2, 1, 4000, 3, 1333, 1, 4000]
     },
     "Google": {
-        "P1": [103, 40, 45, 4, 5, 4, 6, 2],
-        "P2": [70, 28, 30, 2, 3, 2, 4, 1],
-        "P3": [51, 20, 22, 1, 2, 1, 3, 1],
-        "P4": [26, 12, 12, 0, 1, 1, 2, 0]
+        "P1": [15000, 103, 145, 40, 45, 4, 5, 4, 3750, 6, 2500, 2, 7500],
+        "P2": [10000, 70, 142, 28, 30, 2, 3, 2, 5000, 4, 2500, 1, 10000],
+        "P3": [8000, 51, 156, 20, 22, 1, 2, 1, 8000, 3, 2666, 1, 8000],
+        "P4": [5000, 26, 192, 12, 12, 0, 1, 1, 5000, 2, 2500, 0, 0]
     },
     "Incoming Calls": {
-        "P1": [44, 15, 20, 1, 2, 2, 3, 1],
-        "P2": [30, 10, 15, 1, 1, 1, 2, 0],
-        "P3": [21, 8, 10, 0, 1, 1, 1, 0],
-        "P4": [11, 5, 5, 0, 0, 0, 1, 0]
+        "P1": [0, 44, 0, 15, 20, 1, 2, 2, 0, 3, 0, 1, 0],
+        "P2": [0, 30, 0, 10, 15, 1, 1, 1, 0, 2, 0, 0, 0],
+        "P3": [0, 21, 0, 8, 10, 0, 1, 1, 0, 1, 0, 0, 0],
+        "P4": [0, 11, 0, 5, 5, 0, 0, 0, 0, 1, 0, 0, 0]
     },
     "Magic Bricks": {
-        "P1": [137, 55, 60, 6, 8, 5, 9, 10],
-        "P2": [104, 40, 45, 4, 6, 4, 7, 10],
-        "P3": [77, 30, 35, 3, 4, 3, 5, 2],
-        "P4": [54, 22, 25, 2, 3, 2, 4, 1]
+        "P1": [20000, 137, 145, 55, 60, 6, 8, 5, 4000, 9, 2222, 10, 2000],
+        "P2": [15000, 104, 144, 40, 45, 4, 6, 4, 3750, 7, 2142, 10, 1500],
+        "P3": [10000, 77, 129, 30, 35, 3, 4, 3, 3333, 5, 2000, 2, 5000],
+        "P4": [8000, 54, 148, 22, 25, 2, 3, 2, 4000, 4, 2000, 1, 8000]
     },
     "Housing.com": {
-        "P1": [99, 30, 40, 5, 7, 6, 8, 3],
-        "P2": [80, 35, 40, 4, 5, 4, 6, 2],
-        "P3": [64, 25, 30, 2, 4, 3, 5, 2],
-        "P4": [45, 15, 20, 1, 3, 2, 3, 1]
+        "P1": [11000, 99, 111, 30, 40, 5, 7, 6, 1833, 8, 1375, 3, 3666],
+        "P2": [9000, 80, 112, 35, 40, 4, 5, 4, 2250, 6, 1500, 2, 4500],
+        "P3": [7000, 64, 109, 25, 30, 2, 4, 3, 2333, 5, 1400, 2, 3500],
+        "P4": [5000, 45, 111, 15, 20, 1, 3, 2, 2500, 3, 1666, 1, 5000]
     },
     "99 Acres": {
-        "P1": [128, 50, 55, 5, 6, 5, 7, 3],
-        "P2": [92, 35, 40, 3, 5, 4, 6, 2],
-        "P3": [68, 28, 32, 2, 4, 3, 5, 2],
-        "P4": [36, 15, 15, 1, 2, 1, 3, 0]
+        "P1": [13000, 128, 101, 50, 55, 5, 6, 5, 2600, 7, 1857, 3, 4333],
+        "P2": [10000, 92, 108, 35, 40, 3, 5, 4, 2500, 6, 1666, 2, 5000],
+        "P3": [7500, 68, 110, 28, 32, 2, 4, 3, 2500, 5, 1500, 2, 3750],
+        "P4": [4000, 36, 111, 15, 15, 1, 2, 1, 4000, 3, 1333, 0, 0]
     },
     "Website": {
-        "P1": [66, 25, 30, 2, 3, 3, 4, 2],
-        "P2": [47, 18, 22, 1, 2, 2, 3, 1],
-        "P3": [30, 12, 15, 1, 1, 1, 2, 0],
-        "P4": [24, 10, 12, 0, 1, 1, 1, 0]
+        "P1": [0, 66, 0, 25, 30, 2, 3, 3, 0, 4, 0, 2, 0],
+        "P2": [0, 47, 0, 18, 22, 1, 2, 2, 0, 3, 0, 1, 0],
+        "P3": [0, 30, 0, 12, 15, 1, 1, 1, 0, 2, 0, 0, 0],
+        "P4": [0, 24, 0, 10, 12, 0, 1, 1, 0, 1, 0, 0, 0]
     }
 }
+
+const PAID_SOURCES = ["META", "Google", "Magic Bricks", "Housing.com", "99 Acres"]
+const NON_PAID_SOURCES = ["Website", "Incoming Calls"]
 
 export default function SourceLevelReport() {
     const { setBreadcrumbs } = useBreadcrumb()
@@ -117,51 +135,71 @@ export default function SourceLevelReport() {
         setTimeFilter("")
     }
 
-    // Calculation Logic for Totals - Ensuring strict column isolation
+    // Helper to calculate rates correctly for totals
+    const calculateRates = (dataArray: number[]) => {
+        const budget = dataArray[0]
+        const leads = dataArray[1]
+        const svs = dataArray[7]
+        const sv = dataArray[9]
+        const booking = dataArray[11]
+
+        dataArray[2] = leads > 0 ? Math.round(budget / leads) : 0 // CPL
+        dataArray[8] = svs > 0 ? Math.round(budget / svs) : 0 // CpSVS
+        dataArray[10] = sv > 0 ? Math.round(budget / sv) : 0 // CpSV
+        dataArray[12] = booking > 0 ? Math.round(budget / booking) : 0 // CpBooking
+        return dataArray
+    }
+
+    // Calculation Logic for Totals
     const { sourceTotals, globalSummary } = useMemo(() => {
         const totalsMap: any = {}
-        let gLeads = 0, gProspects = 0, gSVDone = 0, gBookings = 0;
+        const allSources = [...PAID_SOURCES, ...NON_PAID_SOURCES]
+        let gLeads = 0, gProspects = 0, gSV = 0, gBookings = 0;
 
-        SOURCES.forEach(source => {
-            // Initialize totals for each column (Index 0 is Count/New Leads, Index 1-7 are Stage Metrics)
+        allSources.forEach(source => {
             const colTotals = Array(METRICS.length).fill(0)
-            
             PROJECTS.forEach(proj => {
                 const projectData = MOCK_SOURCE_DATA[source][proj]
                 METRICS.forEach((_, colIdx) => {
-                    // Vertical summation only - No horizontal mixing between columns
-                    colTotals[colIdx] += projectData[colIdx]
+                    // Sum vertical counts
+                    if (![2, 8, 10, 12].includes(colIdx)) {
+                        colTotals[colIdx] += projectData[colIdx]
+                    }
                 })
             })
-            
-            totalsMap[source] = colTotals
+            // Recalculate rates for the source total
+            totalsMap[source] = calculateRates(colTotals)
 
-            // Aggregate for display cards (only if source is in current view)
             if (sourceFilter === "all" || sourceFilter === source) {
-                gLeads += colTotals[0]      // Total Leads (Independent Count)
-                gProspects += colTotals[2]  // Total Prospects (Discrete Column)
-                gSVDone += colTotals[6]     // SV Done (Discrete Column)
-                gBookings += colTotals[7]   // Final Bookings (Discrete Column)
+                gLeads += colTotals[1]
+                gProspects += colTotals[4]
+                gSV += colTotals[9]
+                gBookings += colTotals[11]
             }
         })
 
         return { 
             sourceTotals: totalsMap, 
-            globalSummary: { 
-                totalLeads: gLeads, 
-                totalProspects: gProspects, 
-                totalSVDone: gSVDone, 
-                totalBookings: gBookings 
-            } 
+            globalSummary: { totalLeads: gLeads, totalProspects: gProspects, totalSV: gSV, totalBookings: gBookings } 
         }
-    }, [sourceFilter]) // Recalculate based on filter selection
-
-    const displaySources = useMemo(() => {
-        if (sourceFilter === "all" || sourceFilter === "") return SOURCES
-        return [sourceFilter]
     }, [sourceFilter])
 
-    const summaryStats = globalSummary;
+    const getGroupData = (sourceList: string[]) => {
+        const filtered = sourceList.filter(s => sourceFilter === "all" || sourceFilter === "" || s === sourceFilter)
+        if (filtered.length === 0) return null
+
+        const grandTotal = Array(METRICS.length).fill(0)
+        filtered.forEach(source => {
+            const data = sourceTotals[source]
+            METRICS.forEach((_, i) => {
+                if (![2, 8, 10, 12].includes(i)) grandTotal[i] += data[i]
+            })
+        })
+        return { sources: filtered, total: calculateRates(grandTotal) }
+    }
+
+    const paidData = getGroupData(PAID_SOURCES)
+    const nonPaidData = getGroupData(NON_PAID_SOURCES)
 
     const handleDownloadExcel = () => {
         const wb = XLSX.utils.book_new()
@@ -169,23 +207,84 @@ export default function SourceLevelReport() {
         rows.push(["Source Level Performance Report"])
         rows.push(["Generated At:", new Date().toLocaleString()])
         rows.push([])
-        rows.push(["Source", "Projects", ...METRICS])
-        
-        displaySources.forEach(source => {
-            PROJECTS.forEach((project, pIdx) => {
-                rows.push([
-                    pIdx === 0 ? source : "",
-                    project,
-                    ...MOCK_SOURCE_DATA[source][project]
-                ])
+
+        const addTableToExcel = (title: string, group: any) => {
+            if (!group) return
+            rows.push([title])
+            rows.push(["Source", ...METRICS])
+            group.sources.forEach((s: string) => {
+                rows.push([s, ...group.sources.map((src: string) => {
+                    if (src === s) return sourceTotals[src].map((v: number, i: number) => [0, 2, 8, 10, 12].includes(i) ? `₹${v.toLocaleString()}` : v)
+                    return null
+                }).find((x: any) => x !== null)])
             })
-            rows.push(["", `${source} Total`, ...sourceTotals[source]])
+            rows.push(["Grand Total", ...group.total.map((v: number, i: number) => [0, 2, 8, 10, 12].includes(i) ? `₹${v.toLocaleString()}` : v)])
             rows.push([])
-        })
-        
+        }
+
+        addTableToExcel("PAID SOURCES", paidData)
+        addTableToExcel("NON-PAID SOURCES", nonPaidData)
+
         const ws = XLSX.utils.aoa_to_sheet(rows)
         XLSX.utils.book_append_sheet(wb, ws, "Source Report")
         XLSX.writeFile(wb, `Source_Level_Report_${new Date().toISOString().split('T')[0]}.xlsx`)
+    }
+
+    const renderTable = (title: string, groupData: any, colorClass: string) => {
+        if (!groupData) return null
+
+        return (
+            <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden mb-8">
+                <CardHeader className="bg-muted/5 py-4 border-b">
+                    <div className="flex items-center justify-between px-2">
+                        <CardTitle className={`text-lg font-bold tracking-tight flex items-center gap-2 ${colorClass}`}>
+                            {title}
+                        </CardTitle>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="bg-muted/10 border-b border-primary/10">
+                                    <th className="font-extrabold text-[11px] uppercase tracking-widest text-left px-6 py-4 border-r border-muted/20">Source</th>
+                                    {METRICS.map((m, idx) => (
+                                        <th key={m} className={`font-extrabold text-[11px] uppercase tracking-widest text-center min-w-[110px] py-4 align-bottom ${idx < METRICS.length - 1 ? 'border-r border-muted/20' : ''}`}>
+                                            {m}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="bg-background">
+                                {groupData.sources.map((source: string) => (
+                                    <tr key={source} className="group hover:bg-primary/5 transition-all duration-200 border-b">
+                                        <td className="font-bold px-6 py-4 text-sm text-foreground border-r border-muted/20 bg-white group-hover:bg-primary/5 uppercase">
+                                            {source}
+                                        </td>
+                                        {sourceTotals[source].map((val: number, vIdx: number) => (
+                                            <td key={vIdx} className={`text-center px-4 py-4 text-sm font-medium ${vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 11 ? 'font-bold text-primary bg-primary/5' : ''}`}>
+                                                {[0, 2, 8, 10, 12].includes(vIdx) ? `₹${val.toLocaleString()}` : val}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                                {/* Grand Total Row */}
+                                <tr className="bg-primary/5 font-bold border-t-2 border-primary/20">
+                                    <td className="px-6 py-4 text-sm uppercase tracking-wider text-primary">
+                                        GRAND TOTAL
+                                    </td>
+                                    {groupData.total.map((val: number, vIdx: number) => (
+                                        <td key={vIdx} className={`text-center px-4 py-4 text-sm ${vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 11 ? 'bg-primary/10 text-primary' : 'text-primary'}`}>
+                                            {[0, 2, 8, 10, 12].includes(vIdx) ? `₹${val.toLocaleString()}` : val}
+                                        </td>
+                                    ))}
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </CardContent>
+            </Card>
+        )
     }
 
     return (
@@ -198,18 +297,29 @@ export default function SourceLevelReport() {
                     </h1>
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-emerald-500" />
-                        Detailed performance analysis by acquisition channel.
+                        Spend vs Performance breakdown for paid and organic channels.
                     </p>
                 </div>
-                {isFilterApplied && (
-                    <Button variant="outline" size="sm" onClick={clearFilters} className="gap-2 text-xs h-8">
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        Reset All
+                <div className="flex items-center gap-3">
+                    {isFilterApplied && (
+                        <Button variant="outline" size="sm" onClick={clearFilters} className="gap-2 text-xs h-8">
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            Reset All
+                        </Button>
+                    )}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDownloadExcel}
+                        className="gap-2 text-xs h-8 font-semibold bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary"
+                    >
+                        <Download className="h-3.5 w-3.5" />
+                        Export Audit
                     </Button>
-                )}
+                </div>
             </div>
 
-            {/* Filters Row - Balanced and Consistent */}
+            {/* Filters Row */}
             <Card className="border-none shadow-md bg-background/60 backdrop-blur-md">
                 <CardContent className="p-6">
                     <div className="flex flex-wrap items-end gap-6">
@@ -228,31 +338,12 @@ export default function SourceLevelReport() {
                                 </SelectContent>
                             </Select>
                         </div>
-
                         <div className="flex flex-col gap-2 min-w-[200px]">
                             <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/80 flex items-center gap-2">
                                 <CalendarDays className="h-3 w-3" />
                                 Date Range
                             </Label>
-                            <Input
-                                type="date"
-                                value={dateFilter}
-                                onChange={(e) => setDateFilter(e.target.value)}
-                                className="h-10 bg-muted/30 border-none hover:bg-muted/50 transition-colors"
-                            />
-                        </div>
-
-                        <div className="flex flex-col gap-2 min-w-[180px]">
-                            <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/80 flex items-center gap-2">
-                                <Clock className="h-3 w-3" />
-                                Specific Time
-                            </Label>
-                            <Input
-                                type="time"
-                                value={timeFilter}
-                                onChange={(e) => setTimeFilter(e.target.value)}
-                                className="h-10 bg-muted/30 border-none hover:bg-muted/50 transition-colors"
-                            />
+                            <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="h-10 bg-muted/30 border-none hover:bg-muted/50 transition-colors" />
                         </div>
                     </div>
                 </CardContent>
@@ -268,7 +359,7 @@ export default function SourceLevelReport() {
                             </div>
                             <div>
                                 <p className="text-xs font-semibold text-blue-600/70 dark:text-blue-400/70 uppercase">Total Leads</p>
-                                <h3 className="text-2xl font-bold">{summaryStats.totalLeads}</h3>
+                                <h3 className="text-2xl font-bold">{globalSummary.totalLeads}</h3>
                             </div>
                         </CardContent>
                     </Card>
@@ -279,7 +370,7 @@ export default function SourceLevelReport() {
                             </div>
                             <div>
                                 <p className="text-xs font-semibold text-purple-600/70 dark:text-purple-400/70 uppercase">Total Prospects</p>
-                                <h3 className="text-2xl font-bold">{summaryStats.totalProspects}</h3>
+                                <h3 className="text-2xl font-bold">{globalSummary.totalProspects}</h3>
                             </div>
                         </CardContent>
                     </Card>
@@ -290,7 +381,7 @@ export default function SourceLevelReport() {
                             </div>
                             <div>
                                 <p className="text-xs font-semibold text-amber-600/70 dark:text-amber-400/70 uppercase">SV Done</p>
-                                <h3 className="text-2xl font-bold">{summaryStats.totalSVDone}</h3>
+                                <h3 className="text-2xl font-bold">{globalSummary.totalSV}</h3>
                             </div>
                         </CardContent>
                     </Card>
@@ -301,129 +392,31 @@ export default function SourceLevelReport() {
                             </div>
                             <div>
                                 <p className="text-xs font-semibold text-emerald-600/70 dark:text-emerald-400/70 uppercase">Final Booking</p>
-                                <h3 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{summaryStats.totalBookings}</h3>
+                                <h3 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{globalSummary.totalBookings}</h3>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
             )}
 
-            {/* Hierarchical Table Section */}
+            {/* Table Section */}
             {isFilterApplied ? (
-                <Card className="border-none shadow-xl animate-in fade-in slide-in-from-top-6 duration-700 bg-background/40 backdrop-blur-sm">
-                    <CardHeader className="bg-muted/5 py-3 border-b">
-                        <div className="flex items-center justify-between px-2">
-                            <div>
-                                <CardTitle className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                                    Source Breakdown
-                                    <Badge variant="secondary" className="font-mono text-[10px] px-1.5 py-0">LIVE</Badge>
-                                </CardTitle>
-                                <CardDescription className="text-xs mt-1">
-                                    Stage-wise distribution of leads per project under each source.
-                                </CardDescription>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="gap-2 text-xs h-8 font-semibold bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary"
-                                        >
-                                            <Download className="h-3.5 w-3.5" />
-                                            Export Audit
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Process Excel Export?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                Generate a full hierarchical report including project breakdowns and source totals.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={handleDownloadExcel}>Confirm</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto scrollbar-thin scrollbar-track-muted/20 scrollbar-thumb-muted-foreground/20">
-                            <table className="w-full border-collapse">
-                                <thead className="bg-muted/5 border-b-2 border-primary/10">
-                                    {/* Super Header */}
-                                    <tr className="border-b border-muted/20">
-                                        <th colSpan={2} className="border-r border-muted/20"></th>
-                                        <th colSpan={8} className="py-2.5 font-bold text-center tracking-[0.2em] text-primary/40 uppercase text-[10px]">
-                                            ONLINE CONVERSION FUNNEL
-                                        </th>
-                                    </tr>
-                                    {/* Standard Header */}
-                                    <tr>
-                                        <th className="font-extrabold text-[11px] uppercase tracking-widest text-center text-primary/80 min-w-[160px] py-4 border-r border-muted/20">Source</th>
-                                        <th className="font-extrabold text-[11px] uppercase tracking-widest text-center text-muted-foreground/60 italic min-w-[120px] py-4 border-r border-muted/20">Projects</th>
-                                        {METRICS.map((m, idx) => (
-                                            <th key={m} className={`font-extrabold text-[11px] uppercase tracking-widest text-center text-primary/80 min-w-[100px] py-4 align-bottom ${idx < METRICS.length - 1 ? 'border-r border-muted/20' : ''}`}>
-                                                {m}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-background">
-                                    {displaySources.map((source) => (
-                                        <React.Fragment key={source}>
-                                            {PROJECTS.map((project, pIdx) => (
-                                                <tr key={`${source}-${project}`} className="group hover:bg-primary/5 transition-all duration-200 border-b">
-                                                    {pIdx === 0 && (
-                                                        <td 
-                                                            rowSpan={PROJECTS.length + 1} 
-                                                            className="text-center font-bold px-4 py-6 text-[14px] text-foreground border-r border-muted/20 align-middle bg-white group-hover:bg-primary/5 uppercase tracking-tight"
-                                                        >
-                                                            {source}
-                                                        </td>
-                                                    )}
-                                                    <td className="text-center italic text-muted-foreground/70 px-4 py-4 border-r border-muted/20">
-                                                        {project}
-                                                    </td>
-                                                    {MOCK_SOURCE_DATA[source][project].map((val: number, vIdx: number) => (
-                                                        <td key={vIdx} className={`text-center px-4 py-4 text-foreground ${vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 7 ? 'font-bold text-primary bg-primary/5' : ''}`}>
-                                                            {val}
-                                                        </td>
-                                                    ))}
-                                                </tr>
-                                            ))}
-                                            {/* Group Total Row */}
-                                            <tr className="bg-muted/5 font-bold border-b-2 border-primary/10">
-                                                <td className="text-center italic text-primary/70 px-4 py-3 border-r border-muted/20 uppercase text-[10px] tracking-wider">
-                                                    {source} Combined
-                                                </td>
-                                                {sourceTotals[source].map((val: number, vIdx: number) => (
-                                                    <td key={vIdx} className={`text-center px-4 py-3 text-foreground ${vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 7 ? 'bg-primary/10 text-primary' : ''}`}>
-                                                        {val}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        </React.Fragment>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="animate-in fade-in slide-in-from-top-6 duration-700">
+                    {renderTable("PAID SOURCES", paidData, "text-blue-600 dark:text-blue-400")}
+                    {renderTable("NON-PAID SOURCES", nonPaidData, "text-emerald-600 dark:text-emerald-400")}
+                </div>
             ) : (
                 <div className="flex flex-col items-center justify-center p-20 border-2 border-dashed rounded-3xl bg-muted/5 border-muted-foreground/10 group hover:border-primary/20 hover:bg-primary/5 transition-all duration-500 cursor-default">
                     <div className="p-6 rounded-full bg-muted/20 text-muted-foreground/40 mb-6 group-hover:scale-110 group-hover:text-primary/40 transition-all duration-700">
                         <Filter className="w-16 h-16" />
                     </div>
-                    <h3 className="text-xl font-bold text-foreground/80 mb-2 group-hover:text-primary transition-colors">Awaiting Source Parameters</h3>
-                    <p className="text-muted-foreground text-sm max-w-sm text-center leading-relaxed font-bold italic opacity-80 group-hover:opacity-100">
-                        Select a channel category to generate the drill-down performance report.
+                    <h3 className="text-xl font-bold text-foreground/80 mb-2 group-hover:text-primary transition-colors">Awaiting Parameters</h3>
+                    <p className="text-muted-foreground text-sm max-w-sm text-center font-bold italic opacity-80 group-hover:opacity-100">
+                        Select a channel to generate the performance report.
                     </p>
                 </div>
             )}
         </div>
     )
 }
+

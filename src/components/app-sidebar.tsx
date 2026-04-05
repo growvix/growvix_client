@@ -9,6 +9,8 @@ import {
   Users,
   LayoutDashboard,
   Wrench,
+  Sparkles
+
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -133,6 +135,13 @@ const data = {
       url: "/user_calendar",
       icon: Calendar,
     },
+     {
+      name: "Updates",
+      url: "/updates",
+      icon: Sparkles,
+    },
+    
+    
 
   ],
 }
