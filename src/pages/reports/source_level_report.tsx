@@ -8,20 +8,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
+import { 
     Table,
     TableBody,
     TableCell,
@@ -40,14 +29,47 @@ import {
     Target, 
     CheckCircle2, 
     Download,
+    BarChart3,
+    PieChart as PieChartIcon,
+    Play
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import React from "react"
+import { 
+    PieChart, 
+    Pie, 
+    Cell, 
+    BarChart, 
+    Bar, 
+    XAxis, 
+    YAxis, 
+    CartesianGrid, 
+} from 'recharts'
+import {
+    type ChartConfig,
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+    ChartLegend,
+    ChartLegendContent,
+} from "@/components/ui/chart"
 
 // Constants
 const SOURCES = ["META", "Google", "Incoming Calls", "Magic Bricks", "Housing.com", "99 Acres", "Website"]
 const PROJECTS = ["P1", "P2", "P3", "P4"]
+const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#f472b6']
+
+const chartConfig = {
+    leads: {
+        label: "Leads",
+        color: "hsl(var(--primary))",
+    },
+    budget: {
+        label: "Budget",
+        color: "#3b82f6",
+    },
+} satisfies ChartConfig
 const METRICS = [
     "Budget Spent", 
     "Number of Leads", 
@@ -127,12 +149,16 @@ export default function SourceLevelReport() {
         ])
     }, [setBreadcrumbs])
 
-    const isFilterApplied = sourceFilter !== "" || dateFilter !== "" || timeFilter !== ""
+    const isFilterApplied = sourceFilter !== "all" || dateFilter !== "" || timeFilter !== ""
 
     const clearFilters = () => {
-        setSourceFilter("")
+        setSourceFilter("all")
         setDateFilter("")
         setTimeFilter("")
+    }
+
+    const handleApply = () => {
+        // isApplied is removed, but we keep this for the button if needed, or remove button
     }
 
     // Helper to calculate rates correctly for totals
@@ -170,7 +196,8 @@ export default function SourceLevelReport() {
             // Recalculate rates for the source total
             totalsMap[source] = calculateRates(colTotals)
 
-            if (sourceFilter === "all" || sourceFilter === source) {
+            const matchesSource = sourceFilter === "all" || sourceFilter === source
+            if (matchesSource) {
                 gLeads += colTotals[1]
                 gProspects += colTotals[4]
                 gSV += colTotals[9]
@@ -185,7 +212,7 @@ export default function SourceLevelReport() {
     }, [sourceFilter])
 
     const getGroupData = (sourceList: string[]) => {
-        const filtered = sourceList.filter(s => sourceFilter === "all" || sourceFilter === "" || s === sourceFilter)
+        const filtered = sourceList.filter(s => sourceFilter === "all" || s === sourceFilter)
         if (filtered.length === 0) return null
 
         const grandTotal = Array(METRICS.length).fill(0)
@@ -213,12 +240,9 @@ export default function SourceLevelReport() {
             rows.push([title])
             rows.push(["Source", ...METRICS])
             group.sources.forEach((s: string) => {
-                rows.push([s, ...group.sources.map((src: string) => {
-                    if (src === s) return sourceTotals[src].map((v: number, i: number) => [0, 2, 8, 10, 12].includes(i) ? `₹${v.toLocaleString()}` : v)
-                    return null
-                }).find((x: any) => x !== null)])
+                rows.push([s, ...sourceTotals[s].map((v: number, i: number) => [0, 2, 8, 10, 12].includes(i) ? `₹${v.toLocaleString('en-IN')}` : v.toLocaleString('en-IN'))])
             })
-            rows.push(["Grand Total", ...group.total.map((v: number, i: number) => [0, 2, 8, 10, 12].includes(i) ? `₹${v.toLocaleString()}` : v)])
+            rows.push(["GRAND TOTAL", ...group.total.map((v: number, i: number) => [0, 2, 8, 10, 12].includes(i) ? `₹${v.toLocaleString('en-IN')}` : v.toLocaleString('en-IN'))])
             rows.push([])
         }
 
@@ -239,6 +263,7 @@ export default function SourceLevelReport() {
                     <div className="flex items-center justify-between px-2">
                         <CardTitle className={`text-lg font-bold tracking-tight flex items-center gap-2 ${colorClass}`}>
                             {title}
+                            <Badge variant="secondary" className="font-mono text-[10px] px-1.5 py-0">LIVE</Badge>
                         </CardTitle>
                     </div>
                 </CardHeader>
@@ -262,8 +287,8 @@ export default function SourceLevelReport() {
                                             {source}
                                         </td>
                                         {sourceTotals[source].map((val: number, vIdx: number) => (
-                                            <td key={vIdx} className={`text-center px-4 py-4 text-sm font-medium ${vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 11 ? 'font-bold text-primary bg-primary/5' : ''}`}>
-                                                {[0, 2, 8, 10, 12].includes(vIdx) ? `₹${val.toLocaleString()}` : val}
+                                            <td key={vIdx} className={`text-center px-4 py-4 text-xs font-medium ${vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 11 ? 'font-bold text-primary bg-primary/5 italic' : ''}`}>
+                                                {[0, 2, 8, 10, 12].includes(vIdx) ? `₹${val.toLocaleString('en-IN')}` : val.toLocaleString('en-IN')}
                                             </td>
                                         ))}
                                     </tr>
@@ -274,8 +299,8 @@ export default function SourceLevelReport() {
                                         GRAND TOTAL
                                     </td>
                                     {groupData.total.map((val: number, vIdx: number) => (
-                                        <td key={vIdx} className={`text-center px-4 py-4 text-sm ${vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 11 ? 'bg-primary/10 text-primary' : 'text-primary'}`}>
-                                            {[0, 2, 8, 10, 12].includes(vIdx) ? `₹${val.toLocaleString()}` : val}
+                                        <td key={vIdx} className={`text-center px-4 py-4 text-xs ${vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 11 ? 'bg-primary/10 text-primary' : 'text-primary'}`}>
+                                            {[0, 2, 8, 10, 12].includes(vIdx) ? `₹${val.toLocaleString('en-IN')}` : val.toLocaleString('en-IN')}
                                         </td>
                                     ))}
                                 </tr>
@@ -289,41 +314,21 @@ export default function SourceLevelReport() {
 
     return (
         <div className="flex flex-1 flex-col gap-6 px-6 py-4 max-w-[98%] mx-auto w-full">
-            {/* Page Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex flex-col gap-1">
-                    <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent italic">
-                        Source Level Report
-                    </h1>
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-emerald-500" />
-                        Spend vs Performance breakdown for paid and organic channels.
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    {isFilterApplied && (
-                        <Button variant="outline" size="sm" onClick={clearFilters} className="gap-2 text-xs h-8">
-                            <RotateCcw className="h-3.5 w-3.5" />
-                            Reset All
-                        </Button>
-                    )}
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleDownloadExcel}
-                        className="gap-2 text-xs h-8 font-semibold bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary"
-                    >
-                        <Download className="h-3.5 w-3.5" />
-                        Export Audit
-                    </Button>
-                </div>
+            <div className="flex flex-col gap-1 items-start text-left">
+                <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent italic text-left items-start text-left items-start">
+                    Source Level Report
+                </h1>
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-emerald-500" />
+                    Spend vs Performance breakdown for paid and organic channels.
+                </p>
             </div>
 
             {/* Filters Row */}
             <Card className="border-none shadow-md bg-background/60 backdrop-blur-md">
                 <CardContent className="p-6">
-                    <div className="flex flex-wrap items-end gap-6">
-                        <div className="flex flex-col gap-2 min-w-[240px]">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
+                        <div className="flex flex-col gap-2">
                             <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/80 flex items-center gap-2">
                                 <Filter className="h-3 w-3" />
                                 Source Channel
@@ -338,85 +343,156 @@ export default function SourceLevelReport() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="flex flex-col gap-2 min-w-[200px]">
+                        <div className="flex flex-col gap-2">
                             <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/80 flex items-center gap-2">
                                 <CalendarDays className="h-3 w-3" />
                                 Date Range
                             </Label>
                             <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="h-10 bg-muted/30 border-none hover:bg-muted/50 transition-colors" />
                         </div>
+                        <div className="flex flex-col gap-2">
+                            <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/80 flex items-center gap-2">
+                                <Clock className="h-3 w-3" />
+                                Action Time
+                            </Label>
+                            <Input type="time" value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)} className="h-10 bg-muted/30 border-none hover:bg-muted/50 transition-colors" />
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end mt-6 gap-3">
+                        {isFilterApplied && (
+                            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-2 text-xs h-9 hover:bg-red-500/10 hover:text-red-600 transition-colors">
+                                <RotateCcw className="h-4 w-4" /> Reset
+                            </Button>
+                        )}
+                        <Button onClick={handleDownloadExcel} variant="outline" className="h-9 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 font-bold shadow-sm">
+                            <Download className="h-4 w-4 mr-2" /> Export
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Summary Stats Cards */}
-            {isFilterApplied && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <Card className="bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30">
-                        <CardContent className="p-4 flex items-center gap-4">
-                            <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                                <Users className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-semibold text-blue-600/70 dark:text-blue-400/70 uppercase">Total Leads</p>
-                                <h3 className="text-2xl font-bold">{globalSummary.totalLeads}</h3>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card className="bg-purple-50/50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-900/30">
-                        <CardContent className="p-4 flex items-center gap-4">
-                            <div className="p-3 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                                <Target className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-semibold text-purple-600/70 dark:text-purple-400/70 uppercase">Total Prospects</p>
-                                <h3 className="text-2xl font-bold">{globalSummary.totalProspects}</h3>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card className="bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30">
-                        <CardContent className="p-4 flex items-center gap-4">
-                            <div className="p-3 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                                <CheckCircle2 className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-semibold text-amber-600/70 dark:text-amber-400/70 uppercase">SV Done</p>
-                                <h3 className="text-2xl font-bold">{globalSummary.totalSV}</h3>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card className="bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30">
-                        <CardContent className="p-4 flex items-center gap-4">
-                            <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                                <TrendingUp className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-semibold text-emerald-600/70 dark:text-emerald-400/70 uppercase">Final Booking</p>
-                                <h3 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{globalSummary.totalBookings}</h3>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
+            {/* Summary & Charts Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <Card className="bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30 border-none">
+                    <CardContent className="p-4 flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                            <Users className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-blue-600/70 dark:text-blue-400/70 uppercase">Total Leads</p>
+                            <h3 className="text-2xl font-bold">{globalSummary.totalLeads}</h3>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-purple-50/50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-900/30 border-none">
+                    <CardContent className="p-4 flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                            <Target className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-purple-600/70 dark:text-purple-400/70 uppercase">Total Prospects</p>
+                            <h3 className="text-2xl font-bold">{globalSummary.totalProspects}</h3>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30 border-none">
+                    <CardContent className="p-4 flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                            <CheckCircle2 className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-amber-600/70 dark:text-amber-400/70 uppercase">SV Done</p>
+                            <h3 className="text-2xl font-bold">{globalSummary.totalSV}</h3>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30 border-none">
+                    <CardContent className="p-4 flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                            <TrendingUp className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-emerald-600/70 dark:text-emerald-400/70 uppercase">Final Booking</p>
+                            <h3 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{globalSummary.totalBookings}</h3>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
 
-            {/* Table Section */}
-            {isFilterApplied ? (
-                <div className="animate-in fade-in slide-in-from-top-6 duration-700">
-                    {renderTable("PAID SOURCES", paidData, "text-blue-600 dark:text-blue-400")}
-                    {renderTable("NON-PAID SOURCES", nonPaidData, "text-emerald-600 dark:text-emerald-400")}
-                </div>
-            ) : (
-                <div className="flex flex-col items-center justify-center p-20 border-2 border-dashed rounded-3xl bg-muted/5 border-muted-foreground/10 group hover:border-primary/20 hover:bg-primary/5 transition-all duration-500 cursor-default">
-                    <div className="p-6 rounded-full bg-muted/20 text-muted-foreground/40 mb-6 group-hover:scale-110 group-hover:text-primary/40 transition-all duration-700">
-                        <Filter className="w-16 h-16" />
-                    </div>
-                    <h3 className="text-xl font-bold text-foreground/80 mb-2 group-hover:text-primary transition-colors">Awaiting Parameters</h3>
-                    <p className="text-muted-foreground text-sm max-w-sm text-center font-bold italic opacity-80 group-hover:opacity-100">
-                        Select a channel to generate the performance report.
-                    </p>
-                </div>
-            )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden">
+                    <CardHeader className="bg-muted/5 py-4 border-b">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2 text-left items-start">
+                            <PieChartIcon className="h-4 w-4 text-blue-500" />
+                            Leads Distribution by Source
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 h-[350px]">
+                        <ChartContainer config={chartConfig} className="h-full">
+                            <PieChart>
+                                <Pie
+                                    data={Object.keys(sourceTotals)
+                                        .filter(s => sourceFilter === "all" || s === sourceFilter)
+                                        .map(s => ({ name: s, value: sourceTotals[s][1] }))}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={100}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                >
+                                    {Object.keys(sourceTotals).map((_, index) => (
+                                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <ChartTooltip content={<ChartTooltipContent />} />
+                                <ChartLegend content={<ChartLegendContent />} />
+                            </PieChart>
+                        </ChartContainer>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden">
+                    <CardHeader className="bg-muted/5 py-4 border-b">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2 text-left items-start">
+                            <BarChart3 className="h-4 w-4 text-emerald-500" />
+                            Budget vs Leads Performance
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 h-[350px]">
+                        <ChartContainer config={chartConfig} className="h-full">
+                            <BarChart
+                                data={Object.keys(sourceTotals)
+                                    .filter(s => sourceFilter === "all" || s === sourceFilter)
+                                    .map(s => ({ 
+                                        name: s, 
+                                        budget: sourceTotals[s][0] / 100, 
+                                        leads: sourceTotals[s][1] 
+                                    }))}
+                                margin={{ top: 20, right: 10, left: 0, bottom: 5 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 500 }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                                <ChartTooltip 
+                                    content={<ChartTooltipContent />}
+                                    formatter={(value: any, name: string) => name === 'budget' ? [`₹${(value * 100).toLocaleString()}`, "Budget"] : [value, "Leads"]}
+                                />
+                                <ChartLegend content={<ChartLegendContent />} />
+                                <Bar dataKey="budget" fill="var(--color-budget)" radius={[4, 4, 0, 0]} barSize={24} />
+                                <Bar dataKey="leads" fill="var(--color-leads)" radius={[4, 4, 0, 0]} barSize={24} />
+                            </BarChart>
+                        </ChartContainer>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <div className="animate-in fade-in slide-in-from-top-6 duration-700">
+                {renderTable("PAID SOURCES", paidData, "text-blue-600 dark:text-blue-400")}
+                {renderTable("NON-PAID SOURCES", nonPaidData, "text-emerald-600 dark:text-emerald-400")}
+            </div>
         </div>
     )
 }
-

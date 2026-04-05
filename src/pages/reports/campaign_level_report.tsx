@@ -8,6 +8,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { format } from "date-fns"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -38,9 +39,60 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { CalendarDays, Clock, Filter, RotateCcw, TrendingUp, Users, Target, CheckCircle2, ChevronDown, Download } from "lucide-react"
+import { CalendarDays, Clock, Filter, RotateCcw, TrendingUp, Users, Target, CheckCircle2, ChevronDown, Download, BarChart3, PieChart as PieChartIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { 
+    PieChart, 
+    Pie, 
+    Cell, 
+    BarChart, 
+    Bar, 
+    XAxis, 
+    YAxis, 
+    CartesianGrid, 
+} from 'recharts'
+import {
+    type ChartConfig,
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+    ChartLegend,
+    ChartLegendContent,
+} from "@/components/ui/chart"
+
+const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#f472b6']
+
+const chartConfig = {
+    leads: {
+        label: "Leads",
+        color: "#3b82f6",
+    },
+    prospects: {
+        label: "Prospects",
+        color: "#8b5cf6",
+    },
+    sv: {
+        label: "SV Done",
+        color: "#f59e0b",
+    },
+    bookings: {
+        label: "Bookings",
+        color: "#10b981",
+    },
+    hot: {
+        label: "Hot Leads",
+        color: "#ef4444",
+    },
+    warm: {
+        label: "RNR/Warm",
+        color: "#f59e0b",
+    },
+    unqualified: {
+        label: "Unqualified/Lost",
+        color: "#94a3b8",
+    },
+} satisfies ChartConfig
 
 // Metrics for Online/Offline/CP (Structured by Lead Type)
 const ONLINE_DATA = {
@@ -76,7 +128,7 @@ const campaignFilterMap: Record<string, string> = {
 
 export default function CampaignLevelReport() {
     const { setBreadcrumbs } = useBreadcrumb()
-    const [campaignFilter, setCampaignFilter] = useState("none")
+    const [campaignFilter, setCampaignFilter] = useState("all_responses")
     const [leadType, setLeadType] = useState("all") // Default to All Types
     const [dateFilter, setDateFilter] = useState("")
     const [timeFilter, setTimeFilter] = useState("")
@@ -91,7 +143,7 @@ export default function CampaignLevelReport() {
     const isFilterApplied = campaignFilter !== "none" || dateFilter !== "" || timeFilter !== "" || leadType !== "all"
 
     const clearFilters = () => {
-        setCampaignFilter("none")
+        setCampaignFilter("all_responses")
         setLeadType("all")
         setDateFilter("")
         setTimeFilter("")
@@ -212,82 +264,60 @@ export default function CampaignLevelReport() {
     }, [activeData])
 
     const handleDownloadExcel = () => {
-        // Simple export logic for now, can be refined
         const wb = XLSX.utils.book_new()
+        const rows = [
+            ["Campaign Level Performance Report"],
+            ["Response Source:", campaignFilterMap[campaignFilter] || campaignFilter],
+            ["Lead Type:", leadType === "all" ? "All Types" : leadType === "new" ? "New Leads" : "Re-engaged Leads"],
+            ["Generated At:", new Date().toLocaleString()],
+            [],
+            activeColumns
+        ]
 
-        if (campaignFilter === "online" || campaignFilter === "offline" || campaignFilter === "all_responses" || campaignFilter === "none") {
-            const campaignMetrics = calculateMetrics(activeData)
-            let wsRow = [];
-            
-            if (activeColumns.length === FULL_COLUMNS.length) {
-                wsRow = [
-                    campaignMetrics.budget.toLocaleString(),
-                    campaignMetrics.leads,
-                    campaignMetrics.cpl.toLocaleString(),
-                    campaignMetrics.rnr,
-                    campaignMetrics.prospect,
-                    campaignMetrics.unqualified,
-                    campaignMetrics.lost,
-                    campaignMetrics.svs,
-                    campaignMetrics.costPerSVS.toLocaleString(),
-                    campaignMetrics.sv,
-                    campaignMetrics.costPerSV.toLocaleString(),
-                    campaignMetrics.booking,
-                    campaignMetrics.costPerBooking.toLocaleString()
-                ]
-            } else if (activeColumns.length === REDUCED_COLUMNS.length) {
-                 wsRow = [
-                    campaignMetrics.leads,
-                    campaignMetrics.prospect,
-                    campaignMetrics.rnr,
-                    campaignMetrics.unqualified,
-                    campaignMetrics.lost,
-                    campaignMetrics.svs,
-                    campaignMetrics.sv,
-                    campaignMetrics.booking,
-                    campaignMetrics.costPerBooking.toLocaleString()
-                ]
-            } else {
-                // LEAD_ONLY_COLUMNS
-                wsRow = [
-                    campaignMetrics.leads,
-                    campaignMetrics.prospect,
-                    campaignMetrics.rnr,
-                    campaignMetrics.unqualified,
-                    campaignMetrics.lost,
-                    campaignMetrics.svs,
-                    campaignMetrics.sv,
-                    campaignMetrics.booking
-                ]
-            }
-
-            const wsData = [
-                activeColumns,
-                wsRow
-            ]
-            const ws = XLSX.utils.aoa_to_sheet(wsData)
-            XLSX.utils.book_append_sheet(wb, ws, "Campaign Report")
+        if (metrics) {
+            const dataRow = activeColumns.map(col => {
+                if (col === "BUDGET SPENT") return `₹${metrics.budget.toLocaleString('en-IN')}`;
+                if (col === "NO. OF LEADS") return metrics.leads.toLocaleString('en-IN');
+                if (col === "CPL") return `₹${metrics.cpl.toLocaleString('en-IN')}`;
+                if (col === "RNR") return metrics.rnr.toLocaleString('en-IN');
+                if (col === "PROSPECT") return metrics.prospect.toLocaleString('en-IN');
+                if (col === "UNQUALIFIED") return metrics.unqualified.toLocaleString('en-IN');
+                if (col === "LOST") return metrics.lost.toLocaleString('en-IN');
+                if (col === "SVS") return metrics.svs.toLocaleString('en-IN');
+                if (col === "COST PER SVS") return `₹${metrics.costPerSVS.toLocaleString('en-IN')}`;
+                if (col === "SV" || col === "SV DONE") return metrics.sv.toLocaleString('en-IN');
+                if (col === "COST PER SV") return `₹${metrics.costPerSV.toLocaleString('en-IN')}`;
+                if (col === "BOOKING") return metrics.booking.toLocaleString('en-IN');
+                if (col === "COST PER BOOKING") return `₹${metrics.costPerBooking.toLocaleString('en-IN')}`;
+                return "";
+            });
+            rows.push(dataRow);
         }
 
-        if (campaignFilter === "all_responses" || campaignFilter === "none") {
-            const cpWsData = [
+        const ws = XLSX.utils.aoa_to_sheet(rows)
+        XLSX.utils.book_append_sheet(wb, ws, "Campaign Report")
+
+        if ((campaignFilter === "all_responses" || campaignFilter === "none") && cpActiveData) {
+            const cpRows = [
+                ["Channel Partner (CP) Report"],
+                [],
                 CP_COLUMNS,
                 [
-                    cpActiveData.leads,
-                    cpActiveData.rnr,
-                    cpActiveData.prospect,
-                    cpActiveData.unqualified,
-                    cpActiveData.lost,
-                    cpActiveData.svs,
-                    cpActiveData.sv,
-                    cpActiveData.booking
+                    cpActiveData.leads.toLocaleString('en-IN'),
+                    cpActiveData.rnr.toLocaleString('en-IN'),
+                    cpActiveData.prospect.toLocaleString('en-IN'),
+                    cpActiveData.unqualified.toLocaleString('en-IN'),
+                    cpActiveData.lost.toLocaleString('en-IN'),
+                    cpActiveData.svs.toLocaleString('en-IN'),
+                    cpActiveData.sv.toLocaleString('en-IN'),
+                    cpActiveData.booking.toLocaleString('en-IN')
                 ]
             ]
-            const cpWs = XLSX.utils.aoa_to_sheet(cpWsData)
+            const cpWs = XLSX.utils.aoa_to_sheet(cpRows)
             XLSX.utils.book_append_sheet(wb, cpWs, "CP Report")
         }
 
-        XLSX.writeFile(wb, `Campaign_Report_${new Date().toISOString().split('T')[0]}.xlsx`)
+        XLSX.writeFile(wb, `Campaign_Level_Report_${new Date().toISOString().split('T')[0]}.xlsx`)
     }
 
     return (
@@ -384,8 +414,7 @@ export default function CampaignLevelReport() {
             </Card>
 
             {/* Summary Stats Cards */}
-            {isFilterApplied && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
                     <Card className="bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30">
                         <CardContent className="p-4 flex items-center gap-4">
                             <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
@@ -393,7 +422,7 @@ export default function CampaignLevelReport() {
                             </div>
                             <div>
                                 <p className="text-xs font-semibold text-blue-600/70 dark:text-blue-400/70 uppercase">Total Leads</p>
-                                <h3 className="text-2xl font-bold">{summaryStats.totalLeads}</h3>
+                                <h3 className="text-2xl font-bold">{summaryStats.totalLeads.toLocaleString('en-IN')}</h3>
                             </div>
                         </CardContent>
                     </Card>
@@ -426,16 +455,83 @@ export default function CampaignLevelReport() {
                             </div>
                             <div>
                                 <p className="text-xs font-semibold text-emerald-600/70 dark:text-emerald-400/70 uppercase">Final Bookings</p>
-                                <h3 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{summaryStats.totalBookings}</h3>
+                                <h3 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{summaryStats.totalBookings.toLocaleString('en-IN')}</h3>
                             </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+            {/* Visual Analytics Section */}
+            {activeData && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden">
+                        <CardHeader className="bg-muted/5 py-4 border-b">
+                            <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                <BarChart3 className="h-4 w-4 text-primary" />
+                                Campaign Conversion Funnel
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6 h-[350px]">
+                            <ChartContainer config={chartConfig} className="h-full">
+                                <BarChart
+                                    data={[
+                                        { name: 'Leads', value: activeData.leads, fill: 'var(--color-leads)' },
+                                        { name: 'Prospects', value: activeData.prospect, fill: 'var(--color-prospects)' },
+                                        { name: 'SV Done', value: activeData.sv, fill: 'var(--color-sv)' },
+                                        { name: 'Bookings', value: activeData.booking, fill: 'var(--color-bookings)' }
+                                    ]}
+                                    layout="vertical"
+                                    margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                    <XAxis type="number" hide />
+                                    <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 'bold' }} />
+                                    <ChartTooltip content={<ChartTooltipContent />} />
+                                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={40} />
+                                </BarChart>
+                            </ChartContainer>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden">
+                        <CardHeader className="bg-muted/5 py-4 border-b">
+                            <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                <PieChartIcon className="h-4 w-4 text-purple-500" />
+                                Lead Quality Distribution
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6 h-[350px]">
+                            <ChartContainer config={chartConfig} className="h-full">
+                                <PieChart>
+                                    <Pie
+                                        data={[
+                                            { name: 'hot', value: activeData.prospect, fill: 'var(--color-hot)' },
+                                            { name: 'warm', value: activeData.rnr, fill: 'var(--color-warm)' },
+                                            { name: 'unqualified', value: activeData.unqualified + activeData.lost, fill: 'var(--color-unqualified)' }
+                                        ]}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={100}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                        label={({ name, percent }) => `${chartConfig[name as keyof typeof chartConfig].label} ${(percent * 100).toFixed(0)}%`}
+                                    >
+                                        <Cell fill="var(--color-hot)" />
+                                        <Cell fill="var(--color-warm)" />
+                                        <Cell fill="var(--color-unqualified)" />
+                                    </Pie>
+                                    <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                                    <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+                                </PieChart>
+                            </ChartContainer>
                         </CardContent>
                     </Card>
                 </div>
             )}
 
             {/* Report Table Section */}
-            {isFilterApplied ? (
-                <div className="flex flex-col gap-12">
+            <div className="flex flex-col gap-12">
                     {/* Table 1: Campaign Report */}
                     {(campaignFilter === "online" || campaignFilter === "offline" || campaignFilter === "cp" || campaignFilter === "all_responses" || campaignFilter === "none") && (
                         <Card className="border-none shadow-xl animate-in fade-in slide-in-from-top-6 duration-700 bg-background/40 backdrop-blur-sm">
@@ -508,56 +604,56 @@ export default function CampaignLevelReport() {
                                                     {activeColumns.length === FULL_COLUMNS.length ? (
                                                         // Full Table View (Case 1 & 3)
                                                         <>
-                                                            <td className="text-center font-bold px-4 py-8 text-foreground border-r">{metrics.budget.toLocaleString()}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.leads}</td>
-                                                            <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">{metrics.cpl.toLocaleString()}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.rnr}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.prospect}</td>
-                                                            <td className="text-center border-r px-4 py-8 text-foreground">{metrics.unqualified}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.lost}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.svs}</td>
-                                                            <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">{metrics.costPerSVS.toLocaleString()}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.sv}</td>
-                                                            <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">{metrics.costPerSV.toLocaleString()}</td>
-                                                            <td className="text-center font-black text-primary px-4 py-8 border-r">{metrics.booking}</td>
-                                                            <td className="text-center font-bold bg-primary/10 px-4 py-8 text-primary">{metrics.costPerBooking.toLocaleString()}</td>
+                                                            <td className="text-center font-bold px-4 py-8 text-foreground border-r">₹{metrics.budget.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.leads.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">₹{metrics.cpl.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.rnr.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.prospect.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center border-r px-4 py-8 text-foreground">{metrics.unqualified.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.lost.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.svs.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">₹{metrics.costPerSVS.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.sv.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center font-bold bg-primary/5 border-r px-4 py-8 text-primary">₹{metrics.costPerSV.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center font-black text-primary px-4 py-8 border-r">{metrics.booking.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center font-bold bg-primary/10 px-4 py-8 text-primary">₹{metrics.costPerBooking.toLocaleString('en-IN')}</td>
                                                         </>
                                                     ) : campaignFilter === "cp" ? (
                                                         // CP Table View
                                                         <>
-                                                            <td className="text-center font-bold px-4 py-8 text-foreground border-r">{metrics.leads}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.rnr}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.prospect}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.unqualified}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.lost}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.svs}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.sv}</td>
-                                                            <td className="text-center font-black text-primary px-4 py-8 border-r">{metrics.booking}</td>
+                                                            <td className="text-center font-bold px-4 py-8 text-foreground border-r">{metrics.leads.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.rnr.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.prospect.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.unqualified.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.lost.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.svs.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.sv.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center font-black text-primary px-4 py-8 border-r">{metrics.booking.toLocaleString('en-IN')}</td>
                                                         </>
                                                     ) : activeColumns.length === REDUCED_COLUMNS.length ? (
                                                         // Reduced Table View (Case 2: Source + Lead Type Selected)
                                                         <>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.leads}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.prospect}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.rnr}</td>
-                                                            <td className="text-center border-r px-4 py-8 text-foreground">{metrics.unqualified}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.lost}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.svs}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.sv}</td>
-                                                            <td className="text-center font-black text-primary px-4 py-8 border-r">{metrics.booking}</td>
-                                                            <td className="text-center font-bold bg-primary/10 px-4 py-8 text-primary">{metrics.costPerBooking.toLocaleString()}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.leads.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.prospect.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.rnr.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center border-r px-4 py-8 text-foreground">{metrics.unqualified.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.lost.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.svs.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.sv.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center font-black text-primary px-4 py-8 border-r">{metrics.booking.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center font-bold bg-primary/10 px-4 py-8 text-primary">₹{metrics.costPerBooking.toLocaleString('en-IN')}</td>
                                                         </>
                                                     ) : (
                                                         // Lead Only View (Only lead type selected, no source)
                                                         <>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.leads}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.prospect}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.rnr}</td>
-                                                            <td className="text-center border-r px-4 py-8 text-foreground">{metrics.unqualified}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.lost}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.svs}</td>
-                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.sv}</td>
-                                                            <td className="text-center font-black text-primary px-4 py-8 border-r">{metrics.booking}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.leads.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.prospect.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.rnr.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center border-r px-4 py-8 text-foreground">{metrics.unqualified.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.lost.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.svs.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center px-4 py-8 text-foreground border-r">{metrics.sv.toLocaleString('en-IN')}</td>
+                                                            <td className="text-center font-black text-primary px-4 py-8 border-r">{metrics.booking.toLocaleString('en-IN')}</td>
                                                         </>
                                                     )}
                                                 </tr>
@@ -603,14 +699,14 @@ export default function CampaignLevelReport() {
                                         </thead>
                                         <tbody className="bg-background">
                                             <tr key="cp-data-row" className="group hover:bg-primary/5 transition-all duration-200 border-b">
-                                                <td className="text-center font-bold px-4 py-8 text-foreground border-r">{cpActiveData.leads}</td>
-                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.rnr}</td>
-                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.prospect}</td>
-                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.unqualified}</td>
-                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.lost}</td>
-                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.svs}</td>
-                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.sv}</td>
-                                                <td className="text-center font-black text-primary px-4 py-8">{cpActiveData.booking}</td>
+                                                <td className="text-center font-bold px-4 py-8 text-foreground border-r">{cpActiveData.leads.toLocaleString('en-IN')}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.rnr.toLocaleString('en-IN')}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.prospect.toLocaleString('en-IN')}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.unqualified.toLocaleString('en-IN')}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.lost.toLocaleString('en-IN')}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.svs.toLocaleString('en-IN')}</td>
+                                                <td className="text-center px-4 py-8 text-foreground border-r">{cpActiveData.sv.toLocaleString('en-IN')}</td>
+                                                <td className="text-center font-black text-primary px-4 py-8">{cpActiveData.booking.toLocaleString('en-IN')}</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -618,24 +714,7 @@ export default function CampaignLevelReport() {
                             </CardContent>
                         </Card>
                     )}
-                </div>
-            ) : (
-                <div className="flex flex-col items-center justify-center p-20 border-2 border-dashed rounded-3xl bg-muted/5 border-muted-foreground/10 group hover:border-primary/20 hover:bg-primary/5 transition-all duration-500 cursor-default">
-                    <div className="p-6 rounded-full bg-muted/20 text-muted-foreground/40 mb-6 group-hover:scale-110 group-hover:text-primary/40 transition-all duration-700">
-                        <Filter className="w-16 h-16" />
-                    </div>
-                    <h3 className="text-xl font-bold text-foreground/80 mb-2 group-hover:text-primary transition-colors">Awaiting Filter Parameters</h3>
-                    <p className="text-muted-foreground text-sm max-w-sm text-center leading-relaxed font-medium italic opacity-80 group-hover:opacity-100">
-                        Please define your criteria above to generate the campaign performance report.
-                        Data will appear here instantly once filters are applied.
-                    </p>
-                    <div className="mt-8 flex gap-2">
-                        <div className="w-2 h-2 rounded-full bg-primary/20 animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-2 h-2 rounded-full bg-primary/20 animate-bounce" style={{ animationDelay: '200ms' }} />
-                        <div className="w-2 h-2 rounded-full bg-primary/20 animate-bounce" style={{ animationDelay: '400ms' }} />
-                    </div>
-                </div>
-            )}
+            </div>
         </div>
     )
 }

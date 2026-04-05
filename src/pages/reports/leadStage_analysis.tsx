@@ -21,20 +21,32 @@ import {
     ChevronDown,
     RefreshCcw,
     Printer,
-    Download
+    Download,
+    Filter,
+    Play
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBreadcrumb } from "@/context/breadcrumb-context";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import type { DateRange } from 'react-day-picker';
+import { 
+    BarChart, 
+    Bar, 
+    XAxis, 
+    YAxis, 
+    CartesianGrid, 
+    PieChart,
+    Pie,
+    Cell
+} from 'recharts';
 import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
-} from "@/components/ui/sheet"
+    type ChartConfig,
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+    ChartLegend,
+    ChartLegendContent,
+} from "@/components/ui/chart"
 
 // Mock Data for Team (Existing)
 const teamData = [
@@ -138,15 +150,24 @@ const COLORS = {
     fresh: '#000000'
 };
 
+const chartConfig = {
+    booked: { label: "Booked(sales)", color: COLORS.booked },
+    custom_2: { label: "custom_2", color: COLORS.custom_2 },
+    follow: { label: "Follow(pre_sales)", color: COLORS.follow },
+    incoming: { label: "Incoming(pre_sales)", color: COLORS.incoming },
+    opportunity: { label: "Opportunity(pre_sales)", color: COLORS.opportunity },
+    prospect: { label: "Prospect(sales)", color: COLORS.prospect },
+    fresh: { label: "Fresh Leads(sales)(Incoming)", color: COLORS.fresh }
+} satisfies ChartConfig
+
 const CustomLegend = () => (
     <div className="flex flex-wrap justify-center gap-4 mb-4 text-xs">
-        <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.booked }}></span> Booked(sales)</div>
-        <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.custom_2 }}></span> custom_2</div>
-        <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.follow }}></span> Follow(pre_sales)</div>
-        <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.incoming }}></span> Incoming(pre_sales)</div>
-        <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.opportunity }}></span> Opportunity(pre_sales)</div>
-        <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.prospect }}></span> Prospect(sales)</div>
-        <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.fresh }}></span> Fresh Leads(sales)(Incoming)</div>
+        {Object.entries(chartConfig).map(([key, config]) => (
+            <div key={key} className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: (COLORS as any)[key] }}></span> 
+                {config.label}
+            </div>
+        ))}
     </div>
 );
 
@@ -157,6 +178,8 @@ export default function LeadStageAnalysis() {
         to: new Date(2026, 1, 19),
     });
     const [activeTab, setActiveTab] = React.useState("Team");
+    const [chartType, setChartType] = React.useState("bar");
+    const [isApplied, setIsApplied] = React.useState(false);
 
     React.useEffect(() => {
         setBreadcrumbs([
@@ -178,6 +201,18 @@ export default function LeadStageAnalysis() {
             },
         ]);
     }, [setBreadcrumbs]);
+
+    const handleApply = () => {
+        setIsApplied(true);
+    };
+
+    const handleReset = () => {
+        setIsApplied(false);
+        setDate({
+            from: new Date(2026, 1, 1),
+            to: new Date(2026, 1, 19),
+        });
+    }
 
     // Select data based on active tab
     const currentData = activeTab === "Project" ? projectData : teamData;
@@ -203,206 +238,192 @@ export default function LeadStageAnalysis() {
 
     return (
         <div className="p-4 bg-gray-50/50 min-h-screen dark:bg-background">
-            <Card className="rounded-none shadow-sm border-0">
-                <CardContent className="p-0">
-                    {/* Top Header */}
-                    <div className="flex items-center justify-between p-3 border-b">
-                        <div className="flex items-center gap-2">
-                            <div className="p-1 px-2 bg-blue-600 rounded text-white font-bold text-sm">
-                                Lead Stage Analysis
+            <Card className="rounded-none shadow-sm border-0 bg-transparent">
+                <CardContent className="p-0 flex flex-col gap-6">
+                    
+                    {/* Filter Card */}
+                    <Card className="rounded-xl border shadow-sm p-4 bg-white dark:bg-card">
+                        <div className="flex items-center justify-between border-b pb-4 mb-4">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 px-3 bg-blue-600 rounded-lg text-white font-extrabold text-xs uppercase tracking-wider italic">
+                                    Lead Stage Analysis
+                                </div>
+                                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
                             </div>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </div>
 
-                        <div className="flex items-center gap-4">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant={"ghost"}
-                                        className={cn(
-                                            "justify-start text-left font-normal text-muted-foreground hover:bg-transparent hover:text-foreground p-0 h-auto",
-                                            !date && "text-muted-foreground"
-                                        )}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4 opacity-70" />
-                                        {date?.from ? (
-                                            date.to ? (
-                                                <span className="text-sm">
-                                                    {format(date.from, "dd/MM/yyyy HH:mm:ss")} - {format(date.to, "dd/MM/yyyy HH:mm:ss")}
-                                                </span>
+                            <div className="flex items-center gap-4">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "justify-start text-left font-normal border-none bg-muted/30 h-10",
+                                                !date && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4 opacity-70" />
+                                            {date?.from ? (
+                                                date.to ? (
+                                                    <span className="text-xs">
+                                                        {format(date.from, "dd/MM/yyyy")} - {format(date.to, "dd/MM/yyyy")}
+                                                    </span>
+                                                ) : (
+                                                    format(date.from, "dd/MM/yyyy")
+                                                )
                                             ) : (
-                                                format(date.from, "dd/MM/yyyy HH:mm:ss")
-                                            )
+                                                <span className="text-xs">Pick a date</span>
+                                            )}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="end">
+                                        <Calendar
+                                            initialFocus
+                                            mode="range"
+                                            defaultMonth={date?.from}
+                                            selected={date}
+                                            onSelect={setDate}
+                                            numberOfMonths={2}
+                                            disabled={{ after: new Date() }}
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+
+                                <div className="h-6 w-px bg-border"></div>
+
+                                <Button variant="outline" className="h-10 border-none bg-muted/30 gap-2 text-xs">
+                                    <Filter className="h-3 w-3" /> Filters (2)
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                <span>Owners:</span>
+                                <div className="flex items-center gap-3">
+                                    <NavTab name="Team" /> <Separator />
+                                    <NavTab name="Project" /> <Separator />
+                                    <NavTab name="Campaign" /> <Separator />
+                                    <NavTab name="Source" /> 
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                {isApplied && (
+                                    <Button variant="ghost" onClick={handleReset} className="h-10 text-xs gap-2 hover:bg-destructive/10 hover:text-destructive">
+                                        <RefreshCcw className="h-3 w-3" /> Reset
+                                    </Button>
+                                )}
+                                <Button onClick={handleApply} className="h-10 px-8 bg-primary hover:bg-primary/90 text-white font-bold shadow-lg shadow-primary/20 gap-2">
+                                    <Play className="h-4 w-4 fill-current" /> Apply Filters
+                                </Button>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {isApplied ? (
+                        <Card className="rounded-xl border shadow-xl bg-white dark:bg-card overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700">
+                            {/* Toolbar */}
+                            <div className="flex items-center justify-between px-6 py-4 border-b bg-muted/5">
+                                <div className="flex items-center gap-3 text-sm">
+                                    <span className="text-xs font-bold uppercase text-muted-foreground">Chart Type:</span>
+                                    <Select value={chartType} onValueChange={setChartType}>
+                                        <SelectTrigger className="w-[120px] h-9 text-xs border-none bg-muted/20">
+                                            <SelectValue placeholder="Select" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="bar">Bar Chart</SelectItem>
+                                            <SelectItem value="pie">Pie Chart</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <Button variant="outline" size="sm" className="h-9 gap-2 border-none bg-muted/20 text-xs">
+                                        <Printer className="h-3 w-3" /> Print
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="h-9 gap-2 border-none bg-muted/20 text-xs">
+                                        <Download className="h-3 w-3" /> Export
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* Visualization Content */}
+                            <div className="p-8">
+                                <CustomLegend />
+
+                                <div className="h-[500px] w-full mt-8">
+                                    <ChartContainer config={chartConfig} className="h-full">
+                                        {chartType === "bar" ? (
+                                            <BarChart
+                                                data={sortedData.map(item => ({
+                                                    name: item.name,
+                                                    ...item.stages
+                                                }))}
+                                                layout="vertical"
+                                                margin={{ top: 20, right: 120, left: 40, bottom: 5 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
+                                                <XAxis type="number" hide />
+                                                <YAxis 
+                                                    type="category" 
+                                                    dataKey="name" 
+                                                    axisLine={false} 
+                                                    tickLine={false} 
+                                                    tick={{ fontSize: 12, fontWeight: 'bold' }} 
+                                                    width={150}
+                                                />
+                                                <ChartTooltip content={<ChartTooltipContent />} />
+                                                <Bar dataKey="incoming" stackId="a" fill={COLORS.incoming} barSize={30} />
+                                                <Bar dataKey="prospect" stackId="a" fill={COLORS.prospect} />
+                                                <Bar dataKey="booked" stackId="a" fill={COLORS.booked} />
+                                                <Bar dataKey="fresh" stackId="a" fill={COLORS.fresh} />
+                                                <Bar dataKey="follow" stackId="a" fill={COLORS.follow} />
+                                                <Bar dataKey="opportunity" stackId="a" fill={COLORS.opportunity} />
+                                            </BarChart>
                                         ) : (
-                                            <span>Pick a date</span>
+                                            <PieChart>
+                                                <Pie
+                                                    data={Object.keys(COLORS).map(key => ({
+                                                        name: key,
+                                                        value: currentData.reduce((acc, curr: any) => acc + (curr.stages[key] || 0), 0)
+                                                    })).filter(d => d.value > 0)}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={80}
+                                                    outerRadius={140}
+                                                    paddingAngle={5}
+                                                    dataKey="value"
+                                                    label={({ name, percent }) => `${chartConfig[name as keyof typeof chartConfig].label} ${(percent * 100).toFixed(0)}%`}
+                                                >
+                                                    {Object.keys(COLORS).map((key, index) => (
+                                                        <Cell key={`cell-${index}`} fill={(COLORS as any)[key]} />
+                                                    ))}
+                                                </Pie>
+                                                <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                                                <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+                                            </PieChart>
                                         )}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="end">
-                                    <Calendar
-                                        initialFocus
-                                        mode="range"
-                                        defaultMonth={date?.from}
-                                        selected={date}
-                                        onSelect={setDate}
-                                        numberOfMonths={2}
-                                        disabled={{ after: new Date() }}
-                                    />
-                                </PopoverContent>
-                            </Popover>
-
-                            <div className="h-6 w-px bg-border"></div>
-
-                            <Sheet>
-                                <SheetTrigger asChild>
-                                    <Button variant="ghost" className="gap-2 h-8 font-normal">
-                                        Filters (2) <ChevronDown className="h-4 w-4" />
-                                    </Button>
-                                </SheetTrigger>
-                                <SheetContent>
-                                    <SheetHeader>
-                                        <SheetTitle>Filters</SheetTitle>
-                                        <SheetDescription>
-                                            Apply filters to analyze lead stages.
-                                        </SheetDescription>
-                                    </SheetHeader>
-                                    <div className="grid gap-4 py-4">
-                                        <div className="space-y-1">
-                                            <span className="text-sm font-medium">Status</span>
-                                            <Select>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select status" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="active">Active</SelectItem>
-                                                    <SelectItem value="inactive">Inactive</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        {/* Add more filters here as needed */}
-                                    </div>
-                                    <div className="flex flex-col gap-3 mt-4">
-                                        <Button>Apply Filters</Button>
-                                    </div>
-                                </SheetContent>
-                            </Sheet>
-                        </div>
-                    </div>
-
-                    {/* Secondary Navigation & Toolbar */}
-                    <div className="flex items-center justify-between px-3 py-2 border-b bg-white dark:bg-card">
-                        <div className="flex items-center gap-2 text-sm">
-                            <span className="text-muted-foreground/50">Owners</span> <Separator />
-                            <NavTab name="Team" /> <Separator />
-                            <NavTab name="Project" /> <Separator />
-                            <NavTab name="Campaign" /> <Separator />
-                            <NavTab name="Source" /> <Separator />
-                            <NavTab name="Sub Source / Sub Campaign" /> <Separator />
-                        </div>
-
-                        <div className="flex items-center gap-3 text-sm">
-                            <span className="text-muted-foreground">Chart Type:</span>
-                            <Select defaultValue="bar">
-                                <SelectTrigger className="w-[110px] h-7 text-xs">
-                                    <SelectValue placeholder="Select" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="bar">Bar Chart</SelectItem>
-                                    <SelectItem value="pie">Pie Chart</SelectItem>
-                                </SelectContent>
-                            </Select>
-
-                            <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs font-normal">
-                                <RefreshCcw className="h-3 w-3" /> Refresh
-                            </Button>
-                            <Separator />
-                            <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs font-normal">
-                                <Printer className="h-3 w-3" /> Print
-                            </Button>
-                            <Separator />
-                            <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs font-normal">
-                                <Download className="h-3 w-3" /> Export
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Visualization Content */}
-                    <div className="p-6">
-                        <CustomLegend />
-
-                        <style>{`
-                            @keyframes bar-grow {
-                                from { width: 0; }
-                            }
-                            .animate-bar-grow {
-                                animation: bar-grow 1s ease-out forwards;
-                            }
-                        `}</style>
-
-                        <div className="relative pt-6 max-w-4xl mx-auto">
-                            <div className="absolute top-0 right-0 bg-transparent text-gray-700 dark:text-gray-300 text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600">
-                                Total Leads - 38
+                                    </ChartContainer>
+                                </div>
                             </div>
-
-                            <div className="space-y-12 mt-10">
-                                {sortedData.map((item) => (
-                                    <div key={item.name} className="flex flex-col md:flex-row gap-4">
-                                        <div className="w-full md:w-64 flex-shrink-0 text-sm">
-                                            <div className="font-medium text-gray-700 dark:text-gray-300">{item.name}</div>
-                                            <div className="text-muted-foreground text-xs mt-1">
-                                                (Total Leads: {Math.ceil(item.totalLeads * (item.conversion / 100))}/{item.totalLeads})
-                                            </div>
-                                            <div className="text-muted-foreground text-xs">
-                                                ({item.conversion}%)
-                                            </div>
-                                        </div>
-
-                                        <div className="flex-grow h-24 relative border-l border-b border-gray-200 dark:border-gray-700 pl-2">
-                                            <div className="w-full h-full flex flex-col justify-end pb-1 gap-2">
-                                                {/* Logic to replicate specific stacked/adjacent bar visual */}
-                                                {item.stages.incoming > 0 && (
-                                                    <div className="relative h-2.5 w-[65%] animate-bar-grow" style={{ backgroundColor: COLORS.incoming }}>
-                                                        <span className="absolute left-full ml-2 text-[10px] text-gray-600 whitespace-nowrap -top-1">
-                                                            Incoming ({item.stages.incoming}/{Math.ceil(item.totalLeads * (item.conversion / 100))})({item.conversion}%)
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {item.stages.prospect > 0 && (
-                                                    <div className="relative h-2.5 w-[100%] animate-bar-grow" style={{ backgroundColor: COLORS.prospect }}>
-                                                        <span className="absolute left-full ml-2 text-[10px] text-gray-600 whitespace-nowrap -top-1">
-                                                            Prospect (1/1)(100.00%)
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {item.stages.booked > 0 && (
-                                                    <div className="relative h-2.5 w-[33%] animate-bar-grow" style={{ backgroundColor: COLORS.booked }}>
-                                                        <span className="absolute left-full ml-2 text-[10px] text-gray-600 whitespace-nowrap -top-1">
-                                                            booked ({item.stages.booked}/15)(33.33%)
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {item.stages.fresh > 0 && (
-                                                    <div className="relative h-2.5 w-[6%] animate-bar-grow" style={{ backgroundColor: COLORS.fresh }}>
-                                                        <span className="absolute left-full ml-2 text-[10px] text-gray-600 whitespace-nowrap -top-1">
-                                                            Fresh Leads (1/15)(6.67%)
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {/* For the third row specifically to match screenshot where lines are separate */}
-                                                {item.name.includes('Tejas') && item.stages.prospect > 0 && (
-                                                    <div className="relative h-2.5 w-[33%] animate-bar-grow" style={{ backgroundColor: COLORS.prospect }}>
-                                                        <span className="absolute left-full ml-2 text-[10px] text-gray-600 whitespace-nowrap -top-1">
-                                                            Prospect (5/15)(33.33%)
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+                        </Card>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center p-24 border-2 border-dashed rounded-3xl bg-muted/5 border-muted-foreground/10 group hover:border-primary/20 hover:bg-primary/5 transition-all duration-500 cursor-default">
+                            <div className="p-6 rounded-full bg-muted/20 text-muted-foreground/40 mb-6 group-hover:scale-110 group-hover:text-primary/40 transition-all duration-700">
+                                <Filter className="w-16 h-16" />
+                            </div>
+                            <h3 className="text-xl font-bold text-foreground/80 mb-2 group-hover:text-primary transition-colors text-left items-start text-left items-start">Awaiting Filter Parameters</h3>
+                            <p className="text-muted-foreground text-sm max-w-sm text-center leading-relaxed font-medium italic opacity-80 group-hover:opacity-100">
+                                Please define your criteria above to generate the stage analysis.
+                                Data will appear here instantly once filters are applied.
+                            </p>
+                            <div className="mt-8 flex gap-2">
+                                <div className="w-2 h-2 rounded-full bg-primary/20 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                <div className="w-2 h-2 rounded-full bg-primary/20 animate-bounce" style={{ animationDelay: '200ms' }} />
+                                <div className="w-2 h-2 rounded-full bg-primary/20 animate-bounce" style={{ animationDelay: '400ms' }} />
                             </div>
                         </div>
-                    </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
