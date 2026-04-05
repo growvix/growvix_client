@@ -3033,7 +3033,7 @@ export default function LeadDetail() {
                         </CardContent>
                     </Card>
                 </div>
-                <div className="xl:col-span-2 lg:col-span-3">
+                <div className="xl:col-span-2 lg:col-span-2">
                     <Card className="border-2 shadow-none dark:bg-input/50 pt-2 gap-0 pb-0 h-full">
                         <CardHeader className="mt-0 pt-0 pb-0">
                             <div className="flex items-center justify-between">
@@ -3348,6 +3348,7 @@ export default function LeadDetail() {
                                         if (up === 'mail') exeStats.mail++;
                                         if (up === 'phonecall' || up === 'call') exeStats.call++;
                                         if (up === 'sms') exeStats.sms++;
+                                        if (up === '');
                                     }
                                 });
                             }
