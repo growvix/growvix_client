@@ -258,7 +258,7 @@ export default function SourceLevelReport() {
                             <tbody className="bg-background">
                                 {groupData.sources.map((source: string) => (
                                     <tr key={source} className="group hover:bg-primary/5 transition-all duration-200 border-b">
-                                        <td className="font-bold px-6 py-4 text-sm text-foreground border-r border-muted/20 bg-white group-hover:bg-primary/5 uppercase">
+                                        <td className="font-bold px-6 py-4 text-sm text-foreground border-r border-muted/20 dark:bg-black group-hover:bg-primary/5 uppercase">
                                             {source}
                                         </td>
                                         {sourceTotals[source].map((val: number, vIdx: number) => (
@@ -288,9 +288,9 @@ export default function SourceLevelReport() {
     }
 
     return (
-        <div className="flex flex-1 flex-col gap-6 px-6 py-4 max-w-[98%] mx-auto w-full">
+        <div className="flex flex-1 flex-col gap-6 px-6 py-4 max-w-[98%]  mx-auto w-full  ">
             {/* Page Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center   justify-between">
                 <div className="flex flex-col gap-1">
                     <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent italic">
                         Source Level Report
@@ -300,7 +300,7 @@ export default function SourceLevelReport() {
                         Spend vs Performance breakdown for paid and organic channels.
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center  gap-3">
                     {isFilterApplied && (
                         <Button variant="outline" size="sm" onClick={clearFilters} className="gap-2 text-xs h-8">
                             <RotateCcw className="h-3.5 w-3.5" />
@@ -401,7 +401,7 @@ export default function SourceLevelReport() {
 
             {/* Table Section */}
             {isFilterApplied ? (
-                <div className="animate-in fade-in slide-in-from-top-6 duration-700">
+                <div className="animate-in fade-in slide-in-from-top-6  duration-700">
                     {renderTable("PAID SOURCES", paidData, "text-blue-600 dark:text-blue-400")}
                     {renderTable("NON-PAID SOURCES", nonPaidData, "text-emerald-600 dark:text-emerald-400")}
                 </div>
