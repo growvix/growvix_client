@@ -54,6 +54,8 @@ import {
     Paperclip,
     X,
     ArrowLeft,
+    PhoneIncoming,
+    PhoneOutgoing,
     Image as ImageIcon
 } from "lucide-react";
 import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables, GetLeadStagesQueryResponse, GetLeadStagesQueryVariables, GetOrganizationUsersQueryResponse, GetOrganizationUsersQueryVariables, DeleteLeadMutationResponse, DeleteLeadMutationVariables } from "@/types"
@@ -795,6 +797,10 @@ export default function LeadDetail() {
     const [siteVisitTime, setSiteVisitTime] = useState('')
     const [siteVisitLoading, setSiteVisitLoading] = useState(false)
     const [siteVisitSheetOpen, setSiteVisitSheetOpen] = useState(false)
+    // Offline Call state
+    const [offlineCallDate, setOfflineCallDate] = useState<Date | undefined>(new Date())
+    const [offlineCallTime, setOfflineCallTime] = useState('')
+    const [offlineCallSheetOpen, setOfflineCallSheetOpen] = useState(false)
 
     // Site Visit Conducted state
     const [conductedSheetOpen, setConductedSheetOpen] = useState(false)
@@ -2312,13 +2318,84 @@ export default function LeadDetail() {
                                                 <p>Offline call</p>
                                             </TooltipContent>
                                         </Tooltip>
-                                        <SheetContent>
-                                            <SheetHeader>
-                                                <SheetTitle>Log Offline Call</SheetTitle>
-                                                <SheetDescription>
-                                                    Record details from an external call.
+                                        <SheetContent className="w-full sm:max-w-md bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
+                                            <SheetHeader className="mb-6">
+                                                <SheetTitle className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Log Offline Call</SheetTitle>
+                                                <SheetDescription className="text-sm text-muted-foreground">
+                                                    Record telephony interactions manually.
                                                 </SheetDescription>
                                             </SheetHeader>
+
+                                            <div className="space-y-6">
+                                                {/* Call Timing Selector */}
+                                                <div className="flex flex-col space-y-4 ps-2 pe-2">
+                                                    <div className="flex flex-col space-y-2">
+                                                        <Label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Date</Label>
+                                                        <DatePicker date={offlineCallDate} setDate={setOfflineCallDate} />
+                                                    </div>
+                                                    
+                                                    <div className="flex flex-col space-y-2">
+                                                        <Label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Time</Label>
+                                                        <TimePicker time={offlineCallTime} setTime={setOfflineCallTime} />
+                                                    </div>
+                                                </div>
+
+                                                <Separator className="opacity-50" />
+
+                                                {/* Incoming Calls Section */}
+                                                <div className="space-y-2 ps-2 pe-2">
+                                                    <Label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Incoming</Label>
+                                                    <Button 
+                                                        variant="outline" 
+                                                        className="w-full h-12 justify-between border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all font-semibold"
+                                                        onClick={() => toast.info('Purchase the IVR to use this feature')}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <PhoneIncoming className="size-4 text-emerald-500" />
+                                                            <span className="text-zinc-600 dark:text-zinc-400">Add incoming record</span>
+                                                        </div>
+                                                        <Plus className="size-4 opacity-50" />
+                                                    </Button>
+                                                </div>
+
+                                                {/* Outgoing Calls Section */}
+                                                <div className="space-y-2 ps-2 pe-2">
+                                                    <Label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Outgoing</Label>
+                                                    <Button 
+                                                        variant="outline" 
+                                                        className="w-full h-12 justify-between border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all font-semibold"
+                                                        onClick={() => toast.info('Purchase the IVR to use this feature')}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <PhoneOutgoing className="size-4 text-emerald-500" />
+                                                            <span className="text-zinc-600 dark:text-zinc-400">Add outgoing record</span>
+                                                        </div>
+                                                        <Plus className="size-4 opacity-50" />
+                                                    </Button>
+                                                </div>
+
+                                                {/* Dummy Submit Button */}
+                                                <div className="ps-2 pe-2 pt-2">
+                                                    <Button 
+                                                        className="w-full h-12 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold hover:opacity-90 transition-all rounded-xl"
+                                                        onClick={() => toast.info('Purchase the IVR to use this feature')}
+                                                    >
+                                                        Submit Information
+                                                    </Button>
+                                                </div>
+
+                                                <Separator className="my-8" />
+
+                                                {/* Previous Calls History */}
+                                                <div className="space-y-4 ps-2 pe-2">
+                                                    <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-400">Previous Offline Calls</h4>
+                                                    <div className="flex flex-col items-center justify-center py-10 text-center space-y-2 opacity-50">
+                                                        <Smartphone className="size-10 text-zinc-300 mb-2" />
+                                                        <p className="text-sm font-medium">No calls logged yet</p>
+                                                        <p className="text-xs max-w-[200px]">Manual call logs will appear here for audit history.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </SheetContent>
                                     </Sheet>
                                 </div>
@@ -3034,11 +3111,11 @@ export default function LeadDetail() {
                     </Card>
                 </div>
                 <div className="xl:col-span-1 lg:col-span-1">
-                    <Card className="border-2 shadow-none dark:bg-black pt-2 gap-0 pb-0 h-full">
+                    <Card className="border-2 shadow-none dark:bg-black pt-2 gap-0 pb-2 h-full">
                         <CardHeader className="mt-0 pt-0 pb-0">
                             <div className="flex items-center justify-between">
                                 <Label className="text-muted-foreground  ">
-                                    Considered Projects
+                                    Intrested Projects
                                 </Label>
                                 {canEdit && (
                                     <Sheet open={addProjectSheetOpen} onOpenChange={setAddProjectSheetOpen}>
@@ -3137,8 +3214,10 @@ export default function LeadDetail() {
                                     }),
                                 ]}
                                 orientation="vertical"
-                                className="w-full" >
-                                <CarouselContent className="h-[240px]">
+                                className="w-full relative group" >
+                                <CarouselPrevious className="-top-8 left-1/2 -translate-x-1/2 rotate-90 size-7 opacity-60 hover:opacity-100 transition-opacity bg-transparent border-none shadow-none z-10" />
+                                <CarouselNext className="bottom-1 left-1/2 -translate-x-1/2 rotate-90 size-7 opacity-60 hover:opacity-100 transition-opacity bg-transparent border-none shadow-none z-10" />
+                                <CarouselContent className="h-[200px]">
                                     {leadDetail?.interested_projects && (leadDetail.interested_projects as any[]).length > 0 ? (
                                         (leadDetail.interested_projects as any[]).map((ip: any) => {
                                             const projectDetail = allProjects.find((p: any) => p.product_id === ip.project_id);
@@ -3170,13 +3249,13 @@ export default function LeadDetail() {
                                                                             {projectDetail?.property || 'PROJ'}
                                                                         </Badge>
                                                                     </div>
-                                                                    
+
                                                                     {canEdit && (
                                                                         <AlertDialog>
                                                                             <AlertDialogTrigger asChild>
-                                                                                <Button 
-                                                                                    variant="ghost" 
-                                                                                    size="icon" 
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
                                                                                     className="h-8 w-8 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-red-500/10 hover:border-red-500/20 group transition-all shrink-0"
                                                                                     disabled={removingProjectId === ip.project_id}
                                                                                 >
@@ -3333,7 +3412,7 @@ export default function LeadDetail() {
 
                         const renderCardContent = (exe: { mainId: string; name: string; image: string; altIds: string[] }) => {
                             const initials = getUserAvatar(exe.name);
-                            const exeStats = { whatsapp: 0, mail: 0, call: 0, sms: 0 };
+                            const exeStats = { whatsapp: 0, mail: 0, call: 0, sms: 0, notes: 0, site_visits: 0, site_visits_scheduled: 0, site_visits_conducted: 0, follow_ups_scheduled: 0, follow_ups_conducted: 0 };
 
                             if (leadDetail?.activities) {
                                 leadDetail.activities.forEach(a => {
@@ -3344,27 +3423,44 @@ export default function LeadDetail() {
                                         if (up === 'mail') exeStats.mail++;
                                         if (up === 'phonecall' || up === 'call') exeStats.call++;
                                         if (up === 'sms') exeStats.sms++;
-                                        if (up === '');
+                                        if (up === 'note') exeStats.notes++;
+                                        if (up === 'site_visit') exeStats.site_visits++;
+                                        if (up === 'site_visit_scheduled') exeStats.site_visits_scheduled++;
+                                        if (up === 'site_visit_conducted') exeStats.site_visits_conducted++;
+                                        if (up === 'follow_up_scheduled') exeStats.follow_ups_scheduled++;
+                                        if (up === 'follow_up_conducted') exeStats.follow_ups_conducted++;
                                     }
                                 });
                             }
 
+                            const statsToShow = [
+                                { key: 'Whatsapp', value: exeStats.whatsapp },
+                                { key: 'Mail', value: exeStats.mail },
+                                { key: 'Call', value: exeStats.call },
+                                { key: 'SMS', value: exeStats.sms },
+                                { key: 'Notes', value: exeStats.notes },
+                                { key: 'SV Sched', value: exeStats.site_visits_scheduled },
+                                { key: 'SV Cond', value: exeStats.site_visits_conducted },
+                                { key: 'FU Sched', value: exeStats.follow_ups_scheduled },
+                                { key: 'FU Cond', value: exeStats.follow_ups_conducted },
+                            ];
+
                             return (
-                                <Card className="border-2 shadow-none dark:bg-input/50 pt-4 h-full relative overflow-hidden">
-                                    <CardContent className="p-4 pt-0">
-                                        <div className="flex items-center justify-between gap-2 mb-4 border-b border-muted/30 pb-2.5">
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="size-12 sm:size-12 ring-2 ring-primary/10 shadow-sm border border-primary/5">
+                                <Card className="border-2 shadow-none dark:bg-input/50 pt-2 h-full relative overflow-hidden bg-white dark:bg-zinc-950">
+                                    <CardContent className="p-3 pt-0">
+                                        <div className="flex items-center justify-between gap-2 mb-2 border-b border-muted/20 pb-1.5">
+                                            <div className="flex items-center gap-2">
+                                                <Avatar className="size-10 ring-1 ring-primary/5 shadow-sm border border-primary/5">
                                                     {exe.image ? <AvatarImage src={getSanitizedAvatarUrl(exe.image)} alt={exe.name} /> : null}
-                                                    <AvatarFallback className="text-xl font-bold uppercase bg-primary/5 text-primary">
+                                                    <AvatarFallback className="text-xs font-bold uppercase bg-primary/5 text-primary">
                                                         {exe.name !== 'Unassigned' ? initials : 'UN'}
                                                     </AvatarFallback>
                                                 </Avatar>
                                                 <div className="space-y-0">
-                                                    <CardTitle className="text-lg sm:text-xl md:text-xl font-bold tracking-tight truncate max-w-[140px] sm:max-w-[180px]" title={exe.name}>
+                                                    <CardTitle className="text-sm font-bold tracking-tight truncate max-w-[120px]" title={exe.name}>
                                                         {exe.name}
                                                     </CardTitle>
-                                                    <CardDescription className="text-[10px] sm:text-xs font-semibold opacity-50 uppercase tracking-widest">
+                                                    <CardDescription className="text-[9px] font-bold opacity-50 uppercase tracking-tighter">
                                                         Active Executive
                                                     </CardDescription>
                                                 </div>
@@ -3372,15 +3468,15 @@ export default function LeadDetail() {
 
                                             {/* Stacked Avatars Selector */}
                                             {executives.length > 1 && (
-                                                <div className="flex -space-x-3 sm:-space-x-4 pr-1">
+                                                <div className="flex -space-x-1.5 pr-1">
                                                     {executives.slice(0, 3).map((e, idx) => (
                                                         <TooltipProvider key={idx}>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
                                                                     <Avatar
                                                                         className={cn(
-                                                                            "size-9 sm:size-11 border-2 border-background cursor-pointer hover:-translate-y-1 transition-all duration-300 shadow-md",
-                                                                            activeExeIndex === idx ? "ring-2 ring-primary z-30 scale-110 shadow-lg" : "hover:z-20 opacity-90"
+                                                                            "size-6 border border-background cursor-pointer hover:-translate-y-0.5 transition-all shadow-sm",
+                                                                            activeExeIndex === idx ? "ring-1 ring-primary z-30 scale-105" : "opacity-80"
                                                                         )}
                                                                         onClick={(ev) => {
                                                                             ev.stopPropagation();
@@ -3388,65 +3484,61 @@ export default function LeadDetail() {
                                                                         }}
                                                                     >
                                                                         {e.image ? <AvatarImage src={getSanitizedAvatarUrl(e.image)} /> : null}
-                                                                        <AvatarFallback className="text-[10px] font-black bg-zinc-100 dark:bg-zinc-800">
+                                                                        <AvatarFallback className="text-[7px] font-black bg-zinc-100 dark:bg-zinc-800">
                                                                             {getUserAvatar(e.name)}
                                                                         </AvatarFallback>
                                                                     </Avatar>
                                                                 </TooltipTrigger>
-                                                                <TooltipContent className="text-[10px] font-bold uppercase">{e.name}</TooltipContent>
+                                                                <TooltipContent className="text-[8px] font-bold uppercase">{e.name}</TooltipContent>
                                                             </Tooltip>
                                                         </TooltipProvider>
                                                     ))}
-                                                    {executives.length > 3 && (
-                                                        <div className="size-9 sm:size-11 border-2 border-background rounded-full bg-secondary flex items-center justify-center text-[10px] font-black shadow-md z-0">
-                                                            +{executives.length - 3}
-                                                        </div>
-                                                    )}
                                                 </div>
                                             )}
                                         </div>
 
-                                        <ScrollArea className="h-44 pr-2">
-                                            <div className="space-y-1">
-                                                <div className="text-sm flex gap-10 items-center ps-2">
-                                                    <FontAwesomeIcon icon={faWhatsapp} className="text-zinc-500 dark:text-zinc-400" style={{ fontSize: "1.1rem" }} />
-                                                    <span className="font-medium text-muted-foreground">Whatsapp Engaged</span>
-                                                    <Button className="ml-auto h-7 w-12 font-bold bg-muted/30" variant="ghost" size="sm">{exeStats.whatsapp}</Button>
+                                        {/* 3x3 Compact Grid */}
+                                        <div className="grid grid-cols-3 gap-y-2 pt-1">
+                                            {statsToShow.map((stat, idx) => (
+                                                <div key={idx} className={cn(
+                                                    "flex flex-col items-center justify-center py-1 text-center",
+                                                    (idx + 1) % 3 !== 0 && "border-r border-muted/10"
+                                                )}>
+                                                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter mb-0.5 truncate w-full px-1">
+                                                        {stat.key} :
+                                                    </span>
+                                                    <span className="text-xs font-black text-zinc-900 dark:text-zinc-100">
+                                                        {stat.value}
+                                                    </span>
                                                 </div>
-                                                <Separator className="my-2 opacity-50" />
-                                                <div className="text-sm flex gap-10 items-center ps-2">
-                                                    <Mail className="size-4 text-zinc-500 dark:text-zinc-400" />
-                                                    <span className="font-medium text-muted-foreground">Mail Engaged</span>
-                                                    <Button className="ml-auto h-7 w-12 font-bold bg-muted/30" variant="ghost" size="sm">{exeStats.mail}</Button>
-                                                </div>
-                                                <Separator className="my-2 opacity-50" />
-                                                <div className="text-sm flex gap-10 items-center ps-2">
-                                                    <PhoneCall className="size-4 text-zinc-500 dark:text-zinc-400" />
-                                                    <span className="font-medium text-muted-foreground">Phone Call Engaged</span>
-                                                    <Button className="ml-auto h-7 w-12 font-bold bg-muted/30" variant="ghost" size="sm">{exeStats.call}</Button>
-                                                </div>
-                                                <Separator className="my-2 opacity-50" />
-                                                <div className="text-sm flex gap-10 items-center ps-2">
-                                                    <MessagesSquare className="size-4 text-zinc-500 dark:text-zinc-400" />
-                                                    <span className="font-medium text-muted-foreground">SMS Engaged</span>
-                                                    <Button className="ml-auto h-7 w-12 font-bold bg-muted/30" variant="ghost" size="sm">{exeStats.sms}</Button>
-                                                </div>
-                                                <Separator className="my-2 opacity-50" />
-                                            </div>
-                                        </ScrollArea>
+                                            ))}
+                                        </div>
                                     </CardContent>
                                 </Card>
                             );
                         };
 
                         return (
-                            <div className="h-full">
-                                <div
-                                    key={`exe-card-${activeExeIndex}`}
-                                    className="h-full transition-all animate-in fade-in slide-in-from-right-2 duration-400"
+                            <div className="h-full relative group">
+                                <Carousel 
+                                    className="w-full h-full"
+                                    opts={{ align: "start", loop: true }}
                                 >
-                                    {renderCardContent(executives[activeExeIndex] || executives[0])}
-                                </div>
+                                    <CarouselContent className="ml-0">
+                                        {executives.map((exe, i) => (
+                                            <CarouselItem key={i} className="pl-0">
+                                                {renderCardContent(exe)}
+                                            </CarouselItem>
+                                        ))}
+                                    </CarouselContent>
+                                    
+                                    {executives.length > 1 && (
+                                        <>
+                                            <CarouselPrevious className="left-1 size-7 opacity-20 group-hover:opacity-100 transition-opacity bg-background/80" />
+                                            <CarouselNext className="right-1 size-7 opacity-20 group-hover:opacity-100 transition-opacity bg-background/80" />
+                                        </>
+                                    )}
+                                </Carousel>
                             </div>
                         );
                     })()}
@@ -3574,7 +3666,7 @@ export default function LeadDetail() {
                     </Card>
                 </div>
                 <div className="xl:col-span-2 lg:col-span-3 flex flex-col gap-2 shadow-0 tracking-tighter ">
-                    <Card className="border-2 shadow-none dark:bg-input/10 bg-background">
+                    <Card className="border-2 shadow-none dark:border-zinc-800 dark:bg-black bg-background">
                         <CardHeader className="mt-0">
                             <Tabs defaultValue="all" className="">
                                 <TabsList className="w-full mb-4 py-2 h-11 dark:bg-input/50">

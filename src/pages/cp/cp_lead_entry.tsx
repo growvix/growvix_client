@@ -5,6 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { 
     ArrowLeft, 
     Save, 
@@ -54,6 +61,8 @@ export default function CpLeadEntry() {
         parking_needed: '',
         campaign: '',
         source: '',
+        sub_source: '',
+        medium: '',
     })
 
     useEffect(() => {
@@ -76,6 +85,8 @@ export default function CpLeadEntry() {
                     ...prev,
                     campaign: config.contact_info.campaign || '',
                     source: config.contact_info.source || '',
+                    sub_source: config.contact_info.sub_source || '',
+                    medium: config.contact_info.medium || '',
                 }))
             }
         } catch (error) {
@@ -111,6 +122,8 @@ export default function CpLeadEntry() {
                 acquired: [{
                     campaign: formData.campaign || config.contact_info.campaign || 'Lead Capture',
                     source: formData.source || config.contact_info.source || 'Manual Ingestion',
+                    sub_source: formData.sub_source || config.contact_info.sub_source || '',
+                    medium: formData.medium || config.contact_info.medium || '',
                     received: new Date().toISOString(),
                     created_at: new Date().toISOString(),
                 }],
@@ -174,9 +187,9 @@ export default function CpLeadEntry() {
     const { selected_fields = [] } = config
 
     return (
-        <div className="min-h-screen p-6 md:p-8 flex justify-center items-start bg-slate-50/50 dark:bg-zinc-950/50">
-            <Card className="w-full max-w-4xl shadow-sm border-primary-200 dark:border-zinc-800 pt-0 rounded-lg overflow-hidden bg-background">
-                <CardHeader className="border-b dark:border-zinc-800 pb-6 dark:bg-zinc-900 bg-neutral-100/50 pt-6 rounded-t-lg">
+        <div className="min-h-screen p-6 md:p-8 flex justify-center items-start bg-slate-50/50 dark:bg-black">
+            <Card className="w-full max-w-4xl shadow-none pt-0 rounded-lg overflow-hidden bg-transparent border-slate-200 dark:border-zinc-800">
+                <CardHeader className="border-b dark:border-zinc-800 pb-6 dark:bg-zinc-950 bg-neutral-100/50 pt-6 rounded-t-lg">
                     <div className="flex items-center gap-4">
                         <Button 
                             variant="ghost" 
@@ -410,34 +423,105 @@ export default function CpLeadEntry() {
                             {/* Acquisition Section */}
                             <section className="space-y-6">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm"></span>
-                                    <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-500">Acquisition Source</h3>
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                    <h3 className="text-[13px] font-black uppercase text-emerald-500 tracking-[0.2em]">Acquisition Source</h3>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                                    <Field>
-                                        <FieldLabel htmlFor="campaign">Campaign Name <span className="text-red-500">*</span></FieldLabel>
-                                        <Input 
-                                            id="campaign"
-                                            name="campaign"
-                                            placeholder="Enter campaign name" 
-                                            className="h-10"
-                                            required
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12">
+                                    {/* Campaign Selection */}
+                                    <div className="space-y-4">
+                                        <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Campaign Name</Label>
+                                        <Select 
                                             value={formData.campaign}
-                                            onChange={(e) => setFormData({...formData, campaign: e.target.value})}
-                                        />
-                                    </Field>
-                                    <Field>
-                                        <FieldLabel htmlFor="source">Source <span className="text-red-500">*</span></FieldLabel>
-                                        <Input 
-                                            id="source"
-                                            name="source"
-                                            placeholder="e.g. Facebook, Google" 
-                                            className="h-10"
-                                            required
+                                            onValueChange={(val) => setFormData({
+                                                ...formData, 
+                                                campaign: val,
+                                                source: '',
+                                                sub_source: ''
+                                            })}
+                                        >
+                                            <SelectTrigger className="w-full h-16 bg-white dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 text-sm font-medium rounded-2xl shadow-sm focus:ring-1 focus:ring-zinc-400 transition-all outline-none">
+                                                <SelectValue placeholder="Enter campaign name" />
+                                            </SelectTrigger>
+                                            <SelectContent side="bottom" position="item-aligned" className="rounded-xl border-zinc-200 dark:border-zinc-800 shadow-2xl">
+                                                {(['CP', 'cp', 'cp_user', 'channel_partner'].includes(getCookie('category')) || ['CP', 'cp', 'cp_user', 'channel_partner'].includes(getCookie('userRole')) || ['CP', 'cp', 'cp_user', 'channel_partner'].includes(getCookie('role')) ? ['Channel Partner', 'Online', 'Offline'] : ['Online', 'Offline']).map(type => (
+                                                    <SelectItem key={type} value={type} className="py-3 font-medium uppercase text-[10px] tracking-widest">{type}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Lead Source */}
+                                    <div className="space-y-4">
+                                        <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Source</Label>
+                                        <Select 
+                                            disabled={!formData.campaign}
                                             value={formData.source}
-                                            onChange={(e) => setFormData({...formData, source: e.target.value})}
-                                        />
-                                    </Field>
+                                            onValueChange={(val) => setFormData({...formData, source: val, sub_source: ''})}
+                                        >
+                                            <SelectTrigger className="w-full h-16 bg-white dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 text-sm font-medium rounded-2xl shadow-sm outline-none">
+                                                <SelectValue placeholder={!formData.campaign ? "Select campaign first" : "e.g. Facebook, Google"} />
+                                            </SelectTrigger>
+                                            <SelectContent side="bottom" position="item-aligned" className="rounded-xl border-zinc-200 dark:border-zinc-800 shadow-2xl">
+                                                {(formData.campaign === 'Online' 
+                                                    ? ['Google', 'Facebook', 'Instagram', 'LinkedIn', 'Housing', '99Acres', 'MagicBricks', 'Website']
+                                                    : formData.campaign === 'Offline'
+                                                    ? ['Reference', 'Walk-in', 'Signage', 'Events', 'Newspaper', 'Brochures']
+                                                    : ['Partner Dashboard', 'Direct Link', 'CP Referral']
+                                                ).map(opt => (
+                                                    <SelectItem key={opt} value={opt} className="py-3 font-medium text-[10px] uppercase tracking-widest">{opt}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Sub Source - Hidden for CP */}
+                                    {!(getCookie('category') === 'CP' || getCookie('userRole') === 'CP' || getCookie('role') === 'cp') && (
+                                        <div className="space-y-4">
+                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Sub Source</Label>
+                                            <Select 
+                                                disabled={!formData.source}
+                                                value={formData.sub_source}
+                                                onValueChange={(val) => setFormData({...formData, sub_source: val})}
+                                            >
+                                                <SelectTrigger className="w-full h-16 bg-white dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 text-sm font-medium rounded-2xl shadow-sm outline-none">
+                                                    <SelectValue placeholder={!formData.source ? "Select source first" : "e.g. Ad Campaign, Event"} />
+                                                </SelectTrigger>
+                                                <SelectContent side="bottom" position="item-aligned" className="rounded-xl border-zinc-200 dark:border-zinc-800 shadow-2xl">
+                                                    {(formData.source === 'Google' 
+                                                        ? ['LSA', 'Search', 'Display', 'Discovery', 'Remarketing']
+                                                        : formData.source === 'Facebook' || formData.source === 'Instagram'
+                                                        ? ['Lead Form', 'Messenger', 'Direct Ad', 'Post Engagement']
+                                                        : formData.source === 'Website'
+                                                        ? ['Main Landing', 'Project Page', 'Contact Form', 'Chatbot']
+                                                        : ['General', 'Specific Campaign', 'Partner Sync']
+                                                    ).map(opt => (
+                                                        <SelectItem key={opt} value={opt} className="py-3 font-medium text-[10px] uppercase tracking-widest">{opt}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
+
+                                    {/* Interaction Medium - Hidden for CP */}
+                                    {!(getCookie('category') === 'CP' || getCookie('userRole') === 'CP' || getCookie('role') === 'cp') && (
+                                        <div className="space-y-4">
+                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Medium</Label>
+                                            <Select 
+                                                value={formData.medium}
+                                                onValueChange={(val) => setFormData({...formData, medium: val})}
+                                            >
+                                                <SelectTrigger className="w-full h-16 bg-white dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 text-sm font-medium rounded-2xl shadow-sm outline-none">
+                                                    <SelectValue placeholder="e.g. WhatsApp, Phone" />
+                                                </SelectTrigger>
+                                                <SelectContent side="bottom" position="item-aligned" className="rounded-xl border-zinc-200 dark:border-zinc-800 shadow-2xl">
+                                                    {['API', 'Walkin', 'WhatsApp', 'Phone Call', 'SMS'].map(opt => (
+                                                        <SelectItem key={opt} value={opt} className="py-3 font-medium text-[10px] uppercase tracking-widest">{opt}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
                                 </div>
                             </section>
                         </div>
