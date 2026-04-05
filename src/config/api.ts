@@ -13,7 +13,14 @@ export const getSanitizedAvatarUrl = (url: string | null | undefined): string =>
         return `${API_URL}${path}`;
     }
     if (url.startsWith('http')) return url;
+    
     const cleanUrl = url.startsWith('/') ? url.slice(1) : url;
+    
+    // If it's a direct filename, it's likely a profile picture
+    if (!cleanUrl.includes('/')) {
+        return `${API_URL}/uploads/profile-pictures/${cleanUrl}`;
+    }
+    
     return `${API_URL}/${cleanUrl}`;
 };
 

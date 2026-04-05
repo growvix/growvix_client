@@ -2638,7 +2638,7 @@ export default function LeadDetail() {
                         </Card>
 
                     </div>
-                    <Card className="border-2 shadow-none py-1 gap-0 dark:bg-input/50 h-full">
+                    <Card className="border-2 shadow-none py-1 gap-0 dark:border-zinc-800 dark:bg-black h-full">
                         <CardHeader className="pt-2 pb-0">
                             <div className="flex items-center justify-between">
                                 <Label className="text-muted-foreground">Requirements</Label>
@@ -3033,8 +3033,8 @@ export default function LeadDetail() {
                         </CardContent>
                     </Card>
                 </div>
-                <div className="xl:col-span-2 lg:col-span-3">
-                    <Card className="border-2 shadow-none dark:bg-input/50 pt-2 gap-0 pb-0 h-full">
+                <div className="xl:col-span-1 lg:col-span-1">
+                    <Card className="border-2 shadow-none dark:bg-black pt-2 gap-0 pb-0 h-full">
                         <CardHeader className="mt-0 pt-0 pb-0">
                             <div className="flex items-center justify-between">
                                 <Label className="text-muted-foreground  ">
@@ -3124,7 +3124,7 @@ export default function LeadDetail() {
                                 )}
                             </div>
                         </CardHeader>
-                        <CardContent className="flex justify-center mb-0">
+                        <CardContent className="px-0 mb-0">
                             <Carousel
                                 opts={{
                                     align: "start",
@@ -3137,17 +3137,17 @@ export default function LeadDetail() {
                                     }),
                                 ]}
                                 orientation="vertical"
-                                className="h-full w-full" >
-                                <CarouselContent className="-mt-1 h-[200px]">
-                                    {(leadDetail?.interested_projects && (leadDetail.interested_projects as any[]).length > 0) ? (
+                                className="w-full" >
+                                <CarouselContent className="h-[240px]">
+                                    {leadDetail?.interested_projects && (leadDetail.interested_projects as any[]).length > 0 ? (
                                         (leadDetail.interested_projects as any[]).map((ip: any) => {
                                             const projectDetail = allProjects.find((p: any) => p.product_id === ip.project_id);
                                             return (
                                                 <CarouselItem key={ip.project_id}>
-                                                    <div className="grid grid-cols-4 gap-4 px-2 py-3 min-h-[150px] items-center">
-                                                        {/* Col 1: Logo */}
-                                                        <div className="col-span-1 flex flex-col items-center justify-center min-w-0">
-                                                            <div className="w-28 h-28 rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
+                                                    <div className="p-4 h-full flex flex-col justify-center">
+                                                        <div className="flex gap-5 items-start">
+                                                            {/* Project Image/Logo */}
+                                                            <div className="w-24 h-24 rounded-2xl bg-zinc-800 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-zinc-700 dark:border-zinc-800 shadow-xl shrink-0">
                                                                 {projectDetail?.img_location?.logo ? (
                                                                     <img
                                                                         src={projectDetail.img_location.logo}
@@ -3155,117 +3155,113 @@ export default function LeadDetail() {
                                                                         className="w-full h-full object-cover"
                                                                     />
                                                                 ) : (
-                                                                    <MapPinCheck className="h-10 w-10 text-primary" />
+                                                                    <MapPinCheck className="h-10 w-10 text-zinc-600" />
                                                                 )}
                                                             </div>
-                                                        </div>
 
-                                                        {/* Col 2: Name & Book */}
-                                                        <div className="col-span-1 flex flex-col items-center justify-between h-full py-2 min-w-0">
-                                                            <div className="flex flex-col items-center min-w-0">
-                                                                <Label className="text-muted-foreground text-xs text-center mb-1">Name</Label>
-                                                                <p className="text-md font-bold text-center truncate w-full">{ip.project_name}</p>
-                                                            </div>
-                                                            <div className="mt-auto pt-4">
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="secondary"
-                                                                    className="h-8 text-sm px-3 gap-1"
-                                                                    onClick={() => {
-                                                                        const encodedId = encodeProjectId(ip.project_id)
-                                                                        navigate(`/project_showcase?id=${encodedId}`, {
-                                                                            state: {
-                                                                                bookingLead: {
-                                                                                    _id: leadDetail?._id,
-                                                                                    profile_id: leadDetail?.profile_id,
-                                                                                    name: leadDetail?.profile?.name || 'Unknown',
-                                                                                    phone: leadDetail?.profile?.phone || '',
-                                                                                }
-                                                                            }
-                                                                        })
-                                                                    }}
-                                                                >
-                                                                    <HousePlus className="h-3.5 w-3.5" /> Book
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Col 3: Location & Schedule Visit */}
-                                                        <div className="col-span-1 flex flex-col items-center justify-between h-full py-2 min-w-0">
-                                                            <div className="flex flex-col items-center min-w-0">
-                                                                <Label className="text-muted-foreground text-xs text-center mb-1">Location</Label>
-                                                                <p className="text-md text-center truncate w-full font-medium">{projectDetail?.location || '—'}</p>
-                                                            </div>
-                                                            <div className="mt-auto pt-4">
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="secondary"
-                                                                    className="h-8 text-sm px-3 gap-1"
-                                                                    onClick={() => {
-                                                                        setSiteVisitProject({ id: ip.project_id, name: ip.project_name });
-                                                                        setSiteVisitSheetOpen(true);
-                                                                    }}
-                                                                >
-                                                                    <CalendarCheck className="h-3.5 w-3.5" /> Schedule Visit
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Col 4: Type Badge & Delete Icon */}
-                                                        <div className="col-span-1 flex flex-col items-center justify-between h-full py-2 min-w-0 relative">
-                                                            <div className="flex flex-col items-center min-w-0 w-full px-2">
-                                                                <Label className="text-muted-foreground text-xs text-center mb-1">Type</Label>
-                                                                <p className="text-md text-center truncate w-full font-medium">{projectDetail?.property || 'N/A'}</p>
-                                                            </div>
-                                                            {canEdit && (
-                                                                <div className="mt-auto pt-4">
-                                                                    <AlertDialog>
-                                                                        <AlertDialogTrigger asChild>
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="icon"
-                                                                                className="h-8 w-8 rounded-md border border-red-500 dark:bg-red-500/10 bg-red-500/10"
-                                                                                disabled={removingProjectId === ip.project_id}
-                                                                            >
-                                                                                <Trash2 className="h-4 w-4 text-red-500" />
-                                                                            </Button>
-                                                                        </AlertDialogTrigger>
-                                                                        <AlertDialogContent>
-                                                                            <AlertDialogHeader>
-                                                                                <AlertDialogTitle>Remove Project</AlertDialogTitle>
-                                                                                <AlertDialogDescription>
-                                                                                    Are you sure you want to remove <span className="font-semibold text-foreground">{ip.project_name}</span> from interested projects?
-                                                                                </AlertDialogDescription>
-                                                                            </AlertDialogHeader>
-                                                                            <AlertDialogFooter>
-                                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                                <AlertDialogAction
-                                                                                    onClick={async () => {
-                                                                                        setRemovingProjectId(ip.project_id);
-                                                                                        try {
-                                                                                            await removeInterestedProjectMutation({
-                                                                                                variables: {
-                                                                                                    organization,
-                                                                                                    leadId: leadDetail?._id,
-                                                                                                    projectId: ip.project_id
-                                                                                                }
-                                                                                            });
-                                                                                            toast.success(`Removed ${ip.project_name}`);
-                                                                                            refetchLead();
-                                                                                        } catch (err: any) {
-                                                                                            toast.error(err?.message || 'Failed to remove project');
-                                                                                        } finally {
-                                                                                            setRemovingProjectId(null);
-                                                                                        }
-                                                                                    }}
+                                                            {/* Project Information & Actions */}
+                                                            <div className="flex-1 min-w-0 flex flex-col gap-4">
+                                                                <div className="flex justify-between items-start">
+                                                                    <div className="flex items-center gap-3 overflow-hidden">
+                                                                        <h4 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter truncate leading-none">
+                                                                            {ip.project_name}
+                                                                        </h4>
+                                                                        <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-none px-3 py-1 h-auto text-[10px] font-black uppercase tracking-widest shrink-0 shadow-sm rounded-full">
+                                                                            {projectDetail?.property || 'PROJ'}
+                                                                        </Badge>
+                                                                    </div>
+                                                                    
+                                                                    {canEdit && (
+                                                                        <AlertDialog>
+                                                                            <AlertDialogTrigger asChild>
+                                                                                <Button 
+                                                                                    variant="ghost" 
+                                                                                    size="icon" 
+                                                                                    className="h-8 w-8 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-red-500/10 hover:border-red-500/20 group transition-all shrink-0"
+                                                                                    disabled={removingProjectId === ip.project_id}
                                                                                 >
-                                                                                    Confirm
-                                                                                </AlertDialogAction>
-                                                                            </AlertDialogFooter>
-                                                                        </AlertDialogContent>
-                                                                    </AlertDialog>
+                                                                                    <Trash2 className="h-4 w-4 text-red-500 transition-colors" />
+                                                                                </Button>
+                                                                            </AlertDialogTrigger>
+                                                                            <AlertDialogContent className="rounded-3xl border-zinc-200 dark:border-zinc-800 shadow-2xl">
+                                                                                <AlertDialogHeader>
+                                                                                    <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">Remove Project</AlertDialogTitle>
+                                                                                    <AlertDialogDescription className="text-zinc-500 font-medium">
+                                                                                        Are you sure you want to remove <span className="font-bold text-zinc-900 dark:text-zinc-100 uppercase">{ip.project_name}</span>?
+                                                                                    </AlertDialogDescription>
+                                                                                </AlertDialogHeader>
+                                                                                <AlertDialogFooter>
+                                                                                    <AlertDialogCancel className="rounded-xl font-bold uppercase tracking-widest text-[10px]">Cancel</AlertDialogCancel>
+                                                                                    <AlertDialogAction
+                                                                                        className="bg-red-500 hover:bg-red-600 rounded-xl font-bold uppercase tracking-widest text-[10px]"
+                                                                                        onClick={async () => {
+                                                                                            setRemovingProjectId(ip.project_id);
+                                                                                            try {
+                                                                                                await removeInterestedProjectMutation({
+                                                                                                    variables: {
+                                                                                                        organization,
+                                                                                                        leadId: leadDetail?._id,
+                                                                                                        projectId: ip.project_id
+                                                                                                    }
+                                                                                                });
+                                                                                                toast.success(`Removed ${ip.project_name}`);
+                                                                                                refetchLead();
+                                                                                            } catch (err: any) {
+                                                                                                toast.error(err?.message || 'Failed to remove project');
+                                                                                            } finally {
+                                                                                                setRemovingProjectId(null);
+                                                                                            }
+                                                                                        }}
+                                                                                    >
+                                                                                        Remove
+                                                                                    </AlertDialogAction>
+                                                                                </AlertDialogFooter>
+                                                                            </AlertDialogContent>
+                                                                        </AlertDialog>
+                                                                    )}
                                                                 </div>
-                                                            )}
+
+                                                                <div className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400">
+                                                                    <MapPinCheck className="h-4 w-4 shrink-0" />
+                                                                    <span className="text-[11px] font-bold uppercase tracking-wider truncate">
+                                                                        {projectDetail?.location || 'Location Not Set'}
+                                                                    </span>
+                                                                </div>
+
+                                                                {/* Actions */}
+                                                                <div className="flex items-center gap-4 pt-1">
+                                                                    <Button
+                                                                        size="sm"
+                                                                        className="h-9 px-4 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex-1 shadow-lg border-2 border-transparent"
+                                                                        onClick={() => {
+                                                                            const encodedId = encodeProjectId(ip.project_id)
+                                                                            navigate(`/project_showcase?id=${encodedId}`, {
+                                                                                state: {
+                                                                                    bookingLead: {
+                                                                                        _id: leadDetail?._id,
+                                                                                        profile_id: leadDetail?.profile_id,
+                                                                                        name: leadDetail?.profile?.name || 'Unknown',
+                                                                                        phone: leadDetail?.profile?.phone || '',
+                                                                                    }
+                                                                                }
+                                                                            })
+                                                                        }}
+                                                                    >
+                                                                        BOOK
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        className="h-9 px-4 rounded-full border-2 border-zinc-200 dark:border-zinc-800 font-black text-[10px] uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex-1 shrink-0"
+                                                                        onClick={() => {
+                                                                            setSiteVisitProject({ id: ip.project_id, name: ip.project_name });
+                                                                            setSiteVisitSheetOpen(true);
+                                                                        }}
+                                                                    >
+                                                                        VISIT
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </CarouselItem>
@@ -3285,7 +3281,7 @@ export default function LeadDetail() {
                         </CardContent>
                     </Card>
                 </div>
-                <div className="xl:col-span-1 lg:col-span-2">
+                <div className="xl:col-span-2 lg:col-span-2">
                     {(() => {
                         const nameMap = new Map<string, { mainId: string; name: string; image: string; altIds: string[] }>();
 
@@ -3348,6 +3344,7 @@ export default function LeadDetail() {
                                         if (up === 'mail') exeStats.mail++;
                                         if (up === 'phonecall' || up === 'call') exeStats.call++;
                                         if (up === 'sms') exeStats.sms++;
+                                        if (up === '');
                                     }
                                 });
                             }
@@ -3455,7 +3452,7 @@ export default function LeadDetail() {
                     })()}
                 </div>
                 <div className="xl:col-span-3 lg:col-span-3">
-                    <Card className="border-2 pt-0 gap-2 shadow-none dark:bg-primary-foreground/50">
+                    <Card className="border-2 pt-0 gap-2 shadow-none dark:border-zinc-800 dark:bg-black">
                         <CardHeader className="p-0 m-0 bg-transparent">
                             <CardTitle className="text-center text-lg font-bold mt-2">
 
@@ -3881,7 +3878,6 @@ export default function LeadDetail() {
 
 
 
-        </div >
-
-    )
-}
+        </div>
+    );
+};

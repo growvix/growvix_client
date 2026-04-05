@@ -140,18 +140,6 @@ export function NavUser({
     try {
       const token = getCookie("token");
 
-      // Save admin session before impersonating
-      if (canImpersonate && !isAdminImpersonating) {
-        setCookie('admin_user_id', getCookie('user_id') as string);
-        setCookie('admin_profile_id', getCookie('profile_id') as string);
-        setCookie('admin_organization', getCookie('organization') as string);
-        setCookie('admin_userName', getCookie('userName') as string);
-        setCookie('admin_email', getCookie('email') as string);
-        setCookie('admin_token', token as string);
-        setCookie('admin_role', role as string);
-        setCookie('admin_permissions', getCookie('permissions') as string);
-      }
-
       const response = await axios.post(
         API.AUTH.IMPERSONATE,
         { targetUserId: targetUser._id },
@@ -159,6 +147,18 @@ export function NavUser({
       );
 
       const data = response.data.data;
+
+      // Save admin session ONLY AFTER successful impersonation
+      if (canImpersonate && !isAdminImpersonating) {
+        setCookie('admin_user_id', getCookie('user_id') as string);
+        setCookie('admin_profile_id', getCookie('profile_id') as string);
+        setCookie('admin_organization', getCookie('organization') as string);
+        setCookie('admin_userName', getCookie('userName') as string);
+        setCookie('admin_email', getCookie('email') as string);
+        setCookie('admin_token', token as string);
+        setCookie('admin_role', getCookie('role') as string);
+        setCookie('admin_permissions', getCookie('permissions') as string);
+      }
 
       setCookie('user_id', data.user_id);
       setCookie('profile_id', data.profile_id);
@@ -173,6 +173,13 @@ export function NavUser({
       const redirectPath = data.role === 'admin' ? "/master_dashboard" : data.role === 'manager' ? "/management_dashboard" : data.role === 'cp_user' ? "/cp/dashboard" : "/executive_dashboard";
       window.location.href = redirectPath;
     } catch (error: any) {
+      // Ensure we clear any half-set admin cookies if something went wrong before the redirect
+      if (!isAdminImpersonating) {
+        const adminCookies = ['admin_user_id', 'admin_profile_id', 'admin_organization', 'admin_userName', 'admin_email', 'admin_token', 'admin_role', 'admin_permissions'];
+        adminCookies.forEach(name => {
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        });
+      }
       toast.error(error.response?.data?.message || "Failed to switch account");
     } finally {
       setSwitchingTo(null);

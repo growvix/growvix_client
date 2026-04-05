@@ -4,7 +4,9 @@ import { API } from '@/config/api'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Plus, Target, ArrowRight,Info } from 'lucide-react'
 import {
     Card,
     CardContent,
@@ -17,7 +19,8 @@ import {
     Field,
     FieldLabel,
 } from '@/components/ui/field'
-
+import { useBreadcrumb } from '@/context/breadcrumb-context'
+import {Tooltip, TooltipContent, TooltipTrigger, TooltipProvider} from '@/components/ui/tooltip'
 
 // Helper function to get cookie value
 const getCookie = (name: string): string => {
@@ -75,13 +78,54 @@ export default function AddLeadPage() {
     const [lead, setLead] = useState<Lead>(initialLead)
     const [loading, setLoading] = useState(false)
     const navigate = useNavigate()
+    const [configs, setConfigs] = useState<any[]>([])
+    const [fetchingConfigs, setFetchingConfigs] = useState(true)
+    const { setBreadcrumbs } = useBreadcrumb()
+    const currentUserId = getCookie('user_id')
 
     useEffect(() => {
         const org = getCookie('organization')
+        setBreadcrumbs([
+            { label: "New Lead", href: "/NewLead" },
+            {
+                label: (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Info className="h-4 w-4"/>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Add New Lead</p>
+                        </TooltipContent>
+                    </Tooltip>
+                )
+            }
+        ])
         if (org) {
             setLead(prev => ({ ...prev, organization: org }))
+            fetchConfigs(org)
         }
     }, [])
+
+    const fetchConfigs = async (org: string) => {
+        try {
+            const token = getCookie('token')
+            const res = await axios.get(`${API.LEAD_CAPTURE_CONFIGS}?organization=${org}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            })
+            const allConfigs = res.data.data || []
+            // Filter by user assignment
+            const myConfigs = allConfigs.filter((c: any) => 
+                c.assigned_people?.some((p: any) => p.id === currentUserId)
+            )
+            setConfigs(myConfigs)
+        } catch (err) {
+            console.error('Failed to load configs:', err)
+        } finally {
+            setFetchingConfigs(false)
+        }
+    }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target
@@ -140,206 +184,46 @@ export default function AddLeadPage() {
     }
 
     return (
-        <div className="min-h-screen p-6 md:p-8 flex justify-center items-start">
-            <Card className="w-full max-w-4xl shadow-sm border-primary-200 pt-0">
-                <CardHeader className="border-b pb-6 dark:bg-neutral-800 bg-neutral-100 pt-6 rounded-t-lg">
-                    <CardTitle className="text-xl text-primary-900">New Lead</CardTitle>
-                    <CardDescription>Enter the details for the new prospective Lead.</CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <form onSubmit={handleSubmit}>
-                        <div className="px-6 py-4 space-y-5">
-                            {/* Contact Section */}
-                            <section className="space-y-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="w-2 h-2 rounded-full bg-blue-500 shadow-sm"></span>
-                                    <h3 className="text-md font-bold uppercase text-blue-500">Contact Information</h3>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <Field>
-                                        <FieldLabel htmlFor="profile.name">Full Name <span className="text-red-500">*</span></FieldLabel>
-                                        <Input
-                                            id="profile.name"
-                                            name="profile.name"
-                                            placeholder="Enter full name"
-                                            value={lead.profile.name}
-                                            onChange={handleChange}
-                                            required
-                                            className="h-10"
-                                        />
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="profile.email">Email Address</FieldLabel>
-                                        <Input
-                                            id="profile.email"
-                                            name="profile.email"
-                                            type="email"
-                                            placeholder="Enter email address"
-                                            value={lead.profile.email}
-                                            onChange={handleChange}
-                                            className="h-10"
-                                        />
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="profile.phone">Phone Number <span className="text-red-500">*</span></FieldLabel>
-                                        <Input
-                                            id="profile.phone"
-                                            name="profile.phone"
-                                            placeholder="Enter phone number"
-                                            value={lead.profile.phone}
-                                            required
-                                            onChange={handleChange}
-                                            className="h-10"
-                                        />
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="profile.location">Current Location</FieldLabel>
-                                        <Input
-                                            id="profile.location"
-                                            name="profile.location"
-                                            placeholder="Enter current location"
-                                            value={lead.profile.location}
-                                            onChange={handleChange}
-                                            className="h-10"
-                                        />
-                                    </Field>
-                                </div>
-                            </section>
-
-                            <Separator />
-                            {/* Preferences Section */}
-                            <section className="space-y-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="w-2 h-2 rounded-full bg-purple-500 shadow-sm"></span>
-                                    <h3 className="text-md font-bold uppercase text-purple-500">Requirements</h3>
-
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <Field>
-                                        <FieldLabel htmlFor="requirement.budget">Budget Range</FieldLabel>
-                                        <Input
-                                            id="requirement.budget"
-                                            name="requirement.budget"
-                                            placeholder="e.g. 50L - 1Cr"
-                                            value={lead.requirement.budget}
-                                            onChange={handleChange}
-                                            className="h-10"
-                                        />
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="requirement.location">Preferred Location</FieldLabel>
-                                        <Input
-                                            id="requirement.location"
-                                            name="requirement.location"
-                                            placeholder="Enter preferred location"
-                                            value={lead.requirement.location}
-                                            onChange={handleChange}
-                                            className="h-10"
-                                        />
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="requirement.floor">Preferred Floor</FieldLabel>
-                                        <Input
-                                            id="requirement.floor"
-                                            name="requirement.floor"
-                                            placeholder="e.g. Higher floor, 5th floor"
-                                            value={lead.requirement.floor}
-                                            onChange={handleChange}
-                                            className="h-10"
-                                        />
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="project">Interested Projects / Types</FieldLabel>
-                                        <Input
-                                            id="project"
-                                            name="project"
-                                            placeholder="e.g. 2BHK, 3BHK, Villa"
-                                            value={lead.project.join(', ')}
-                                            onChange={e => setLead({ ...lead, project: e.target.value.split(',').map(v => v.trim()).filter(v => v) })}
-                                            className="h-10"
-                                        />
-                                    </Field>
-                                </div>
-                            </section>
-                            <Separator />
-                            <section className="space-y-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm"></span>
-                                    <h3 className="text-md font-bold uppercase text-emerald-500">Acquisition Source</h3>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <Field>
-                                        <FieldLabel htmlFor="acquired.campaign">Campaign Name <span className="text-red-500">*</span></FieldLabel>
-                                        <Input
-                                            id="acquired.campaign"
-                                            name="acquired.campaign"
-                                            placeholder="Enter campaign name"
-                                            value={lead.acquired.campaign}
-                                            onChange={handleChange}
-                                            required
-                                            className="h-10"
-                                        />
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="acquired.source">Source <span className="text-red-500">*</span></FieldLabel>
-                                        <Input
-                                            id="acquired.source"
-                                            name="acquired.source"
-                                            placeholder="e.g. Facebook, Google"
-                                            value={lead.acquired.source}
-                                            onChange={handleChange}
-                                            required
-                                            className="h-10"
-                                        />
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="acquired.sub_source">Sub Source <span className="text-red-500">*</span></FieldLabel>
-                                        <Input
-                                            id="acquired.sub_source"
-                                            name="acquired.sub_source"
-                                            placeholder="e.g. Lead Form, Messenger"
-                                            value={lead.acquired.sub_source}
-                                            onChange={handleChange}
-                                            required
-                                            className="h-10"
-                                        />
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="acquired.medium">Medium <span className="text-red-500">*</span></FieldLabel>
-                                        <Input
-                                            id="acquired.medium"
-                                            name="acquired.medium"
-                                            placeholder="e.g. CPC, Organic"
-                                            value={lead.acquired.medium}
-                                            onChange={handleChange}
-                                            required
-                                            className="h-10"
-                                        />
-                                    </Field>
-                                </div>
-                            </section>
+        <div className="min-h-screen p-6 md:p-4 flex flex-col items-center gap-8">
+            {/* Quick Project Config Cards */}
+            {configs.length > 0 && (
+                <div className="w-full max-w-6xl">
+                    <div className="flex items-center gap-3 mb-2 px-1">
+                        <div className="h-10 w-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                            <Target className="h-5 w-5 text-emerald-600" />
                         </div>
-
-                        <div className="p-6 mx-6 rounded-lg dark:bg-neutral-800 bg-neutral-100 flex justify-end gap-3">
-                            <Button variant="destructive" type="button" onClick={() => window.history.back()} className="min-w-[100px]">
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={loading} className="min-w-[140px]">
-                                {loading ? 'Saving...' : 'Create Lead'}
-                            </Button>
+                        <div>
+                            <h2 className="text-xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">Quick Project Forms</h2>
+                            <p className="text-[11px] font-bold text-zinc-600 dark:text-zinc-500 uppercase tracking-widest leading-none mt-1">Direct Entry for your assigned projects</p>
                         </div>
-                    </form>
-                </CardContent>
-            </Card>
-        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {configs.map((config) => (
+                            <Card 
+                                key={config._id} 
+                                className="group relative overflow-hidden rounded-2xl border-slate-100 dark:border-zinc-800 hover:border-emerald-500/30 hover:bg-white/60 dark:hover:bg-zinc-900 bg-white/50 dark:bg-zinc-900/50"
+                                onClick={() => navigate(`/automation/leadcapture/leadcaptureform?id=${config._id}&mode=fill`)}
+                            >
+                                <CardHeader className="p-4 pb-0">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-none font-black text-[10px] tracking-widest uppercase px-3 py-1">
+                                            {config.project_id?.type || 'Project'}
+                                        </Badge>
+                                    </div>
+                                    <CardTitle className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors duration-300">
+                                        {config.project_id?.name || 'Lead Form'}
+                                    </CardTitle>
+                                    <CardDescription className="font-semibold text-zinc-750 dark:text-zinc-200 mt-2 line-clamp-2">
+                                        {config.name}
+                                    </CardDescription>
+                                </CardHeader>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+                    </div>
     )
 }
