@@ -39,6 +39,7 @@ import {
     XAxis, 
     YAxis, 
     CartesianGrid, 
+    Legend,
 } from 'recharts'
 import {
     type ChartConfig,
@@ -57,13 +58,17 @@ const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#0
 
 const chartConfig = {
     leads: {
-        label: "Leads",
-        color: "hsl(var(--primary))",
+        label: "Total Leads",
+        color: "#3b82f6",
     },
     prospects: {
-        label: "Prospects",
+        label: "Total Prospects",
         color: "#8b5cf6",
     },
+    others: {
+        label: "Others",
+        color: "#94a3b8",
+    }
 } satisfies ChartConfig
 
 const SUBSOURCES: Record<string, string[]> = {
@@ -182,6 +187,68 @@ export default function SubSourceLevelReport() {
 
         return { subTotals: totals, globalSummary: { totalLeads: gLeads, totalProspects: gProspects, totalSV: gSV, totalBookings: gBookings } }
     }, [sourceFilter, subSourceFilter])
+
+    const pieChartData = useMemo(() => {
+        const rawData = Object.keys(subTotals)
+            .filter(src => sourceFilter === "all" || src === sourceFilter)
+            .flatMap(src => Object.keys(subTotals[src])
+                .filter(sub => subSourceFilter === "all" || sub === subSourceFilter)
+                .map(sub => ({ name: `${src} - ${sub}`, value: subTotals[src][sub][1] }))
+            )
+
+        const totalValue = rawData.reduce((acc, curr) => acc + curr.value, 0)
+        if (totalValue === 0) return []
+
+        const THRESHOLD = 0.03 // Group anything less than 3%
+        let othersValue = 0
+        const mainSlices = rawData.filter(d => {
+            if (d.value / totalValue < THRESHOLD) {
+                othersValue += d.value
+                return false
+            }
+            return true
+        })
+
+        if (othersValue > 0) {
+            mainSlices.push({ name: "Others", value: othersValue })
+        }
+
+        return mainSlices.sort((a, b) => b.value - a.value)
+    }, [subTotals, sourceFilter, subSourceFilter])
+
+    const barChartData = useMemo(() => {
+        const rawData = Object.keys(subTotals)
+            .filter(src => sourceFilter === "all" || src === sourceFilter)
+            .flatMap(src => Object.keys(subTotals[src])
+                .filter(sub => subSourceFilter === "all" || sub === subSourceFilter)
+                .map(sub => ({ 
+                    name: sub, 
+                    leads: subTotals[src][sub][1], 
+                    prospects: subTotals[src][sub][4] 
+                }))
+            )
+
+        const totalLeads = rawData.reduce((acc, curr) => acc + curr.leads, 0)
+        if (totalLeads === 0) return []
+
+        const THRESHOLD = 0.03
+        let othersLeads = 0
+        let othersProspects = 0
+        const mainBars = rawData.filter(d => {
+            if (d.leads / totalLeads < THRESHOLD) {
+                othersLeads += d.leads
+                othersProspects += d.prospects
+                return false
+            }
+            return true
+        })
+
+        if (othersLeads > 0) {
+            mainBars.push({ name: "Others", leads: othersLeads, prospects: othersProspects })
+        }
+
+        return mainBars.sort((a, b) => b.leads - a.leads)
+    }, [subTotals, sourceFilter, subSourceFilter])
 
     const renderTable = (title: string, sourceList: string[], colorClass: string) => {
         const filteredSources = sourceList.filter(s => sourceFilter === "all" || s === sourceFilter)
@@ -421,26 +488,29 @@ export default function SubSourceLevelReport() {
                                 <ChartContainer config={chartConfig} className="h-full">
                                     <PieChart>
                                         <Pie
-                                            data={Object.keys(subTotals)
-                                                .filter(src => sourceFilter === "all" || src === sourceFilter)
-                                                .flatMap(src => Object.keys(subTotals[src])
-                                                    .filter(sub => subSourceFilter === "all" || sub === subSourceFilter)
-                                                    .map(sub => ({ name: `${src} - ${sub}`, value: subTotals[src][sub][1] }))
-                                                )}
+                                            data={pieChartData}
                                             cx="50%"
                                             cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={100}
-                                            paddingAngle={5}
+                                            innerRadius={65}
+                                            outerRadius={95}
+                                            paddingAngle={4}
                                             dataKey="value"
-                                            label={({ name, percent }) => `${name.length > 15 ? name.substring(0, 15) + '...' : name} ${(percent * 100).toFixed(0)}%`}
                                         >
-                                            {Object.keys(subTotals).flatMap(src => Object.keys(subTotals[src])).map((_, index) => (
-                                                <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                            {pieChartData.map((entry, index) => (
+                                                <Cell 
+                                                    key={`cell-${index}`} 
+                                                    fill={entry.name === "Others" ? "var(--color-others)" : CHART_COLORS[index % CHART_COLORS.length]} 
+                                                    stroke="rgba(0,0,0,0.1)"
+                                                />
                                             ))}
                                         </Pie>
-                                        <ChartTooltip content={<ChartTooltipContent />} />
-                                        <ChartLegend content={<ChartLegendContent />} />
+                                        <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                                        <Legend 
+                                            verticalAlign="bottom" 
+                                            align="center" 
+                                            iconType="circle"
+                                            wrapperStyle={{ paddingTop: '20px', fontSize: '11px' }}
+                                        />
                                     </PieChart>
                                 </ChartContainer>
                             </CardContent>
@@ -456,20 +526,17 @@ export default function SubSourceLevelReport() {
                             <CardContent className="p-6 h-[350px]">
                                 <ChartContainer config={chartConfig} className="h-full">
                                     <BarChart
-                                        data={Object.keys(subTotals)
-                                            .filter(src => sourceFilter === "all" || src === sourceFilter)
-                                            .flatMap(src => Object.keys(subTotals[src])
-                                                .filter(sub => subSourceFilter === "all" || sub === subSourceFilter)
-                                                .map(sub => ({ 
-                                                    name: sub.length > 12 ? sub.substring(0, 10) + '..' : sub, 
-                                                    leads: subTotals[src][sub][1], 
-                                                    prospects: subTotals[src][sub][4] 
-                                                }))
-                                            )}
+                                        data={barChartData}
                                         margin={{ top: 20, right: 10, left: 0, bottom: 5 }}
                                     >
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 500 }} />
+                                        <XAxis 
+                                            dataKey="name" 
+                                            axisLine={false} 
+                                            tickLine={false} 
+                                            tick={{ fontSize: 10, fontWeight: 500 }}
+                                            tickFormatter={(value: string) => value.length > 12 ? value.substring(0, 10) + '..' : value}
+                                        />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
                                         <ChartTooltip content={<ChartTooltipContent />} />
                                         <ChartLegend content={<ChartLegendContent />} />
