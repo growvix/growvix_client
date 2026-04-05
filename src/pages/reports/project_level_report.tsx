@@ -334,7 +334,7 @@ export default function ProjectLevelReport() {
                             <tbody className="bg-background">
                                 {tableData.map((row) => (
                                     <tr key={row.name} className="group hover:bg-primary/5 transition-all duration-200 border-b">
-                                        <td className="font-bold px-6 py-4 text-xs text-foreground border-r border-muted/20 bg-white group-hover:bg-primary/5 uppercase">
+                                        <td className="font-bold px-6 py-4 text-xs text-foreground border-r dark:bg-black border-muted/20 bg-white group-hover:bg-primary/5 uppercase">
                                             {row.name}
                                         </td>
                                         {row.data.map((val: number, vIdx: number) => (
