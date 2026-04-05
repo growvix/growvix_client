@@ -941,8 +941,8 @@ export default function LeadCaptureForm() {
 
                     {currentStep === 3 && (
                         <div className="max-w-[1100px] mx-auto">
-                            <Card className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-250 dark:border-zinc-800">
-                                <CardHeader className="bg-slate-50 dark:bg-zinc-950 p-6 border-b border-slate-100 dark:border-zinc-800">
+                            <Card className="rounded-2xl overflow-hidden bg-white dark:bg-black border border-zinc-250 dark:border-zinc-800 p-0">
+                                <CardHeader className="bg-slate-50 dark:bg-black px-6 pt-4 pb-4 border-b border-slate-100 dark:border-zinc-800">
                                         <div className="flex justify-between items-center">
                                             <div>
                                                 <CardTitle className="text-2xl font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-tighter">
@@ -956,7 +956,7 @@ export default function LeadCaptureForm() {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="flex flex-col divide-y divide-slate-100 dark:divide-zinc-800">
-                                        <div className="p-10 space-y-12">
+                                        <div className="p-6 space-y-12">
                                             {/* Compact Summary Header */}
                                             {/* Compact Summary Header - Hidden in Fill Mode */}
                                             {!isFillMode && (
@@ -1252,7 +1252,7 @@ export default function LeadCaptureForm() {
                                         </div>
                                     </div>
                                 </CardContent>
-                                <CardFooter className="flex justify-between p-8 bg-slate-50 dark:bg-zinc-950 border-t border-slate-100 dark:border-zinc-800">
+                                <CardFooter className="flex justify-between p-8 bg-slate-50 dark:bg-black border-t border-slate-100 dark:border-zinc-800">
                                     <Button 
                                         variant="outline" 
                                         className="h-14 px-10 font-black text-rose-500 border-rose-100 dark:border-rose-900/30 bg-white dark:bg-rose-950/10 rounded-2xl hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all uppercase text-[11px] tracking-widest group" 
