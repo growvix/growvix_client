@@ -1349,7 +1349,7 @@ export default function LeadCaptureForm() {
                                                                     </SelectContent>
                                                                 </Select>
                                                             </div>
-                                                        )}
+                                                        )} 
                                                     </div>
                                                 </section>
                                             </div>
