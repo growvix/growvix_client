@@ -151,7 +151,7 @@ export default function UserDashboard() {
         <CardContent className="p-0 pt-0">
           <div className="grid auto-rows-min gap-4 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6">
             <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-              <Card className=" rounded-xl cardSelect p-1">
+              <Card className=" rounded-xl h-full cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-start justify-between gap-4 w-full">
                     <div className="flex items-center gap-3">
@@ -175,7 +175,7 @@ export default function UserDashboard() {
 
 
             <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-              <Card className=" rounded-xl cardSelect p-1">
+              <Card className=" rounded-xl h-full cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
                     <div className="inline-flex items-center justify-center rounded-lg p-2 bg-blue-100 dark:bg-blue-900/40">
@@ -223,7 +223,7 @@ export default function UserDashboard() {
 
 
             <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-              <Card className=" rounded-xl cardSelect p-1">
+              <Card className=" rounded-xl h-full cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
                     <div className="inline-flex items-center justify-center rounded-lg p-2 bg-emerald-100 dark:bg-emerald-900/40">
@@ -246,7 +246,7 @@ export default function UserDashboard() {
             </div>
 
             <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-              <Card className=" rounded-xl cardSelect p-1">
+              <Card className=" rounded-xl h-full cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-start justify-between gap-4 w-full">
                     <div className="flex items-center gap-3">
@@ -290,7 +290,7 @@ export default function UserDashboard() {
                 });
               }}
             >
-              <Card className=" rounded-xl cardSelect p-1">
+              <Card className=" rounded-xl h-full cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-start justify-between gap-4 w-full">
                     <div className="flex items-center gap-3">
@@ -316,7 +316,7 @@ export default function UserDashboard() {
 
             
             <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-              <Card className=" rounded-xl cardSelect p-1">
+              <Card className=" rounded-xl h-full cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
                     <div className="inline-flex items-center justify-center rounded-lg p-2 bg-red-100 dark:bg-slate-900/40">
@@ -419,7 +419,7 @@ export default function UserDashboard() {
            
 
             <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-              <Card className=" rounded-xl cardSelect p-1">
+              <Card className=" rounded-xl h-full cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
                     <div className="inline-flex items-center justify-center rounded-lg p-2 bg-lime-100 dark:bg-lime-900/40">
@@ -440,9 +440,11 @@ export default function UserDashboard() {
                 </CardContent>
               </Card>
             </div>
+
+            
             
               <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs">
-              <Card className=" rounded-xl cardSelect p-1">
+              <Card className=" rounded-xl h-full cardSelect p-1">
                 <CardHeader className="pt-2 px-2">
                   <div className="flex items-center gap-3">
                     <div className="inline-flex items-center justify-center rounded-lg p-2 bg-teal-100 dark:bg-teal-900/40">
@@ -451,7 +453,7 @@ export default function UserDashboard() {
 
                     <div>
                       <CardTitle className="text-sm text-foreground">Site visit schedule</CardTitle>
-                      <CardDescription className="text-xs text-muted-foreground">
+                      <CardDescription className="text-xs  text-muted-foreground">
                         Your upcoming tours at a glance
                       </CardDescription>
                     </div>

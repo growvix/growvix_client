@@ -288,7 +288,8 @@ export function NavUser({
                 </DropdownMenuItem>
               </DropdownMenuGroup>
 
-              <DropdownMenuItem asChild>
+
+              {/* <DropdownMenuItem asChild>
 
                 <Link
                   to="/updates"
@@ -301,7 +302,9 @@ export function NavUser({
                   <Sparkles className="h-4 w-4" />
                   <span>Updates</span>
                 </Link>
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
+
+
               <DropdownMenuItem asChild>
                 <Link
                   to={isAdminImpersonating ? "#" : "/login"}
