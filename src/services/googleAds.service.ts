@@ -22,7 +22,9 @@ export const googleAdsService = {
 
     getIntegrationById: async (id: string) => {
         const response = await axios.get(
-            `${API_URL}/api/google-ads-integration/${id}?organization=${getOrganization()}`
+            `${API_URL}/api/google-ads-integration/${id}?organization=${getOrganization()
+
+            }`
         );
         return response.data;
     },

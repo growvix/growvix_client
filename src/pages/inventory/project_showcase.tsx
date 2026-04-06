@@ -452,9 +452,9 @@ export default function ProjectShowcase() {
                                 )}
                             </div>
                             {project.img_location?.brochure && (
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
+                                <Button
+                                    variant="outline"
+                                    size="sm"
                                     className="h-7 text-[10px] gap-1 px-2"
                                     onClick={() => setBrochureConfirmOpen(true)}
                                 >
@@ -505,8 +505,8 @@ export default function ProjectShowcase() {
                                                 {/* Block Header - Click to show block image */}
                                                 <div
                                                     className={`p-3 cursor-pointer flex items-center justify-between transition-colors ${selectedBlock?.blockId === block.blockId && viewMode === 'block'
-                                                            ? 'bg-primary/10'
-                                                            : 'hover:bg-muted/50'
+                                                        ? 'bg-primary/10'
+                                                        : 'hover:bg-muted/50'
                                                         }`}
                                                     onClick={() => handleBlockClick(block)}
                                                 >
@@ -588,19 +588,12 @@ export default function ProjectShowcase() {
                                                         setCurrentImageIndex(0);
                                                     } else {
                                                         handleUnitClick(unit);
-                                                        if ((unit.status === 'available' || unit.status === 'booked') && selectedBlock) {
-                                                            handleOpenBooking({
-                                                                unitId: unit.unitId,
-                                                                blockId: selectedBlock.blockId,
-                                                                label: `Unit ${unit.unitNumber} (${selectedBlock.blockName})`,
-                                                                bookedBy: unit.status === 'booked' ? unit.bookedBy : undefined
-                                                            })
-                                                        }
+
                                                     }
                                                 }}
                                                 className={`text-md font-bold transition-all py-0 min-w-10 text-center ${selectedUnit?.unitId === unit.unitId
-                                                        ? 'text-foreground scale-105'
-                                                        : 'text-muted-foreground opacity-40 hover:opacity-100'
+                                                    ? 'text-foreground scale-105'
+                                                    : 'text-muted-foreground opacity-40 hover:opacity-100'
                                                     }`}
                                             >
                                                 {unit.unitNumber}
