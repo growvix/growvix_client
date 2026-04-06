@@ -90,10 +90,10 @@ const METRICS = [
     "Prospect", 
     "Unqualified", 
     "Lost", 
-    "SVS", 
-    "Cost per SVS", 
-    "SV", 
-    "Cost per SV", 
+    "SV Scheduled", 
+    "Cost per SV Scheduled", 
+    "Site Visit", 
+    "Cost per Site Visit", 
     "Booking", 
     "Cost per Booking"
 ]

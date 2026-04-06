@@ -348,14 +348,14 @@ export default function SVSReport() {
         },
         {
             accessorKey: "svs_at",
-            header: "SVS At",
-            meta: { label: "SVS At" },
+            header: "SV Scheduled At",
+            meta: { label: "SV Scheduled At" },
             cell: ({ row }) => format(new Date(row.getValue("svs_at")), "dd/MM/yyyy")
         },
         {
             accessorKey: "svs_on",
-            header: "SVS On",
-            meta: { label: "SVS On" },
+            header: "SV Scheduled On",
+            meta: { label: "SV Scheduled On" },
             cell: ({ row }) => format(new Date(row.getValue("svs_on")), "dd/MM/yyyy")
         },
         {
@@ -417,7 +417,7 @@ export default function SVSReport() {
             ["Site Visit Schedule Report"],
             ["Generated At:", new Date().toLocaleString('en-IN')],
             [],
-            ["Source", "Project", "Lead Name", "Status", "Campaign Type", "Lead Type", "User", "SVS At", "SVS On", "Time"]
+            ["Source", "Project", "Lead Name", "Status", "Campaign Type", "Lead Type", "User", "SV Scheduled At", "SV Scheduled On", "Time"]
         ]
 
         filteredData.forEach(item => {
@@ -428,7 +428,7 @@ export default function SVSReport() {
         rows.push(["GRAND TOTAL", "", filteredData.length.toLocaleString('en-IN')])
 
         const ws = XLSX.utils.aoa_to_sheet(rows)
-        XLSX.utils.book_append_sheet(wb, ws, "SVS Report")
+        XLSX.utils.book_append_sheet(wb, ws, "SV Scheduled Report")
         XLSX.writeFile(wb, `SVS_Report_${format(new Date(), "yyyy-MM-dd")}.xlsx`)
     }
 
@@ -649,7 +649,7 @@ export default function SVSReport() {
                     {isSvsAtVisible && (
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                <CalendarDays className="h-3 w-3" /> SVS At
+                                <CalendarDays className="h-3 w-3" /> SV Scheduled At
                             </Label>
                             <DatePicker
                                 date={filters.svsAt ? new Date(filters.svsAt) : undefined}
@@ -662,7 +662,7 @@ export default function SVSReport() {
                     {isSvsOnVisible && (
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                <CalendarDays className="h-3 w-3" /> SVS On
+                                <CalendarDays className="h-3 w-3" /> SV Scheduled On
                             </Label>
                             <DatePicker
                                 date={filters.svsOn ? new Date(filters.svsOn) : undefined}
@@ -725,7 +725,7 @@ export default function SVSReport() {
                     <CardHeader className="bg-muted/5 py-4 border-b">
                         <CardTitle className="text-sm font-bold flex items-center gap-2">
                             <PieChartIcon className="h-4 w-4 text-purple-500" />
-                            SVS Status Distribution
+                            SV Scheduled Status Distribution
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-6 h-[300px]">
@@ -755,7 +755,7 @@ export default function SVSReport() {
                     <CardHeader className="bg-muted/5 py-4 border-b">
                         <CardTitle className="text-sm font-bold flex items-center gap-2">
                             <BarChart3 className="h-4 w-4 text-primary" />
-                            SVS by Project
+                            SV Scheduled by Project
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-6 h-[300px]">

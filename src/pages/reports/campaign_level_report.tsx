@@ -113,12 +113,12 @@ const CP_DATA = {
     reengaged: { leads: 135, prospect: 50, rnr: 30, unqualified: 10, lost: 20, svs: 10, sv: 10, booking: 5 }
 }
 
-const BUDGET_COLUMNS = ["BUDGET SPENT", "CPL", "COST PER SVS", "COST PER SV", "COST PER BOOKING"]
-const FULL_COLUMNS = ["BUDGET SPENT", "NO. OF LEADS", "CPL", "RNR", "PROSPECT", "UNQUALIFIED", "LOST", "SVS", "COST PER SVS", "SV", "COST PER SV", "BOOKING", "COST PER BOOKING"]
-const FULL_COLUMNS_WITH_CPB = ["BUDGET SPENT", "NO. OF LEADS", "CPL", "RNR", "PROSPECT", "UNQUALIFIED", "LOST", "SVS", "COST PER SVS", "SV", "COST PER SV", "BOOKING", "COST PER BOOKING"]
-const REDUCED_COLUMNS = ["NO. OF LEADS", "PROSPECT", "RNR", "UNQUALIFIED", "LOST", "SVS", "SV DONE", "BOOKING"]
-const LEAD_ONLY_COLUMNS = ["NO. OF LEADS", "PROSPECT", "RNR", "UNQUALIFIED", "LOST", "SVS", "SV DONE", "BOOKING"]
-const CP_COLUMNS = ["NO. OF LEADS", "RNR", "PROSPECT", "UNQUALIFIED", "LOST", "SVS", "SV", "BOOKING"]
+const BUDGET_COLUMNS = ["BUDGET SPENT", "CPL", "COST PER SV Scheduled", "COST PER SV", "COST PER BOOKING"]
+const FULL_COLUMNS = ["BUDGET SPENT", "NO. OF LEADS", "CPL", "RNR", "PROSPECT", "UNQUALIFIED", "LOST", "SV Scheduled", "COST PER SV Scheduled", "SV", "COST PER SV", "BOOKING", "COST PER BOOKING"]
+const FULL_COLUMNS_WITH_CPB = ["BUDGET SPENT", "NO. OF LEADS", "CPL", "RNR", "PROSPECT", "UNQUALIFIED", "LOST", "SV Scheduled", "COST PER SV Scheduled", "SV", "COST PER SV", "BOOKING", "COST PER BOOKING"]
+const REDUCED_COLUMNS = ["NO. OF LEADS", "PROSPECT", "RNR", "UNQUALIFIED", "LOST", "SV Scheduled", "SV", "BOOKING"]
+const LEAD_ONLY_COLUMNS = ["NO. OF LEADS", "PROSPECT", "RNR", "UNQUALIFIED", "LOST", "SV Scheduled", "SV", "BOOKING"]
+const CP_COLUMNS = ["NO. OF LEADS", "RNR", "PROSPECT", "UNQUALIFIED", "LOST", "SV Scheduled", "SV", "BOOKING"]
 
 const campaignFilterMap: Record<string, string> = {
     "none": "Campaign Report",
@@ -285,8 +285,8 @@ export default function CampaignLevelReport() {
                 if (col === "PROSPECT") return metrics.prospect.toLocaleString('en-IN');
                 if (col === "UNQUALIFIED") return metrics.unqualified.toLocaleString('en-IN');
                 if (col === "LOST") return metrics.lost.toLocaleString('en-IN');
-                if (col === "SVS") return metrics.svs.toLocaleString('en-IN');
-                if (col === "COST PER SVS") return `₹${metrics.costPerSVS.toLocaleString('en-IN')}`;
+                if (col === "SV Scheduled") return metrics.svs.toLocaleString('en-IN');
+                if (col === "COST PER SV Scheduled") return `₹${metrics.costPerSVS.toLocaleString('en-IN')}`;
                 if (col === "SV" || col === "SV DONE") return metrics.sv.toLocaleString('en-IN');
                 if (col === "COST PER SV") return `₹${metrics.costPerSV.toLocaleString('en-IN')}`;
                 if (col === "BOOKING") return metrics.booking.toLocaleString('en-IN');
@@ -588,13 +588,13 @@ export default function CampaignLevelReport() {
                                         {/* Row 1: Top grid row for layout accuracy */}
                                         <tr className="h-5 border-none">
                                             {activeColumns.map((col) => (
-                                                <th key={`grid-${col}`} className={`p-0 h-5 ${(col === "CPL" || col === "UNQUALIFIED" || col === "COST PER SVS" || col === "COST PER SV" || (col === "BOOKING" && activeColumns.includes("COST PER BOOKING"))) ? 'border-r' : ''}`}></th>
+                                                <th key={`grid-${col}`} className={`p-0 h-5 ${(col === "CPL" || col === "UNQUALIFIED" || col === "COST PER SV Scheduled" || col === "COST PER SV" || (col === "BOOKING" && activeColumns.includes("COST PER BOOKING"))) ? 'border-r' : ''}`}></th>
                                             ))}
                                         </tr>
                                         {/* Row 2: Actual header labels */}
                                         <tr>
                                             {activeColumns.map((col) => (
-                                                <th key={col} className={`font-extrabold text-[11px] uppercase tracking-widest text-center text-primary/80 min-w-[110px] py-4 align-bottom ${(col === "CPL" || col === "UNQUALIFIED" || col === "COST PER SVS" || col === "COST PER SV" || (col === "BOOKING" && activeColumns.includes("COST PER BOOKING"))) ? 'border-r' : ''}`}>
+                                                <th key={col} className={`font-extrabold text-[11px] uppercase tracking-widest text-center text-primary/80 min-w-[110px] py-4 align-bottom ${(col === "CPL" || col === "UNQUALIFIED" || col === "COST PER SV Scheduled" || col === "COST PER SV" || (col === "BOOKING" && activeColumns.includes("COST PER BOOKING"))) ? 'border-r' : ''}`}>
                                                     {col}
                                                 </th>
                                             ))}

@@ -313,8 +313,8 @@ export default function SVSDoneReport() {
         },
         {
             accessorKey: "svs_on",
-            header: "SV Date",
-            meta: { label: "SV Date" },
+            header: "Site Visit Date",
+            meta: { label: "Site Visit Date" },
             cell: ({ row }) => format(new Date(row.getValue("svs_on")), "dd/MM/yyyy")
         },
         {
@@ -568,7 +568,7 @@ export default function SVSDoneReport() {
                     {isSvsOnVisible && (
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                <CalendarCheck className="h-3 w-3" /> SV Date
+                                <CalendarCheck className="h-3 w-3" /> Site Visit Date
                             </Label>
                             <DatePicker
                                 date={filters.svsOn ? new Date(filters.svsOn) : undefined}
@@ -662,7 +662,7 @@ export default function SVSDoneReport() {
                     <CardHeader className="bg-muted/5 py-4 border-b">
                         <CardTitle className="text-sm font-bold flex items-center gap-2">
                             <BarChart3 className="h-4 w-4 text-emerald-500" />
-                            SV Done by Project
+                            Site Visit Done by Project
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-6 h-[300px]">
