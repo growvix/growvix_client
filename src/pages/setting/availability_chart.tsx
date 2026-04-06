@@ -20,7 +20,10 @@ import {
     ArrowRightLeft,
     X,
     CheckCircle2,
+    Briefcase,
+    LayoutDashboard,
 } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
     Tooltip,
     TooltipContent,
@@ -123,6 +126,7 @@ export default function AvailabilityChart() {
     const [data, setData] = useState<WeeklyData | null>(null)
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState("")
+    const [department, setDepartment] = useState("all")
     const [toggleLoading, setToggleLoading] = useState<string | null>(null) // "userId-day"
 
     // Modal state for fallback assignment
@@ -160,12 +164,12 @@ export default function AvailabilityChart() {
     }, [setBreadcrumbs])
 
     // ── Fetch weekly availability ──
-    const fetchAvailability = useCallback(async (ws: string) => {
+    const fetchAvailability = useCallback(async (ws: string, dept: string) => {
         setLoading(true)
         try {
             const token = getCookie("token")
             const response = await axios.get(
-                `${API.AVAILABILITY.WEEKLY}?weekStart=${ws}`,
+                `${API.AVAILABILITY.WEEKLY}?weekStart=${ws}${dept !== 'all' ? `&department=${dept}` : ''}`,
                 { headers: { Authorization: `Bearer ${token}` } }
             )
             setData(response.data.data || null)
@@ -178,8 +182,8 @@ export default function AvailabilityChart() {
     }, [])
 
     useEffect(() => {
-        fetchAvailability(weekStart)
-    }, [weekStart, fetchAvailability])
+        fetchAvailability(weekStart, department)
+    }, [weekStart, department, fetchAvailability])
 
     // ── Week navigation ──
     const navigateWeek = (direction: -1 | 1) => {
@@ -222,7 +226,7 @@ export default function AvailabilityChart() {
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
                 toast.success(`${user.profile.firstName} marked available on ${DAY_FULL_LABELS[day]}`)
-                await fetchAvailability(weekStart)
+                await fetchAvailability(weekStart, department)
             } catch (err: any) {
                 toast.error(err.response?.data?.message || "Failed to toggle availability")
             } finally {
@@ -252,7 +256,7 @@ export default function AvailabilityChart() {
                 `${modalUser.profile.firstName} marked as leave on ${DAY_FULL_LABELS[modalDay]}. Work forwarded.`
             )
             setModalOpen(false)
-            await fetchAvailability(weekStart)
+            await fetchAvailability(weekStart, department)
         } catch (err: any) {
             toast.error(err.response?.data?.message || "Failed to update availability")
         } finally {
@@ -261,7 +265,12 @@ export default function AvailabilityChart() {
     }, [modalUser, selectedFallback, modalDay, weekStart, fetchAvailability])
 
     // ── Filter users ──
-    const filteredUsers = data?.users?.filter((user) => {
+    const deptFilteredUsers = data?.users?.filter(user => {
+        if (department === "all") return true
+        return user.department?.toLowerCase() === department.toLowerCase()
+    }) || []
+
+    const filteredUsers = deptFilteredUsers.filter((user) => {
         if (!search) return true
         const name = `${user.profile.firstName} ${user.profile.lastName}`.toLowerCase()
         return name.includes(search.toLowerCase())
@@ -277,11 +286,11 @@ export default function AvailabilityChart() {
     }) || []
 
     // ── Stats ──
-    const totalUsers = data?.users?.length || 0
+    const totalUsers = deptFilteredUsers.length || 0
     const weekDates = data ? getWeekDates(data.weekStart) : {}
 
     // Count today's availability
-    const availableToday = data?.users?.filter(u => u.availability.days[todayDay] !== false).length || 0
+    const availableToday = deptFilteredUsers.filter(u => u.availability.days[todayDay] !== false).length || 0
     const onLeaveToday = totalUsers - availableToday
 
     // ─── Loading ───
@@ -298,8 +307,30 @@ export default function AvailabilityChart() {
 
     return (
         <div className="flex flex-1 flex-col gap-5 px-4 pb-8 max-w-[1400px] mx-auto w-full">
+            {/* Header & Tabs */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
+                <div className="flex flex-col gap-1.5">
+                    <h1 className="text-2xl font-black uppercase tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
+                        <CalendarDays className="h-6 w-6 text-primary" />
+                        Availability Chart
+                    </h1>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">
+                        Manage weekly leave and work distribution
+                    </p>
+                </div>
+
+                <Tabs value={department} onValueChange={setDepartment} className="w-full md:w-auto">
+                    <TabsList className="grid w-full grid-cols-4 h-11 bg-muted/60 p-1 rounded-xl">
+                        <TabsTrigger value="all" className="rounded-lg text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-900 data-[state=active]:text-zinc-950 dark:data-[state=active]:text-white data-[state=active]:shadow-sm">All</TabsTrigger>
+                        <TabsTrigger value="pre-sales" className="rounded-lg text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-900 data-[state=active]:text-zinc-950 dark:data-[state=active]:text-white data-[state=active]:shadow-sm">Pre-Sales</TabsTrigger>
+                        <TabsTrigger value="sales" className="rounded-lg text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-900 data-[state=active]:text-zinc-950 dark:data-[state=active]:text-white data-[state=active]:shadow-sm">Sales</TabsTrigger>
+                        <TabsTrigger value="post-sales" className="rounded-lg text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-900 data-[state=active]:text-zinc-950 dark:data-[state=active]:text-white data-[state=active]:shadow-sm">Post-Sales</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            </div>
+
             {/* Stats Bar */}
-            <div className="grid grid-cols-3 gap-3 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="rounded-xl border bg-card p-4 flex items-center gap-3">
                     <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
                         <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -639,7 +670,7 @@ export default function AvailabilityChart() {
                                                 }, { headers: { Authorization: `Bearer ${token}` } });
                                                 toast.success(`${modalUser.profile.firstName}'s work will be redistributed via Round Robin`);
                                                 setModalOpen(false);
-                                                fetchAvailability(weekStart);
+                                                fetchAvailability(weekStart, department);
                                             } catch (err) { toast.error("Failed to redistribute"); }
                                             finally { setSubmittingFallback(false); }
                                         };
