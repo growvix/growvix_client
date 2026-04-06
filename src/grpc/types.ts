@@ -4,6 +4,7 @@ export interface Lead {
     profile_id: number;
     name: string;
     phone: string;
+    email: string;
     stage: string;
     status: string;
     campaign: string;
@@ -12,6 +13,8 @@ export interface Lead {
     received: string;
     exe_user: string;
     exe_user_name: string;
+    is_secondary?: boolean;
+    merged_into?: any;
 }
 
 export interface GetAllLeadsRequest {
