@@ -1,4 +1,4 @@
-    import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { API } from '@/config/api'
 import { toast } from 'sonner'
@@ -283,7 +283,7 @@ export default function LeadCaptureForm() {
 
     const toggleAssignment = (person: any, type: 'user' | 'cp', category?: string) => {
         const personId = person._id
-        
+
         setAssignedPeople(prev => {
             const isAssigned = prev.some(p => p.id === personId)
             if (isAssigned) {
@@ -362,9 +362,9 @@ export default function LeadCaptureForm() {
                         created_at: new Date().toISOString(),
                     }],
                     exe_user: getCookie('user_id'),
-                    interested_projects: [{ 
-                        project_id: selectedProject?.product_id, 
-                        project_name: selectedProject?.name 
+                    interested_projects: [{
+                        project_id: selectedProject?.product_id,
+                        project_name: selectedProject?.name
                     }],
                     notes: manualRequirements.map(m => `${m.key}: ${m.value}`).join(' | ')
                 }
@@ -404,19 +404,19 @@ export default function LeadCaptureForm() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-background p-4 md:p-8">
+        <div className="flex flex-col bg-background p-4 md:p-6 overflow-x-hidden">
             <div className="max-w-6xl mx-auto w-full">
                 {/* Horizontal Stepper (Screenshot 2 Style) - Hidden in Fill Mode */}
                 {!isFillMode && (
-                    <div className="max-w-4xl mx-auto w-full mb-12 relative flex items-center justify-between px-10">
+                    <div className="max-w-4xl mx-auto w-full mb-12 relative flex items-center justify-between px-6 md:px-10">
                         {/* Horizontal Line Background (Continuous) */}
-                        <div className="absolute top-[32px] left-[72px] right-[72px] h-1 bg-slate-100 dark:bg-zinc-800 z-0" />
+                        <div className="absolute top-[32px] left-[56px] md:left-[72px] right-[56px] md:right-[72px] h-1 bg-slate-100 dark:bg-zinc-800 z-0" />
 
                         {/* Progress Fill Line */}
                         <div
                             className="absolute top-[32px] left-[72px] h-1 bg-emerald-500 z-0 transition-all duration-500"
                             style={{
-                                width: currentStep === 1 ? '0%' : currentStep === 2 ? 'calc(50% - 72px)' : 'calc(100% - 144px)'
+                                width: currentStep === 1 ? '0%' : currentStep === 2 ? 'calc(50% - (window.innerWidth < 768 ? 56px : 72px))' : 'calc(100% - (window.innerWidth < 768 ? 112px : 144px))'
                             }}
                         />
 
@@ -448,7 +448,7 @@ export default function LeadCaptureForm() {
                     </div>
                 )}
 
-                <main className="flex-1 overflow-auto">
+                <main className="flex-1">
                     <div className="max-w-5xl mx-auto">
                         {currentStep === 1 && (
                             <div className="animate-in fade-in slide-in-duration-500 max-w-5xl mx-auto py-8">
@@ -1230,10 +1230,10 @@ export default function LeadCaptureForm() {
                                                         {/* Campaign Selection */}
                                                         <div className="space-y-4">
                                                             <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Campaign Name</Label>
-                                                            <Select 
+                                                            <Select
                                                                 value={contactInfo.campaign}
                                                                 onValueChange={(val) => isFillMode && setContactInfo({
-                                                                    ...contactInfo, 
+                                                                    ...contactInfo,
                                                                     campaign: val,
                                                                     source: '',
                                                                     sub_source: ''
@@ -1254,10 +1254,10 @@ export default function LeadCaptureForm() {
                                                         {/* Lead Source */}
                                                         <div className="space-y-4">
                                                             <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Source</Label>
-                                                            <Select 
+                                                            <Select
                                                                 disabled={!contactInfo.campaign || !isFillMode}
                                                                 value={contactInfo.source}
-                                                                onValueChange={(val) => setContactInfo({...contactInfo, source: val, sub_source: ''})}
+                                                                onValueChange={(val) => setContactInfo({ ...contactInfo, source: val, sub_source: '' })}
                                                             >
                                                                 <SelectTrigger className="w-full h-16 bg-white dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 text-sm font-medium rounded-xl shadow-sm outline-none">
                                                                     <SelectValue placeholder={!contactInfo.campaign ? "Select campaign first" : "Select source"} />
@@ -1274,10 +1274,10 @@ export default function LeadCaptureForm() {
                                                         {!(getCookie('category') === 'CP' || getCookie('userRole') === 'CP' || getCookie('role') === 'cp') && (
                                                             <div className="space-y-4">
                                                                 <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Sub Source</Label>
-                                                                <Select 
+                                                                <Select
                                                                     disabled={!contactInfo.source || !isFillMode}
                                                                     value={contactInfo.sub_source}
-                                                                    onValueChange={(val) => setContactInfo({...contactInfo, sub_source: val})}
+                                                                    onValueChange={(val) => setContactInfo({ ...contactInfo, sub_source: val })}
                                                                 >
                                                                     <SelectTrigger className="w-full h-16 bg-white dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 text-sm font-medium rounded-xl shadow-sm outline-none">
                                                                         <SelectValue placeholder={!contactInfo.source ? "Select source first" : "Select sub source"} />
@@ -1303,7 +1303,7 @@ export default function LeadCaptureForm() {
                                                                     onChange={(e) => setContactInfo({...contactInfo, medium: e.target.value})}
                                                                 />
                                                             </div>
-                                                        )} 
+                                                        )}
                                                     </div>
                                                 </section>
                                             </div>
@@ -1322,7 +1322,7 @@ export default function LeadCaptureForm() {
                                             onClick={handleConfirm}
                                             disabled={submittingLead}
                                         >
-                                            {submittingLead ? 'Capturing...' : isFillMode ? 'Persist Lead Data' : 'Finalize Configuration'} <Check className="ml-4 w-5 h-5 font-black" />
+                                            {submittingLead ? 'Capturing...' : isFillMode ? 'Create New Lead' : 'Finalize Configuration'} <Check className="ml-4 w-5 h-5 font-black" />
                                         </Button>
                                     </CardFooter>
                                 </Card>

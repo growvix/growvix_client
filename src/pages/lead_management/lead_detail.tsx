@@ -3921,17 +3921,17 @@ export default function LeadDetail() {
                                     currentStageColor={currentStageObject?.color}
                                 />
 
-                                {/* Ongoing Missed */}
+                                {/* Outgoing Missed */}
                                 <StageStatCard
                                     value={leadDetail?.activities?.filter(a => a.updates === 'call' && a.notes?.includes('Missed')).length || 0}
-                                    label="Ongoing Missed Calls"
+                                    label="Outgoing Missed Calls"
                                     currentStageColor={currentStageObject?.color}
                                 />
 
-                                {/* Ongoing Answered */}
+                                {/* Outgoing Answered */}
                                 <StageStatCard
                                     value={leadDetail?.activities?.filter(a => a.updates === 'call' && a.notes?.includes('Answered')).length || 0}
-                                    label="Ongoing Answered Calls"
+                                    label="Outgoing Answered Calls"
                                     currentStageColor={currentStageObject?.color}
                                 />
 
