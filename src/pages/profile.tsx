@@ -96,6 +96,10 @@ export default function ProfilePage() {
       if (avatarUrl && userId) localStorage.setItem(`userAvatar_${userId}`, avatarUrl);
       // Update the userName cookie so the sidebar reflects changes immediately
       setCookie('userName', `${firstName} ${lastName}`);
+      
+      // Notify other components of the profile update
+      window.dispatchEvent(new Event('profileUpdate'));
+      
       navigate(-1);
     } catch (err) {
       toast.error("Failed to update profile");
@@ -131,6 +135,10 @@ export default function ProfilePage() {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      // Notify other components (like Sidebar/NavUser) of the profile update
+      window.dispatchEvent(new Event('profileUpdate'));
+      
       toast.success("Profile picture updated successfully");
     } catch (err: any) {
       console.error(err);

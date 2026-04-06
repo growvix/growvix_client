@@ -83,6 +83,12 @@ export interface PropertyRequirement {
   plot_type?: string;
 }
 
+export interface MergedLeadInfo {
+  UUID: string;
+  id: string;
+  name: string;
+}
+
 export interface ImportantActivity {
   activity_id: string;
   marked_at?: string;
@@ -109,7 +115,9 @@ export interface Lead {
   };
   propertyRequirement?: PropertyRequirement;
   project?: string[];
-  merge_id?: string;
+  merge_id?: MergedLeadInfo[];
+  merged_into?: MergedLeadInfo;
+  is_secondary?: boolean;
   acquired?: {
     campaign: string;
     source: string;
@@ -176,6 +184,9 @@ export interface UpdateLeadInput {
   status?: string;
   exe_user?: string;
   cp_user?: string;
+  merge_id?: MergedLeadInfo[];
+  is_secondary?: boolean;
+  merged_into?: MergedLeadInfo;
 }
 
 export interface UpdateLeadMutationResponse {

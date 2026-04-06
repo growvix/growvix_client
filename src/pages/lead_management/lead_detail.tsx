@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { apolloClient } from '@/lib/apolloClient'
 import { getCookie } from '@/utils/cookies'
 import { API_URL, getSanitizedAvatarUrl } from '@/config/api'
+import { leadClient } from "@/grpc/leadClient"
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, } from "@/components/ui/card"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, } from "@/components/ui/sheet"
@@ -56,7 +57,9 @@ import {
     ArrowLeft,
     PhoneIncoming,
     PhoneOutgoing,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Search,
+    RefreshCw
 } from "lucide-react";
 import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables, GetLeadStagesQueryResponse, GetLeadStagesQueryVariables, GetOrganizationUsersQueryResponse, GetOrganizationUsersQueryVariables, DeleteLeadMutationResponse, DeleteLeadMutationVariables } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
@@ -157,7 +160,17 @@ const GET_LEAD_BY_ID = gql`
                 project_id
                 project_name
             }
-            merge_id
+            merge_id {
+                UUID
+                id
+                name
+            }
+            is_secondary
+            merged_into {
+                UUID
+                id
+                name
+            }
             acquired {
                 campaign
                 source
@@ -241,6 +254,18 @@ const UPDATE_LEAD = gql`
             profile {
                 phone
                 email
+                name
+            }
+            merge_id {
+                UUID
+                id
+                name
+            }
+            is_secondary
+            merged_into {
+                UUID
+                id
+                name
             }
         }
     }
@@ -803,6 +828,155 @@ export default function LeadDetail() {
     const [offlineCallTime, setOfflineCallTime] = useState('')
     const [offlineCallSheetOpen, setOfflineCallSheetOpen] = useState(false)
 
+
+
+    // Lead Merging & Swapping State
+    const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
+    const [mergeSearchQuery, setMergeSearchQuery] = useState("");
+    const [mergeSearchResults, setMergeSearchResults] = useState<any[]>([]);
+    const [isSearchingLeads, setIsSearchingLeads] = useState(false);
+    const [isMergingLead, setIsMergingLead] = useState(false);
+    const [originalLead, setOriginalLead] = useState<Lead | null>(null);
+    const [isShowingSecondary, setIsShowingSecondary] = useState(false);
+
+    const handleSearchLeads = async (query: string) => {
+        setMergeSearchQuery(query);
+        if (query.length < 2) {
+            setMergeSearchResults([]);
+            return;
+        }
+        setIsSearchingLeads(true);
+        try {
+            const organization = getCookie("organization") || "";
+            const { leads } = await leadClient.getAllLeads({
+                organization,
+                limit: 10,
+                filters: { name: query }
+            });
+            // Filter out current lead if it appears in search
+            setMergeSearchResults(leads.filter((l: any) => l.lead_id.toString() !== id));
+        } catch (error) {
+            console.error("Search error:", error);
+        } finally {
+            setIsSearchingLeads(false);
+        }
+    };
+
+    const handleMergeLead = async (secondaryLead: any) => {
+        if (!leadDetail?._id || !organization) return;
+
+        if (secondaryLead.is_secondary) {
+            toast.error("This lead is already merged into another lead");
+            return;
+        }
+
+        if (secondaryLead.merge_id && Array.isArray(secondaryLead.merge_id) && secondaryLead.merge_id.length > 0) {
+            toast.error("This is a primary lead and cannot be merged as a secondary lead");
+            return;
+        }
+
+        setIsMergingLead(true);
+        try {
+            const currentMerges = leadDetail.merge_id || [];
+            // Use lead_id if it's an object with toString, or just lead_id if it's a string
+            const secondaryUuid = secondaryLead.lead_id?.toString() || secondaryLead.lead_id;
+
+            const newMerge = {
+                UUID: secondaryUuid,
+                id: secondaryLead.profile_id.toString(),
+                name: secondaryLead.name
+            };
+
+            await Promise.all([
+                updateLead({
+                    variables: {
+                        organization,
+                        id: leadDetail._id,
+                        input: {
+                            merge_id: [...currentMerges, newMerge]
+                        }
+                    }
+                }),
+                updateLead({
+                    variables: {
+                        organization,
+                        id: secondaryUuid,
+                        input: {
+                            is_secondary: true,
+                            merged_into: {
+                                UUID: leadDetail._id,
+                                id: leadDetail.profile_id.toString(),
+                                name: leadDetail.profile.name
+                            }
+                        }
+                    }
+                })
+            ]);
+
+            toast.success(`Lead merged successfully`);
+            setIsMergeDialogOpen(false);
+            setMergeSearchQuery("");
+            setMergeSearchResults([]);
+            refetchLead();
+        } catch (error) {
+            console.error("Merge error:", error);
+            toast.error("Failed to merge leads");
+        } finally {
+            setIsMergingLead(false);
+        }
+    };
+
+    const handleToggleSwap = async () => {
+        if (!leadDetail?._id || !organization) return;
+
+        if (isShowingSecondary || leadDetail.is_secondary) {
+            // Revert to original or go back to primary lead
+            if (originalLead) {
+                setLeadDetail(originalLead);
+                setIsShowingSecondary(false);
+            } else if (leadDetail.merged_into) {
+                setLoading(true);
+                try {
+                    const { data } = await apolloClient.query<GetLeadByIdQueryResponse, GetLeadByIdQueryVariables>({
+                        query: GET_LEAD_BY_ID,
+                        variables: { organization, id: leadDetail.merged_into.UUID },
+                        fetchPolicy: 'network-only'
+                    });
+                    if (data?.getLeadById) {
+                        setLeadDetail(data.getLeadById);
+                        setIsShowingSecondary(false);
+                    }
+                } catch (err) {
+                    console.error("Failed to load primary lead:", err);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        } else {
+            // Swap to first secondary lead if exists
+            const mergeInfo = leadDetail.merge_id?.[0];
+            if (mergeInfo) {
+                setOriginalLead(leadDetail);
+                setLoading(true);
+                try {
+                    const { data } = await apolloClient.query<GetLeadByIdQueryResponse, GetLeadByIdQueryVariables>({
+                        query: GET_LEAD_BY_ID,
+                        variables: { organization, id: mergeInfo.UUID },
+                        fetchPolicy: 'network-only'
+                    });
+                    if (data?.getLeadById) {
+                        setLeadDetail(data.getLeadById);
+                        setIsShowingSecondary(true);
+                    }
+                } catch (err) {
+                    console.error("Failed to load secondary lead:", err);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        }
+    };
+
     // Site Visit Conducted state
     const [conductedSheetOpen, setConductedSheetOpen] = useState(false)
     const [markingVisitId, setMarkingVisitId] = useState<string | null>(null)
@@ -977,6 +1151,11 @@ export default function LeadDetail() {
 
         return (parts[0][0] + parts[1][0]).toUpperCase();
     }
+    useEffect(() => {
+        setIsShowingSecondary(false);
+        setOriginalLead(null);
+    }, [id]);
+
     useEffect(() => {
         let cancelled = false
         async function run() {
@@ -1474,6 +1653,146 @@ export default function LeadDetail() {
                                         <Badge variant="secondary" className="text-[10px] h-5 opacity-70">
                                             #{leadDetail?.profile_id ?? ""}
                                         </Badge>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        {(leadDetail?.merge_id && leadDetail.merge_id.length > 0) || leadDetail?.is_secondary || leadDetail?.merged_into || isShowingSecondary ? (
+                                            <div className="flex items-center gap-1.5">
+                                                <Badge
+                                                    variant="default"
+                                                    className="bg-black text-white dark:bg-zinc-800 dark:text-zinc-200 text-[10px] h-5 px-2 font-medium"
+                                                >
+                                                    Merged
+                                                </Badge>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={handleToggleSwap}
+                                                                className="h-5 w-5 p-0 hover:bg-transparent"
+                                                            >
+                                                                <Badge variant="secondary" className="text-[10px] h-5 opacity-70 ml-2 bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200">
+                                                                    <RefreshCw className={cn("h-3.5 w-3.5 text-zinc-600 dark:text-zinc-400 transition-transform duration-300", (isShowingSecondary || leadDetail?.is_secondary) && "rotate-180")} />
+                                                                </Badge>
+                                                            </Button>
+
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>{(isShowingSecondary || leadDetail?.is_secondary) ? "Show Primary Lead" : "Show Secondary Lead"}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            </div>
+                                        ) : (
+                                            <Dialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <DialogTrigger asChild>
+                                                                <Badge
+                                                                    variant="default"
+                                                                    className={cn(
+                                                                        "bg-black text-white dark:bg-zinc-800 text-[10px] h-5 px-2 font-medium",
+                                                                        canEdit ? "cursor-pointer hover:bg-zinc-900" : "opacity-50 cursor-not-allowed"
+                                                                    )}
+                                                                    onClick={(e) => {
+                                                                        if (!canEdit) {
+                                                                            e.preventDefault();
+                                                                            toast.error("Only the assigned executive can merge this lead");
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    Merge
+                                                                </Badge>
+                                                            </DialogTrigger>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Merge with another lead</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                                <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden border-none bg-white text-slate-950 dark:bg-zinc-950 dark:text-zinc-100 shadow-2xl">
+                                                    <DialogHeader className="p-6 pb-2">
+                                                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                                                            Merge Leads
+                                                        </DialogTitle>
+                                                        <p className="text-sm text-slate-500 dark:text-zinc-400">Search for a lead to merge with <span className="text-slate-900 dark:text-zinc-200 font-medium">{leadName}</span>.</p>
+                                                    </DialogHeader>
+                                                    <div className="p-6 pt-2 space-y-4">
+                                                        <div className="relative">
+                                                            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 dark:text-zinc-500" />
+                                                            <Input
+                                                                placeholder="Search by ID, name, email or number..."
+                                                                value={mergeSearchQuery}
+                                                                onChange={(e) => handleSearchLeads(e.target.value)}
+                                                                className="pl-9 bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus-visible:ring-primary/20 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus-visible:ring-zinc-700 h-10"
+                                                            />
+                                                        </div>
+
+                                                        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                                                            {isSearchingLeads ? (
+                                                                <div className="flex items-center justify-center py-8">
+                                                                    <Loader2 className="h-6 w-6 animate-spin text-primary/50" />
+                                                                </div>
+                                                            ) : mergeSearchResults.length > 0 ? (
+                                                                mergeSearchResults.map((lead) => (
+                                                                    <div
+                                                                        key={lead.lead_id.toString()}
+                                                                        className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50 border border-slate-100 hover:bg-slate-50 hover:border-slate-200 dark:bg-zinc-900/50 dark:border-zinc-800/50 dark:hover:bg-zinc-900 dark:hover:border-zinc-700 transition-all group"
+                                                                    >
+                                                                        <div className="flex items-center gap-3">
+                                                                            <Avatar className="h-10 w-10 border border-slate-200 dark:border-zinc-800">
+                                                                                <AvatarFallback className="bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-400 text-xs">
+                                                                                    {getUserAvatar(lead.name)}
+                                                                                </AvatarFallback>
+                                                                            </Avatar>
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-sm font-semibold text-slate-900 dark:text-zinc-100">{lead.name}</span>
+                                                                                <div className="flex flex-col mt-0.5">
+                                                                                    <span className="text-[10px] text-slate-600 dark:text-zinc-400 font-medium tracking-wide">#{lead.profile_id}</span>
+                                                                                    {lead.is_secondary && (
+                                                                                        <span className="text-[9px] text-red-500 font-bold uppercase mt-0.5">Already Merged</span>
+                                                                                    )}
+                                                                                    {lead.merge_id && lead.merge_id.length > 0 && (
+                                                                                        <span className="text-[9px] text-blue-500 font-bold uppercase mt-0.5">Primary Lead</span>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="secondary"
+                                                                            disabled={isMergingLead}
+                                                                            onClick={() => handleMergeLead(lead)}
+                                                                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 px-4 text-xs font-bold rounded-full dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white"
+                                                                        >
+                                                                            Select
+                                                                        </Button>
+                                                                    </div>
+                                                                ))
+                                                            ) : mergeSearchQuery.length >= 2 ? (
+                                                                <div className="text-center py-8 text-slate-400 dark:text-zinc-500 text-sm">
+                                                                    No leads found matching your search.
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-center py-8 text-slate-400 dark:text-zinc-500 text-xs">
+                                                                    Enter at least 2 characters to search.
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        <Button
+                                                            variant="ghost"
+                                                            className="w-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-900 h-10 font-medium"
+                                                            onClick={() => setIsMergeDialogOpen(false)}
+                                                        >
+                                                            Close
+                                                        </Button>
+                                                    </div>
+                                                </DialogContent>
+                                            </Dialog>
+                                        )}
                                     </div>
                                 </div>
                                 {leadDetail?.exe_user_name && (
@@ -2027,111 +2346,113 @@ export default function LeadDetail() {
                                     </Sheet>
                                 </div>
 
-                                <div className="flex justify-center">
-                                    <Sheet open={siteVisitSheetOpen} onOpenChange={setSiteVisitSheetOpen}>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <SheetTrigger asChild>
-                                                    <Button variant="outline" size="icon" disabled={!canEdit} className="my-2 bg-orange-50 text-white hover:bg-orange-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                        <CalendarClock className="size-4 sm:size-5 text-orange-500 dark:text-orange-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors" />
-                                                    </Button>
-                                                </SheetTrigger>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>Schedule Site Visit</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                        <SheetContent className="w-lg">
-                                            <SheetHeader>
-                                                <SheetTitle>Schedule Site Visit</SheetTitle>
-                                                <SheetDescription>
-                                                    Plan and confirm the site visit.
-                                                </SheetDescription>
-                                            </SheetHeader>
-                                            <div className="px-4 py-4">
-                                                <form onSubmit={handleSiteVisit} className="space-y-4">
-                                                    <div className="space-y-4">
-                                                        <div className="flex flex-col space-y-2">
-                                                            <Label htmlFor="siteVisitProject">Project</Label>
-                                                            <Select
-                                                                value={siteVisitProject ? String(siteVisitProject.id) : ""}
-                                                                onValueChange={(val) => {
-                                                                    const proj = allProjects.find((p: any) => String(p.product_id) === val)
-                                                                    if (proj) setSiteVisitProject({ id: proj.product_id, name: proj.name })
-                                                                }}
-                                                            >
-                                                                <SelectTrigger id="siteVisitProject" className="w-full">
-                                                                    <SelectValue placeholder="Select a project" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectGroup>
-                                                                        <SelectLabel>Available Projects</SelectLabel>
-                                                                        {allProjects.map((p: any) => (
-                                                                            <SelectItem key={p.product_id} value={String(p.product_id)}>
-                                                                                {p.name} {p.location ? `— ${p.location}` : ''}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectGroup>
-                                                                </SelectContent>
-                                                            </Select>
+                                {canEdit && (
+                                    <div className="flex justify-center">
+                                        <Sheet open={siteVisitSheetOpen} onOpenChange={setSiteVisitSheetOpen}>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <SheetTrigger asChild>
+                                                        <Button variant="outline" size="icon" disabled={!canEdit} className="my-2 bg-orange-50 text-white hover:bg-orange-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:opacity-50 disabled:cursor-not-allowed">
+                                                            <CalendarClock className="size-4 sm:size-5 text-orange-500 dark:text-orange-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors" />
+                                                        </Button>
+                                                    </SheetTrigger>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>Schedule Site Visit</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                            <SheetContent className="w-lg">
+                                                <SheetHeader>
+                                                    <SheetTitle>Schedule Site Visit</SheetTitle>
+                                                    <SheetDescription>
+                                                        Plan and confirm the site visit.
+                                                    </SheetDescription>
+                                                </SheetHeader>
+                                                <div className="px-4 py-4">
+                                                    <form onSubmit={handleSiteVisit} className="space-y-4">
+                                                        <div className="space-y-4">
+                                                            <div className="flex flex-col space-y-2">
+                                                                <Label htmlFor="siteVisitProject">Project</Label>
+                                                                <Select
+                                                                    value={siteVisitProject ? String(siteVisitProject.id) : ""}
+                                                                    onValueChange={(val) => {
+                                                                        const proj = allProjects.find((p: any) => String(p.product_id) === val)
+                                                                        if (proj) setSiteVisitProject({ id: proj.product_id, name: proj.name })
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger id="siteVisitProject" className="w-full">
+                                                                        <SelectValue placeholder="Select a project" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectGroup>
+                                                                            <SelectLabel>Available Projects</SelectLabel>
+                                                                            {allProjects.map((p: any) => (
+                                                                                <SelectItem key={p.product_id} value={String(p.product_id)}>
+                                                                                    {p.name} {p.location ? `— ${p.location}` : ''}
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectGroup>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                            <div className="flex flex-col space-y-2">
+                                                                <Label htmlFor="siteVisitDate">Date</Label>
+                                                                <DatePicker date={siteVisitDate} setDate={setSiteVisitDate} />
+                                                            </div>
                                                         </div>
-                                                        <div className="flex flex-col space-y-2">
-                                                            <Label htmlFor="siteVisitDate">Date</Label>
-                                                            <DatePicker date={siteVisitDate} setDate={setSiteVisitDate} />
+                                                        <div className="space-y-4 mt-2">
+                                                            <div className="flex flex-col space-y-2">
+                                                                <Label htmlFor="siteVisitTime">Time (Optional)</Label>
+                                                                <TimePicker time={siteVisitTime} setTime={setSiteVisitTime} />
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="space-y-4 mt-2">
-                                                        <div className="flex flex-col space-y-2">
-                                                            <Label htmlFor="siteVisitTime">Time (Optional)</Label>
-                                                            <TimePicker time={siteVisitTime} setTime={setSiteVisitTime} />
-                                                        </div>
-                                                    </div>
-                                                    <Button type="submit" className="w-full mt-4" disabled={siteVisitLoading}>
-                                                        {siteVisitLoading ? 'Scheduling...' : 'Schedule Visit'}
-                                                    </Button>
-                                                </form>
-                                                <Separator className="my-5" />
-                                                <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Previous Site Visits</h4>
-                                                <ScrollArea className="h-[400px]">
-                                                    {leadDetail?.activities?.filter(a => a.updates === 'site_visit').length ? (
-                                                        leadDetail.activities
-                                                            .filter(a => a.updates === 'site_visit')
-                                                            .map((activity) => (
-                                                                <div key={activity.id} className="mb-3 p-3 rounded-lg border bg-muted/30">
-                                                                    <div className="flex items-center justify-between mb-1">
-                                                                        <span className="text-xs text-muted-foreground">
-                                                                            {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : 'N/A'}
-                                                                        </span>
-                                                                        <div className="flex items-center gap-1.5">
-                                                                            {activity.site_visit_project_name && (
-                                                                                <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                                                                                    {activity.site_visit_project_name}
-                                                                                </Badge>
-                                                                            )}
-                                                                            {activity.site_visit_date && (
-                                                                                <Badge variant="outline" className="text-xs">
-                                                                                    Visit: {(() => {
-                                                                                        const d = new Date(activity.site_visit_date);
-                                                                                        const options: Intl.DateTimeFormatOptions = { dateStyle: 'short' };
-                                                                                        if (d.getHours() !== 0 || d.getMinutes() !== 0) {
-                                                                                            options.timeStyle = 'short';
-                                                                                        }
-                                                                                        return d.toLocaleString([], options);
-                                                                                    })()}
-                                                                                </Badge>
-                                                                            )}
+                                                        <Button type="submit" className="w-full mt-4" disabled={siteVisitLoading}>
+                                                            {siteVisitLoading ? 'Scheduling...' : 'Schedule Visit'}
+                                                        </Button>
+                                                    </form>
+                                                    <Separator className="my-5" />
+                                                    <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Previous Site Visits</h4>
+                                                    <ScrollArea className="h-[400px]">
+                                                        {leadDetail?.activities?.filter(a => a.updates === 'site_visit').length ? (
+                                                            leadDetail.activities
+                                                                .filter(a => a.updates === 'site_visit')
+                                                                .map((activity) => (
+                                                                    <div key={activity.id} className="mb-3 p-3 rounded-lg border bg-muted/30">
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <span className="text-xs text-muted-foreground">
+                                                                                {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : 'N/A'}
+                                                                            </span>
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                {activity.site_visit_project_name && (
+                                                                                    <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                                                                        {activity.site_visit_project_name}
+                                                                                    </Badge>
+                                                                                )}
+                                                                                {activity.site_visit_date && (
+                                                                                    <Badge variant="outline" className="text-xs">
+                                                                                        Visit: {(() => {
+                                                                                            const d = new Date(activity.site_visit_date);
+                                                                                            const options: Intl.DateTimeFormatOptions = { dateStyle: 'short' };
+                                                                                            if (d.getHours() !== 0 || d.getMinutes() !== 0) {
+                                                                                                options.timeStyle = 'short';
+                                                                                            }
+                                                                                            return d.toLocaleString([], options);
+                                                                                        })()}
+                                                                                    </Badge>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
-                                                                </div>
-                                                            ))
-                                                    ) : (
-                                                        <p className="text-sm text-muted-foreground text-center py-4">No visits scheduled yet</p>
-                                                    )}
-                                                </ScrollArea>
-                                            </div>
-                                        </SheetContent>
-                                    </Sheet>
-                                </div>
+                                                                ))
+                                                        ) : (
+                                                            <p className="text-sm text-muted-foreground text-center py-4">No visits scheduled yet</p>
+                                                        )}
+                                                    </ScrollArea>
+                                                </div>
+                                            </SheetContent>
+                                        </Sheet>
+                                    </div>
+                                )}
 
                                 <div className="flex justify-center">
                                     <Sheet open={conductedSheetOpen} onOpenChange={setConductedSheetOpen}>
@@ -3323,38 +3644,40 @@ export default function LeadDetail() {
                                                                 </div>
 
                                                                 {/* Actions */}
-                                                                <div className="flex items-center gap-4 pt-1">
-                                                                    <Button
-                                                                        size="sm"
-                                                                        className="h-9 px-4 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex-1 shadow-lg border-2 border-transparent"
-                                                                        onClick={() => {
-                                                                            const encodedId = encodeProjectId(ip.project_id)
-                                                                            navigate(`/project_showcase?id=${encodedId}`, {
-                                                                                state: {
-                                                                                    bookingLead: {
-                                                                                        _id: leadDetail?._id,
-                                                                                        profile_id: leadDetail?.profile_id,
-                                                                                        name: leadDetail?.profile?.name || 'Unknown',
-                                                                                        phone: leadDetail?.profile?.phone || '',
+                                                                {canEdit && (
+                                                                    <div className="flex items-center gap-4 pt-1">
+                                                                        <Button
+                                                                            size="sm"
+                                                                            className="h-9 px-4 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex-1 shadow-lg border-2 border-transparent"
+                                                                            onClick={() => {
+                                                                                const encodedId = encodeProjectId(ip.project_id)
+                                                                                navigate(`/project_showcase?id=${encodedId}`, {
+                                                                                    state: {
+                                                                                        bookingLead: {
+                                                                                            _id: leadDetail?._id,
+                                                                                            profile_id: leadDetail?.profile_id,
+                                                                                            name: leadDetail?.profile?.name || 'Unknown',
+                                                                                            phone: leadDetail?.profile?.phone || '',
+                                                                                        }
                                                                                     }
-                                                                                }
-                                                                            })
-                                                                        }}
-                                                                    >
-                                                                        Click Booking
-                                                                    </Button>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="outline"
-                                                                        className="h-9 px-4 rounded-full border-2 border-zinc-200 dark:border-zinc-800 font-black text-[10px] uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex-1 shrink-0"
-                                                                        onClick={() => {
-                                                                            setSiteVisitProject({ id: ip.project_id, name: ip.project_name });
-                                                                            setSiteVisitSheetOpen(true);
-                                                                        }}
-                                                                    >
-                                                                        Schedule Site Visit
-                                                                    </Button>
-                                                                </div>
+                                                                                })
+                                                                            }}
+                                                                        >
+                                                                            Click Booking
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            className="h-9 px-4 rounded-full border-2 border-zinc-200 dark:border-zinc-800 font-black text-[10px] uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex-1 shrink-0"
+                                                                            onClick={() => {
+                                                                                setSiteVisitProject({ id: ip.project_id, name: ip.project_name });
+                                                                                setSiteVisitSheetOpen(true);
+                                                                            }}
+                                                                        >
+                                                                            Schedule Site Visit
+                                                                        </Button>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -4036,3 +4359,4 @@ export default function LeadDetail() {
         </div>
     );
 };
+

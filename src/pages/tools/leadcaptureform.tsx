@@ -771,7 +771,7 @@ export default function LeadCaptureForm() {
                                     </section>
                                 </div>
 
-                                <div className="mt-12 flex justify-end gap-4 border-t border-slate-100 pt-8 max-w-4xl mx-auto">
+                                <div className="mt-12 flex justify-end gap-4 pt-8 max-w-4xl mx-auto">
                                     <Button variant="outline" className="h-12 px-8 font-bold border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-xl" onClick={() => navigate(-1)}>Cancel</Button>
                                     <Button className="h-12 px-10 font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 rounded-xl shadow-lg shadow-zinc-200 dark:shadow-none" onClick={() => setCurrentStep(2)}>
                                         Next Step <ArrowRight className="ml-2 w-4 h-4" />
@@ -781,7 +781,7 @@ export default function LeadCaptureForm() {
                         )}
 
                         {currentStep === 2 && (
-                            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-12 max-w-4xl mx-auto bg-white dark:bg-zinc-900 p-12 rounded-4xl shadow-sm border border-slate-100 dark:border-zinc-800">
+                            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-12 max-w-4xl mx-auto bg-white dark:bg-zinc-950 p-12 rounded-4xl shadow-sm border border-slate-100 dark:border-zinc-800">
                                 <section className="space-y-8">
                                     <div className="flex items-center gap-4">
                                         <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Destination & Assignment</h3>
@@ -889,71 +889,24 @@ export default function LeadCaptureForm() {
                                             </Popover>
                                         </div>
 
-                                        <div className="space-y-3">
-                                            <Label className="text-sm font-bold text-slate-700 dark:text-zinc-400">Assign Channel Partners</Label>
-                                            <Popover open={cpOpen} onOpenChange={setCpOpen}>
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        role="combobox"
-                                                        aria-expanded={cpOpen}
-                                                        className="w-full h-14 justify-between bg-white dark:bg-zinc-950 border-2 border-slate-100 dark:border-zinc-800 rounded-xl font-bold text-base hover:bg-slate-50 dark:hover:bg-zinc-900 focus:ring-zinc-900 dark:focus:ring-zinc-100 text-muted-foreground"
-                                                    >
-                                                        Search and select channel partners...
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent side="bottom" sideOffset={10} avoidCollisions={false} className="w-[--radix-popover-trigger-width] p-0 rounded-xl shadow-2xl overflow-hidden border-slate-200 dark:border-zinc-800">
-                                                    <Command className="bg-white dark:bg-zinc-950">
-                                                        <CommandInput placeholder="Search by name or email..." />
-                                                        <CommandList className="max-h-[250px] overflow-y-auto">
-                                                            <CommandEmpty>No channel partners found.</CommandEmpty>
-                                                            <CommandGroup>
-                                                                {cpUsers.map(c => (
-                                                                    <CommandItem
-                                                                        key={c._id}
-                                                                        value={`${c.profile.firstName} ${c.profile.lastName} ${c.profile.email}`}
-                                                                        onSelect={() => {
-                                                                            if (!assignedPeople.some(ap => ap.id === c._id)) {
-                                                                                toggleAssignment(c, 'cp')
-                                                                            }
-                                                                            setCpOpen(false)
-                                                                        }}
-                                                                        className="font-medium cursor-pointer py-3"
-                                                                    >
-                                                                            <div className="flex items-center w-full">
-                                                                                <Check className={cn("mr-3 h-4 w-4 shrink-0 transition-opacity", assignedPeople.some(ap => ap.id === c._id) ? "opacity-100 text-emerald-500" : "opacity-0")} />
-                                                                                <div className="flex flex-col">
-                                                                                    <span className="font-bold text-zinc-900 dark:text-zinc-100">
-                                                                                        {c.profile.firstName} {c.profile.lastName}
-                                                                                    </span>
-                                                                                    <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-bold uppercase leading-none mt-1">
-                                                                                        {c.profile.email}
-                                                                                    </span>
-                                                                                </div>
-                                                                            </div>
-                                                                    </CommandItem>
-                                                                ))}
-                                                            </CommandGroup>
-                                                        </CommandList>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
-                                        </div>
                                     </div>
                                 </section>
 
                                 {assignedPeople.length > 0 && (
                                     <div className="flex flex-wrap gap-2 pt-4">
                                         {assignedPeople.map(p => (
-                                            <Badge key={p.id} className="px-4 py-2 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl text-sm font-bold flex items-center gap-2 pr-2">
+                                            <Badge key={p.id} className="px-4 py-2 bg-white dark:bg-zinc-100 border border-slate-200 dark:border-zinc-300 text-zinc-900 dark:text-zinc-900 rounded-full text-sm font-bold flex items-center gap-2.5 shadow-sm transition-all hover:scale-[1.02]">
                                                 {p.name}
                                                 <button
                                                     type="button"
-                                                    className="p-1 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-md transition-colors"
-                                                    onClick={() => setAssignedPeople(prev => prev.filter(x => x.id !== p.id))}
+                                                    className="group/remove p-0.5 -mr-1 rounded-full hover:bg-slate-100 transition-colors flex items-center justify-center outline-none"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        setAssignedPeople(prev => prev.filter(x => x.id !== p.id));
+                                                    }}
                                                 >
-                                                    <X className="w-4 h-4 text-slate-400 dark:text-zinc-500 hover:text-red-500" />
+                                                    <X className="w-3.5 h-3.5 text-slate-400 group-hover/remove:text-red-500 transition-colors" />
                                                 </button>
                                             </Badge>
                                         ))}
@@ -1017,24 +970,22 @@ export default function LeadCaptureForm() {
                                                             </div>
                                                             <div className="flex flex-wrap gap-2 pl-5">
                                                                 {assignedPeople.map(p => (
-                                                                    <div key={p.id} className="relative group/badge">
+                                                                    <div key={p.id} className="relative">
                                                                         <Badge
-                                                                            className={cn(
-                                                                                "px-3 py-1 rounded-lg text-[10px] font-bold border border-slate-200 dark:border-zinc-800 flex items-center gap-2",
-                                                                                p.type === 'cp' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900"
-                                                                            )}
+                                                                            key={p.id}
+                                                                            className="px-4 py-2 bg-white dark:bg-zinc-100 border border-slate-200 dark:border-zinc-300 text-zinc-900 dark:text-zinc-900 rounded-full text-sm font-bold flex items-center gap-2.5 shadow-sm transition-all hover:scale-[1.02]"
                                                                         >
-                                                                            {p.name} <span className="opacity-50 font-medium">({p.category})</span>
+                                                                            {p.name}
                                                                             <button
                                                                                 type="button"
-                                                                                className="p-1 -mr-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-colors leading-none"
+                                                                                className="group/remove p-0.5 -mr-1 rounded-full hover:bg-slate-100 transition-colors flex items-center justify-center outline-none"
                                                                                 onClick={(e) => {
                                                                                     e.preventDefault();
                                                                                     e.stopPropagation();
                                                                                     setAssignedPeople(prev => prev.filter(x => x.id !== p.id));
                                                                                 }}
                                                                             >
-                                                                                <X className="w-3 h-3 opacity-40 hover:opacity-100 hover:text-red-500 transition-all" />
+                                                                                <X className="w-3.5 h-3.5 text-slate-400 group-hover/remove:text-red-500 transition-colors" />
                                                                             </button>
                                                                         </Badge>
                                                                     </div>

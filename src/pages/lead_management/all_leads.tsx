@@ -45,6 +45,7 @@ export type Lead = {
   sub_source: string
   received: string
   exe_user_name: string
+  is_secondary?: boolean
 }
 
 type Filters = {
@@ -89,7 +90,16 @@ export const getColumns = (navigate: ReturnType<typeof useNavigate>): ColumnDef<
     meta: {
       label: "Profile ID",
     },
-    cell: ({ row }) => <div className="font-medium pl-10 cursor-pointer hover:underline" onClick={() => navigate(`/lead_detail/${row.original.lead_id.toString()}`)}>#{row.getValue("profile_id")}</div>,
+    cell: ({ row }) => (
+      <div className="flex items-center gap-2 font-medium pl-10">
+        <span 
+          className="cursor-pointer hover:underline" 
+          onClick={() => navigate(`/lead_detail/${row.original.lead_id.toString()}`)}
+        >
+          #{row.getValue("profile_id")}
+        </span>
+      </div>
+    ),
   },
   {
     accessorKey: "name",
@@ -368,6 +378,7 @@ export default function AllLeads() {
           sub_source: lead.sub_source,
           received: lead.received,
           exe_user_name: lead.exe_user_name || '',
+          is_secondary: lead.is_secondary,
         }))
         setLeads(transformedLeads)
         setTotalLeads(total)
