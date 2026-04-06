@@ -1,5 +1,5 @@
 import * as React from "react"
-import { AlertCircle, Loader2, Hash, LayoutDashboard, ClipboardList, PlusCircle, Package, BarChart3, TrendingUp, Settings, Handshake, UserCog, GitBranch, Users, Calendar, User } from "lucide-react"
+import { AlertCircle, Loader2, Hash, LayoutDashboard, ClipboardList, PlusCircle, Package, BarChart3, TrendingUp, Settings, Handshake, UserCog, GitBranch, Users, Calendar, User, Trophy, Lightbulb, Home, XCircle } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { PageBreadcrumb } from "@/components/page-breadcrumb"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -32,6 +32,13 @@ const SEARCHABLE_PAGES: SearchablePage[] = [
     { label: "Projects", url: "/project_listing", group: "Inventory", icon: Package },
     { label: "Add Project", url: "/new_project", group: "Inventory", icon: PlusCircle },
     { label: "General Reports", url: "/reports_template", group: "Reports", icon: BarChart3 },
+    { label: "Site Visit Schedule Report", url: "/reports/svs_report", group: "Reports", icon: Calendar },
+    { label: "Site Visit Done Report", url: "/reports/svs_done_report", group: "Reports", icon: Calendar },
+    { label: "Booking Done Report", url: "/reports/booking_done_report", group: "Reports", icon: Trophy },
+    { label: "Opportunity Report", url: "/reports/opportunity_report", group: "Reports", icon: Lightbulb },
+    { label: "Property Interest Report", url: "/reports/apartment_report", group: "Reports", icon: Home },
+    { label: "Lost Report", url: "/reports/lost_report", group: "Reports", icon: XCircle },
+
     { label: "Lead Stage Analysis", url: "/lead_stage_analysis", group: "Reports", icon: TrendingUp },
     { label: "General Settings", url: "/settings", group: "Settings", icon: Settings },
     { label: "Import Leads", url: "/setting/import_leads", group: "Settings", icon: PlusCircle },
