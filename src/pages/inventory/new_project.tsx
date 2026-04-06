@@ -436,17 +436,17 @@ export default function NewProject() {
 
         const fileArray = Array.from(files)
         // Allow common image formats
-        const allowedTypes = ['image/svg+xml']
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
         const invalidFile = fileArray.find(f => !allowedTypes.includes(f.type))
         if (invalidFile) {
-            toast.error('Only SVG images are allowed for floor charts')
+            toast.error('Only image files (PNG, JPEG, JPG, WebP) are allowed for floor charts')
             return
         }
 
-        const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+        const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB limit
         const oversizedFile = fileArray.find(f => f.size > MAX_FILE_SIZE);
         if (oversizedFile) {
-            toast.error(`File ${oversizedFile.name} exceeds 500MB limit`);
+            toast.error(`File ${oversizedFile.name} exceeds 15MB limit`);
             return;
         }
 
@@ -538,17 +538,17 @@ export default function NewProject() {
         if (!files || files.length === 0) return
 
         const fileArray = Array.from(files)
-        const allowedTypes = ['image/svg+xml']
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
         const invalidFile = fileArray.find(f => !allowedTypes.includes(f.type))
         if (invalidFile) {
-            toast.error('Only SVG images are allowed for unit plans')
+            toast.error('Only image files (PNG, JPEG, JPG, WebP) are allowed for unit plans')
             return
         }
 
-        const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+        const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB limit
         const oversizedFile = fileArray.find(f => f.size > MAX_FILE_SIZE);
         if (oversizedFile) {
-            toast.error(`File ${oversizedFile.name} exceeds 500MB limit`);
+            toast.error(`File ${oversizedFile.name} exceeds 15MB limit`);
             return;
         }
 
@@ -666,13 +666,20 @@ export default function NewProject() {
         const fileArray = Array.from(files)
 
         // Allow common image formats
-        const allowedTypes = ['image/svg+xml']
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
         const invalidFile = fileArray.find(
-            file => !allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith(".svg")
+            file => !allowedTypes.includes(file.type)
         )
         if (invalidFile) {
-            toast.error("Only SVG files are allowed for block floor plans")
+            toast.error("Only image files (PNG, JPEG, JPG, WebP) are allowed for block floor plans")
             return
+        }
+
+        const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB limit
+        const oversizedFile = fileArray.find(f => f.size > MAX_FILE_SIZE);
+        if (oversizedFile) {
+            toast.error(`File ${oversizedFile.name} exceeds 15MB limit`);
+            return;
         }
 
         // Check max 5 images limit
@@ -683,7 +690,7 @@ export default function NewProject() {
             return
         }
 
-        const compressedFiles = await compressImages(fileArray, { quality: 0.7, maxWidth: 1920 })
+        const compressedFiles = await compressImages(fileArray, { quality: 0.7, maxWidth: 1920, mimeType: 'image/jpeg' })
         const formDataUpload = new FormData()
         compressedFiles.forEach(file => {
             formDataUpload.append('images', file)
@@ -713,6 +720,13 @@ export default function NewProject() {
         if (!files || files.length === 0) return
 
         const fileArray = Array.from(files)
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
+        const invalidFile = fileArray.find(f => !allowedTypes.includes(f.type))
+        if (invalidFile) {
+            toast.error('Only image files (PNG, JPEG, JPG, WebP) are allowed for layout images')
+            return
+        }
+
         // Check max 5 images limit
         const currentCount = formData.layoutImages?.length || 0
         if (currentCount + fileArray.length > 5) {
@@ -720,10 +734,10 @@ export default function NewProject() {
             return
         }
 
-        const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+        const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB limit
         const oversizedFile = fileArray.find(f => f.size > MAX_FILE_SIZE);
         if (oversizedFile) {
-            toast.error(`File ${oversizedFile.name} exceeds 500MB limit`);
+            toast.error(`File ${oversizedFile.name} exceeds 15MB limit`);
             return;
         }
 
@@ -770,20 +784,20 @@ export default function NewProject() {
     // Handle project asset upload (logo, brochure)
     const handleProjectAssetUpload = async (type: 'logo' | 'brochure', file: File) => {
         // Frontend validation
-        const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+        const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
         const allowedDocTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-        
-        // 500MB size limit for brochures, 5MB for logo
-        const MAX_BROCHURE_SIZE = 500 * 1024 * 1024; // 500MB limit for brochures
-        const MAX_LOGO_SIZE = 5 * 1024 * 1024;
+
+        // Multi-tier size limits
+        const MAX_IMAGE_SIZE = 15 * 1024 * 1024; // 15MB limit for logo
+        const MAX_BROCHURE_SIZE = 100 * 1024 * 1024; // 100MB limit for brochure
 
         if (type === 'logo') {
             if (!allowedImageTypes.includes(file.type)) {
                 toast.error('Only image files are allowed for the logo (JPEG, PNG, GIF, WebP)')
                 return
             }
-            if (file.size > MAX_LOGO_SIZE) {
-                toast.error('Logo file size exceeds 5MB limit')
+            if (file.size > MAX_IMAGE_SIZE) {
+                toast.error('Logo file size exceeds 15MB limit')
                 return
             }
         } else if (type === 'brochure') {
@@ -792,13 +806,13 @@ export default function NewProject() {
                 return
             }
             if (file.size > MAX_BROCHURE_SIZE) {
-                toast.error('Brochure file size exceeds 500MB limit')
+                toast.error('Brochure file size exceeds 100MB limit')
                 return
             }
         }
 
         // Only compress logo, keep brochure as-is for quality and format preservation
-        const fileToUpload = type === 'logo' 
+        const fileToUpload = type === 'logo'
             ? await compressImage(file, { quality: 0.8, maxWidth: 1200 })
             : file;
 
@@ -894,7 +908,7 @@ export default function NewProject() {
                                             <div className="flex items-center gap-4">
                                                 <Input
                                                     type="file"
-                                                    accept="image/*"
+                                                    accept="image/png, image/jpeg, image/jpg, image/webp"
                                                     multiple
                                                     className="max-w-xs"
                                                     onChange={(e) => {
@@ -1132,11 +1146,11 @@ export default function NewProject() {
                                                                             />
                                                                         </div>
                                                                         <div className="space-y-2 col-span-2">
-                                                                            <Label>Floor Plan Images (Max 5)</Label>
+                                                                            <Label>Block plan images (Max 5)</Label>
                                                                             <div className="flex gap-2">
                                                                                 <Input
                                                                                     type="file"
-                                                                                    accept=".svg"
+                                                                                    accept="image/png, image/jpeg, image/jpg, image/webp"
                                                                                     multiple
                                                                                     onChange={e => handleImageUpload(block.blockId, e.target.files)}
                                                                                     className="flex-1  text-xs bg-background dark:bg-[#09090b]"
@@ -1410,7 +1424,7 @@ export default function NewProject() {
                                                 <Input
                                                     id="logo"
                                                     type="file"
-                                                    accept="image/*"
+                                                    accept="image/png, image/jpeg, image/jpg, image/webp"
                                                     className="bg-background dark:bg-[#09090b]"
                                                     onChange={e => {
                                                         const file = e.target.files?.[0]
@@ -1588,7 +1602,7 @@ export default function NewProject() {
                                             <input
                                                 ref={floorImageInputRef}
                                                 type="file"
-                                                accept=".svg"
+                                                accept="image/png, image/jpeg, image/jpg, image/webp"
                                                 multiple
                                                 className="hidden"
                                                 onChange={(e) => {
@@ -1781,7 +1795,7 @@ export default function NewProject() {
                                                                                 <input
                                                                                     id={`unit-img-${unit.unitId}`}
                                                                                     type="file"
-                                                                                    accept=".svg"
+                                                                                    accept="image/png, image/jpeg, image/jpg, image/webp"
                                                                                     multiple
                                                                                     className="hidden"
                                                                                     onChange={(e) => {
