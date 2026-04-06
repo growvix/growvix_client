@@ -381,6 +381,13 @@ export default function EditProject() {
             return
         }
 
+        const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+        const oversizedFile = fileArray.find(f => f.size > MAX_FILE_SIZE);
+        if (oversizedFile) {
+            toast.error(`File ${oversizedFile.name} exceeds 500MB limit`);
+            return;
+        }
+
         const block = formData.blocks.find(b => b.blockId === blockId)
         const floor = block?.floors.find(f => f.floorNumber === floorNumber)
         const unit = floor?.units.find(u => u.unitId === unitId)
@@ -461,6 +468,13 @@ export default function EditProject() {
         const allowedTypes = ['image/svg+xml']
         const invalidFile = fileArray.find(file => !allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith(".svg"))
         if (invalidFile) { toast.error("Only SVG files are allowed for block floor plans"); return }
+
+        const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+        const oversizedFile = fileArray.find(f => f.size > MAX_FILE_SIZE);
+        if (oversizedFile) {
+            toast.error(`File ${oversizedFile.name} exceeds 500MB limit`);
+            return;
+        }
         const block = formData.blocks.find(b => b.blockId === blockId)
         const currentCount = block?.floorPlanImages?.length || 0
         if (currentCount + fileArray.length > 5) { toast.error('Maximum 5 images allowed per block'); return }
@@ -477,8 +491,16 @@ export default function EditProject() {
 
     const handleLayoutImageUpload = async (files: FileList | null) => {
         if (!files || files.length === 0) return
+        const fileArray = Array.from(files)
         const currentCount = formData.layoutImages?.length || 0
-        if (currentCount + files.length > 5) { toast.error('Maximum 5 layout images allowed'); return }
+        if (currentCount + fileArray.length > 5) { toast.error('Maximum 5 layout images allowed'); return }
+        
+        const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+        const oversizedFile = fileArray.find(f => f.size > MAX_FILE_SIZE);
+        if (oversizedFile) {
+            toast.error(`File ${oversizedFile.name} exceeds 500MB limit`);
+            return;
+        }
         const compressedFiles = await compressImages(Array.from(files), { quality: 0.7, maxWidth: 1920 })
         const formDataUpload = new FormData()
         compressedFiles.forEach(file => formDataUpload.append('images', file))
@@ -524,7 +546,7 @@ export default function EditProject() {
                 return
             }
             if (file.size > MAX_BROCHURE_SIZE) {
-                toast.error('Brochure file size exceeds 50MB limit')
+                toast.error('Brochure file size exceeds 500MB limit')
                 return
             }
         }
@@ -564,6 +586,13 @@ export default function EditProject() {
         const allowedTypes = ['image/svg+xml']
         const invalidFile = fileArray.find(f => !allowedTypes.includes(f.type))
         if (invalidFile) { toast.error('Only SVG images are allowed for floor charts'); return }
+
+        const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+        const oversizedFile = fileArray.find(f => f.size > MAX_FILE_SIZE);
+        if (oversizedFile) {
+            toast.error(`File ${oversizedFile.name} exceeds 500MB limit`);
+            return;
+        }
         const block = formData.blocks.find(b => b.blockId === blockId)
         const floor = block?.floors.find(f => f.floorNumber === floorNumber)
         const currentCount = floor?.floorChartImages?.length || 0

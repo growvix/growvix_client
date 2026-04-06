@@ -3751,12 +3751,30 @@ export default function LeadDetail() {
                             executives.push({ mainId: 'unassigned', name: 'Unassigned', image: '', altIds: [] });
                         }
 
+                        // Calculate cumulative total stats for the whole lead first
+                        const totalStats = { whatsapp: 0, mail: 0, call: 0, sms: 0, notes: 0, site_visits_scheduled: 0, site_visits_conducted: 0, follow_ups_scheduled: 0, follow_ups_conducted: 0 };
+                        if (leadDetail?.activities) {
+                            leadDetail.activities.forEach((a: any) => {
+                                const up = a.updates?.toLowerCase();
+                                if (up === 'whatsapp') totalStats.whatsapp++;
+                                if (up === 'mail') totalStats.mail++;
+                                if (up === 'phonecall' || up === 'call') totalStats.call++;
+                                if (up === 'sms') totalStats.sms++;
+                                if (up === 'note' || up === 'notes') totalStats.notes++;
+                                if (up === 'site_visit') {
+                                    totalStats.site_visits_scheduled++;
+                                    if (a.site_visit_completed) totalStats.site_visits_conducted++;
+                                }
+                                if (up === 'follow_up' || up === 'followup') totalStats.follow_ups_scheduled++;
+                            });
+                        }
+
                         const renderCardContent = (exe: { mainId: string; name: string; image: string; altIds: string[] }) => {
                             const initials = getUserAvatar(exe.name);
                             const exeStats = { whatsapp: 0, mail: 0, call: 0, sms: 0, notes: 0, site_visits: 0, site_visits_scheduled: 0, site_visits_conducted: 0, follow_ups_scheduled: 0, follow_ups_conducted: 0 };
 
                             if (leadDetail?.activities) {
-                                leadDetail.activities.forEach(a => {
+                                leadDetail.activities.forEach((a: any) => {
                                     const matchesId = a.user_id === exe.mainId || exe.altIds.includes(a.user_id);
                                     if (matchesId || a.user_name === exe.name) {
                                         const up = a.updates?.toLowerCase();
@@ -3764,20 +3782,25 @@ export default function LeadDetail() {
                                         if (up === 'mail') exeStats.mail++;
                                         if (up === 'phonecall' || up === 'call') exeStats.call++;
                                         if (up === 'sms') exeStats.sms++;
+                                        if (up === 'note' || up === 'notes') exeStats.notes++;
+                                        if (up === 'site_visit') {
+                                            exeStats.site_visits_scheduled++;
+                                            if (a.site_visit_completed) exeStats.site_visits_conducted++;
+                                        }
+                                        if (up === 'follow_up' || up === 'followup') exeStats.follow_ups_scheduled++;
                                     }
                                 });
                             }
 
                             const statsToShow = [
-                                { key: 'Whatsapp', value: exeStats.whatsapp },
-                                { key: 'Mail', value: exeStats.mail },
-                                { key: 'Call', value: exeStats.call },
-                                { key: 'SMS', value: exeStats.sms },
-                                { key: 'Notes', value: exeStats.notes },
-                                { key: 'SV Sched', value: exeStats.site_visits_scheduled },
-                                { key: 'SV Cond', value: exeStats.site_visits_conducted },
-                                { key: 'FU Sched', value: exeStats.follow_ups_scheduled },
-                                { key: 'FU Cond', value: exeStats.follow_ups_conducted },
+                                { key: 'Whatsapp', value: exeStats.whatsapp, total: totalStats.whatsapp },
+                                { key: 'Mail', value: exeStats.mail, total: totalStats.mail },
+                                { key: 'Call', value: exeStats.call, total: totalStats.call },
+                                { key: 'SMS', value: exeStats.sms, total: totalStats.sms },
+                                { key: 'Notes', value: exeStats.notes, total: totalStats.notes },
+                                { key: 'Site Visits', value: exeStats.site_visits_scheduled, total: totalStats.site_visits_scheduled },
+                                { key: 'SV Conducted', value: exeStats.site_visits_conducted, total: totalStats.site_visits_conducted },
+                                { key: 'Follow-ups', value: exeStats.follow_ups_scheduled, total: totalStats.follow_ups_scheduled }
                             ];
 
                             return (
@@ -3842,9 +3865,12 @@ export default function LeadDetail() {
                                                     <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-tighter mb-0.5 truncate w-full px-1">
                                                         {stat.key} :
                                                     </span>
-                                                    <span className="font-black text-zinc-900 dark:text-zinc-100">
-                                                        {stat.value}
-                                                    </span>
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="font-black text-zinc-900 dark:text-zinc-100">
+                                                            {stat.value}
+                                                        </span>
+                                                       
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -3895,17 +3921,17 @@ export default function LeadDetail() {
                                     currentStageColor={currentStageObject?.color}
                                 />
 
-                                {/* Ongoing Missed */}
+                                {/* Outgoing Missed */}
                                 <StageStatCard
                                     value={leadDetail?.activities?.filter(a => a.updates === 'call' && a.notes?.includes('Missed')).length || 0}
-                                    label="Ongoing Missed Calls"
+                                    label="Outgoing Missed Calls"
                                     currentStageColor={currentStageObject?.color}
                                 />
 
-                                {/* Ongoing Answered */}
+                                {/* Outgoing Answered */}
                                 <StageStatCard
                                     value={leadDetail?.activities?.filter(a => a.updates === 'call' && a.notes?.includes('Answered')).length || 0}
-                                    label="Ongoing Answered Calls"
+                                    label="Outgoing Answered Calls"
                                     currentStageColor={currentStageObject?.color}
                                 />
 
