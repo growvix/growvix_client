@@ -194,6 +194,7 @@ export default function LeadCaptureForm() {
     const [allProjects, setAllProjects] = useState<any[]>([])
     const [orgUsers, setOrgUsers] = useState<any[]>([])
     const [cpUsers, setCpUsers] = useState<any[]>([])
+    const [allCampaigns, setAllCampaigns] = useState<any[]>([])
     const [assignedPeople, setAssignedPeople] = useState<AssignedPerson[]>([])
     const [fetchingData, setFetchingData] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
@@ -228,14 +229,16 @@ export default function LeadCaptureForm() {
         setFetchingData(true)
         try {
             const token = getCookie('token')
-            const [usersRes, cpsRes, projectsRes] = await Promise.all([
+            const [usersRes, cpsRes, projectsRes, campaignsRes] = await Promise.all([
                 axios.get(`${API.USERS}?organization=${org}`, { headers: { Authorization: `Bearer ${token}` } }),
                 axios.get(`${API.CP_USERS}?organization=${org}`, { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get(`${API.PROJECTS}?organization=${org}`, { headers: { Authorization: `Bearer ${token}` } })
+                axios.get(`${API.PROJECTS}?organization=${org}`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${API.CAMPAIGNS}?organization=${org}`, { headers: { Authorization: `Bearer ${token}` } })
             ])
             setOrgUsers(usersRes.data.data?.users || [])
             setCpUsers(cpsRes.data.data?.cpUsers || [])
             setAllProjects(projectsRes.data.data || [])
+            setAllCampaigns(campaignsRes.data.data || [])
 
             if (id) {
                 const configRes = await axios.get(`${API.LEAD_CAPTURE_CONFIGS}/${id}`, {
@@ -1237,12 +1240,13 @@ export default function LeadCaptureForm() {
                                                                 })}
                                                             >
                                                                 <SelectTrigger className="w-full h-16 bg-white dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 text-sm font-medium rounded-xl shadow-sm focus:ring-1 focus:ring-zinc-400 transition-all outline-none">
-                                                                    <SelectValue placeholder="Enter campaign name" />
+                                                                    <SelectValue placeholder="Select campaign" />
                                                                 </SelectTrigger>
                                                                 <SelectContent side="bottom" position="item-aligned" className="rounded-xl border-zinc-200 dark:border-zinc-800 shadow-2xl">
-                                                                    {(['CP', 'cp', 'cp_user', 'channel_partner'].includes(getCookie('category')) || ['CP', 'cp', 'cp_user', 'channel_partner'].includes(getCookie('userRole')) || ['CP', 'cp', 'cp_user', 'channel_partner'].includes(getCookie('role')) ? ['Channel Partner', 'Online', 'Offline'] : ['Online', 'Offline']).map(type => (
-                                                                        <SelectItem key={type} value={type} className="py-3 font-medium uppercase text-[10px] tracking-widest">{type}</SelectItem>
+                                                                    {allCampaigns.map(camp => (
+                                                                        <SelectItem key={camp.uuid} value={camp.campaignName} className="py-3 font-medium uppercase text-[10px] tracking-widest">{camp.campaignName}</SelectItem>
                                                                     ))}
+                                                                    {allCampaigns.length === 0 && <div className="p-4 text-center text-[10px] text-zinc-400 font-bold uppercase tracking-widest">No campaigns defined</div>}
                                                                 </SelectContent>
                                                             </Select>
                                                         </div>
@@ -1256,16 +1260,11 @@ export default function LeadCaptureForm() {
                                                                 onValueChange={(val) => setContactInfo({...contactInfo, source: val, sub_source: ''})}
                                                             >
                                                                 <SelectTrigger className="w-full h-16 bg-white dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 text-sm font-medium rounded-xl shadow-sm outline-none">
-                                                                    <SelectValue placeholder={!contactInfo.campaign ? "Select campaign first" : "e.g. Facebook, Google"} />
+                                                                    <SelectValue placeholder={!contactInfo.campaign ? "Select campaign first" : "Select source"} />
                                                                 </SelectTrigger>
                                                                 <SelectContent side="bottom" position="item-aligned" className="rounded-xl border-zinc-200 dark:border-zinc-800 shadow-2xl">
-                                                                    {(contactInfo.campaign === 'Online' 
-                                                                        ? ['Google', 'Facebook', 'Instagram', 'LinkedIn', 'Housing', '99Acres', 'MagicBricks', 'Website']
-                                                                        : contactInfo.campaign === 'Offline'
-                                                                        ? ['Reference', 'Walk-in', 'Signage', 'Events', 'Newspaper', 'Brochures']
-                                                                        : ['Partner Dashboard', 'Direct Link', 'CP Referral']
-                                                                    ).map(opt => (
-                                                                        <SelectItem key={opt} value={opt} className="py-3 font-medium text-[10px] uppercase tracking-widest">{opt}</SelectItem>
+                                                                    {(allCampaigns.find(c => c.campaignName === contactInfo.campaign)?.sources || []).map((s: any) => (
+                                                                        <SelectItem key={s.uuid} value={s.sourceName} className="py-3 font-medium text-[10px] uppercase tracking-widest">{s.sourceName}</SelectItem>
                                                                     ))}
                                                                 </SelectContent>
                                                             </Select>
@@ -1281,18 +1280,11 @@ export default function LeadCaptureForm() {
                                                                     onValueChange={(val) => setContactInfo({...contactInfo, sub_source: val})}
                                                                 >
                                                                     <SelectTrigger className="w-full h-16 bg-white dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 text-sm font-medium rounded-xl shadow-sm outline-none">
-                                                                        <SelectValue placeholder={!contactInfo.source ? "Select source first" : "e.g. Ad Campaign, Event"} />
+                                                                        <SelectValue placeholder={!contactInfo.source ? "Select source first" : "Select sub source"} />
                                                                     </SelectTrigger>
                                                                     <SelectContent side="bottom" position="item-aligned" className="rounded-xl border-zinc-200 dark:border-zinc-800 shadow-2xl">
-                                                                        {(contactInfo.source === 'Google' 
-                                                                            ? ['LSA', 'Search', 'Display', 'Discovery', 'Remarketing']
-                                                                            : contactInfo.source === 'Facebook' || contactInfo.source === 'Instagram'
-                                                                            ? ['Lead Form', 'Messenger', 'Direct Ad', 'Post Engagement']
-                                                                            : contactInfo.source === 'Website'
-                                                                            ? ['Main Landing', 'Project Page', 'Contact Form', 'Chatbot']
-                                                                            : ['General', 'Specific Campaign', 'Partner Sync']
-                                                                        ).map(opt => (
-                                                                            <SelectItem key={opt} value={opt} className="py-3 font-medium text-[10px] uppercase tracking-widest">{opt}</SelectItem>
+                                                                        {(allCampaigns.find(c => c.campaignName === contactInfo.campaign)?.sources?.find((s: any) => s.sourceName === contactInfo.source)?.subSources || []).map((ss: any) => (
+                                                                            <SelectItem key={ss.uuid} value={ss.subSourceName} className="py-3 font-medium text-[10px] uppercase tracking-widest">{ss.subSourceName}</SelectItem>
                                                                         ))}
                                                                     </SelectContent>
                                                                 </Select>
@@ -1303,20 +1295,13 @@ export default function LeadCaptureForm() {
                                                         {!(getCookie('category') === 'CP' || getCookie('userRole') === 'CP' || getCookie('role') === 'cp') && (
                                                             <div className="space-y-4">
                                                                 <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Medium</Label>
-                                                                <Select 
+                                                                <Input 
                                                                     disabled={!isFillMode}
+                                                                    placeholder="e.g. WhatsApp, Phone"
+                                                                    className="w-full h-10 bg-white dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 text-sm font-medium rounded-xl shadow-sm outline-none focus:ring-0 focus-visible:ring-0"
                                                                     value={contactInfo.medium}
-                                                                    onValueChange={(val) => setContactInfo({...contactInfo, medium: val})}
-                                                                >
-                                                                    <SelectTrigger className="w-full h-16 bg-white dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 text-sm font-medium rounded-xl shadow-sm outline-none">
-                                                                        <SelectValue placeholder="e.g. WhatsApp, Phone" />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent side="bottom" position="item-aligned" className="rounded-xl border-zinc-200 dark:border-zinc-800 shadow-2xl">
-                                                                        {['API', 'Walkin', 'WhatsApp', 'Phone Call', 'SMS'].map(opt => (
-                                                                            <SelectItem key={opt} value={opt} className="py-3 font-medium text-[10px] uppercase tracking-widest">{opt}</SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
+                                                                    onChange={(e) => setContactInfo({...contactInfo, medium: e.target.value})}
+                                                                />
                                                             </div>
                                                         )} 
                                                     </div>
