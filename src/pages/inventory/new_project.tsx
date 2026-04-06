@@ -443,6 +443,13 @@ export default function NewProject() {
             return
         }
 
+        const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+        const oversizedFile = fileArray.find(f => f.size > MAX_FILE_SIZE);
+        if (oversizedFile) {
+            toast.error(`File ${oversizedFile.name} exceeds 500MB limit`);
+            return;
+        }
+
         // Check max 5 images limit
         const block = formData.blocks.find(b => b.blockId === blockId)
         const floor = block?.floors.find(f => f.floorNumber === floorNumber)
@@ -536,6 +543,13 @@ export default function NewProject() {
         if (invalidFile) {
             toast.error('Only SVG images are allowed for unit plans')
             return
+        }
+
+        const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+        const oversizedFile = fileArray.find(f => f.size > MAX_FILE_SIZE);
+        if (oversizedFile) {
+            toast.error(`File ${oversizedFile.name} exceeds 500MB limit`);
+            return;
         }
 
         const block = formData.blocks.find(b => b.blockId === blockId)
@@ -698,11 +712,19 @@ export default function NewProject() {
     const handleLayoutImageUpload = async (files: FileList | null) => {
         if (!files || files.length === 0) return
 
+        const fileArray = Array.from(files)
         // Check max 5 images limit
         const currentCount = formData.layoutImages?.length || 0
-        if (currentCount + files.length > 5) {
+        if (currentCount + fileArray.length > 5) {
             toast.error('Maximum 5 layout images allowed')
             return
+        }
+
+        const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+        const oversizedFile = fileArray.find(f => f.size > MAX_FILE_SIZE);
+        if (oversizedFile) {
+            toast.error(`File ${oversizedFile.name} exceeds 500MB limit`);
+            return;
         }
 
         const compressedFiles = await compressImages(Array.from(files), { quality: 0.7, maxWidth: 1920 })
@@ -770,7 +792,7 @@ export default function NewProject() {
                 return
             }
             if (file.size > MAX_BROCHURE_SIZE) {
-                toast.error('Brochure file size exceeds 50MB limit')
+                toast.error('Brochure file size exceeds 500MB limit')
                 return
             }
         }
