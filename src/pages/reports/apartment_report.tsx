@@ -67,6 +67,18 @@ import {
 import { getCookie } from "@/utils/cookies"
 import axios from "axios"
 import { API } from "@/config/api"
+import { gql } from "@apollo/client"
+import { useQuery } from "@apollo/client/react"
+import type { GetAllProjectsQueryResponse, GetAllProjectsQueryVariables } from "@/types"
+
+const GET_ALL_PROJECTS = gql`
+  query GetAllProjects($organization: String!) {
+    getAllProjects(organization: $organization) {
+      product_id
+      name
+    }
+  }
+`;
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
     PieChart, 
@@ -94,6 +106,7 @@ type ApartmentData = {
     source: string
     project: string
     lead: string
+    lead_type: "New Lead" | "Re-engaged Lead"
     apartment_type: string
     stage: "Prospect" | "SVS" | "SVS Done" | "Lost"
     status: "Hot" | "Warm" | "Cold" | "-"
@@ -103,6 +116,7 @@ type Filters = {
     campaign: string
     source: string
     project: string
+    leadType: string
     apartmentType: string
     stage: string
     status: string
@@ -126,6 +140,7 @@ export default function ApartmentReport() {
         campaign: "all",
         source: "all",
         project: "all",
+        leadType: "all",
         apartmentType: "all",
         stage: "all",
         status: "all",
@@ -140,9 +155,24 @@ export default function ApartmentReport() {
     const [campaignOpen, setCampaignOpen] = useState(false)
     const [sourceOpen, setSourceOpen] = useState(false)
     const [projectOpen, setProjectOpen] = useState(false)
+    const [leadTypeOpen, setLeadTypeOpen] = useState(false)
     const [aptTypeOpen, setAptTypeOpen] = useState(false)
     const [stageOpen, setStageOpen] = useState(false)
     const [statusOpen, setStatusOpen] = useState(false)
+
+    const organization = getCookie("organization") || ""
+
+    const { data: projectsData } = useQuery<GetAllProjectsQueryResponse, GetAllProjectsQueryVariables>(GET_ALL_PROJECTS, {
+        variables: { organization },
+        skip: !organization
+    });
+
+    const PROJECTS = useMemo(() => {
+        if (!projectsData?.getAllProjects) return []
+        return projectsData.getAllProjects
+            .filter((p: any) => p && p.name)
+            .map((p: any) => `P${p.product_id} - ${p.name}`)
+    }, [projectsData])
 
     useEffect(() => {
         setBreadcrumbs([
@@ -153,37 +183,37 @@ export default function ApartmentReport() {
 
     // Mock Data generation
     useEffect(() => {
-        const campaigns = ["Online", "Offline"]
-        const projects = ["Project A", "Project B", "Alpha", "Omega"]
-        const sources = ["Meta", "Google", "Website", "Social Media"]
-        const aptTypes = ["1BHK", "2BHK", "2.5BHK", "3BHK", "4BHK", "Penthouse"]
+        const projectsList = PROJECTS.length > 0 ? PROJECTS : ["P1 - Sky High", "P2 - Emerald Valley"]
+        const sources = ["Meta", "Google", "Website", "Magic Bricks", "Housing.com"]
         const stages = ["Prospect", "SVS", "SVS Done", "Lost"]
+        const aptTypes = ["1 BHK", "2 BHK", "3 BHK", "4 BHK", "Penthouse"]
         const statuses = ["Hot", "Warm", "Cold"]
-
+        const leads = ["Aditya Varma", "Shweta Kulkarni", "Rajesh Gupta", "Meera Nair", "Sameer Deshmukh", "Anjali Singh"]
+        const leadTypes = ["New Lead", "Re-engaged Lead"]
+ 
         const mockData: ApartmentData[] = []
-        for (let i = 1; i <= 50; i++) {
-            const stage = stages[Math.floor(Math.random() * stages.length)] as any
-            const status = stage === "Lost" ? "-" : statuses[Math.floor(Math.random() * statuses.length)] as any
-            
+        for (let i = 1; i <= 60; i++) {
             mockData.push({
                 id: `${i}`,
-                campaign: campaigns[Math.floor(Math.random() * campaigns.length)] as any,
+                campaign: Math.random() > 0.5 ? "Online" : "Offline",
                 source: sources[Math.floor(Math.random() * sources.length)],
-                project: projects[Math.floor(Math.random() * projects.length)],
-                lead: `Prop Lead #${2000 + i}`,
+                project: projectsList[Math.floor(Math.random() * projectsList.length)],
+                lead: leads[Math.floor(Math.random() * leads.length)],
+                lead_type: leadTypes[Math.floor(Math.random() * leadTypes.length)] as any,
                 apartment_type: aptTypes[Math.floor(Math.random() * aptTypes.length)],
-                stage,
-                status
+                stage: stages[Math.floor(Math.random() * stages.length)] as any,
+                status: statuses[Math.floor(Math.random() * statuses.length)] as any
             })
         }
         setData(mockData)
-    }, []) 
+    }, [PROJECTS]) 
 
     const filteredData = useMemo(() => {
         return data.filter(item => {
             if (filters.campaign !== "all" && item.campaign !== filters.campaign) return false
             if (filters.source !== "all" && item.source !== filters.source) return false
             if (filters.project !== "all" && item.project !== filters.project) return false
+            if (filters.leadType !== "all" && item.lead_type !== filters.leadType) return false
             if (filters.apartmentType !== "all" && item.apartment_type !== filters.apartmentType) return false
             if (filters.stage !== "all" && item.stage !== filters.stage) return false
             if (filters.status !== "all" && item.status !== filters.status) return false
@@ -192,9 +222,9 @@ export default function ApartmentReport() {
     }, [data, filters])
 
     // Chart Data
-    const aptTypeChartData = useMemo(() => {
+    const projectChartData = useMemo(() => {
         const counts: Record<string, number> = {}
-        filteredData.forEach(d => { counts[d.apartment_type] = (counts[d.apartment_type] || 0) + 1 })
+        filteredData.forEach(d => { counts[d.project] = (counts[d.project] || 0) + 1 })
         return Object.entries(counts).map(([name, value]) => ({ name, value }))
     }, [filteredData])
 
@@ -212,8 +242,8 @@ export default function ApartmentReport() {
     const columns: ColumnDef<ApartmentData>[] = useMemo(() => [
         {
             accessorKey: "campaign",
-            header: "Campaign",
-            meta: { label: "Campaign" },
+            header: "Campaign Type",
+            meta: { label: "Campaign Type" },
         },
         {
             accessorKey: "source",
@@ -227,8 +257,13 @@ export default function ApartmentReport() {
         },
         {
             accessorKey: "lead",
-            header: "Lead",
-            meta: { label: "Lead" },
+            header: "Lead Name",
+            meta: { label: "Lead Name" },
+        },
+        {
+            accessorKey: "lead_type",
+            header: "Lead Type",
+            meta: { label: "Lead Type" },
         },
         {
             accessorKey: "apartment_type",
@@ -299,15 +334,15 @@ export default function ApartmentReport() {
             ["Property Interest Report"],
             ["Generated At:", new Date().toLocaleString('en-IN')],
             [],
-            ["Campaign", "Source", "Project", "Lead", "Property Type", "Stage", "Status"]
+            ["Campaign Type", "Source", "Project", "Lead Name", "Lead Type", "Property Type", "Stage", "Status"]
         ]
 
         filteredData.forEach(item => {
-            rows.push([item.campaign, item.source, item.project, item.lead, item.apartment_type, item.stage, item.status])
+            rows.push([item.campaign, item.source, item.project, item.lead, item.lead_type, item.apartment_type, item.stage, item.status])
         })
 
         rows.push([])
-        rows.push(["GRAND TOTAL", "", "", filteredData.length.toLocaleString('en-IN')])
+        rows.push(["GRAND TOTAL", "", "", "", "", "", filteredData.length.toLocaleString('en-IN')])
 
         const ws = XLSX.utils.aoa_to_sheet(rows)
         XLSX.utils.book_append_sheet(wb, ws, "PropertyInterest")
@@ -319,13 +354,14 @@ export default function ApartmentReport() {
             campaign: "all",
             source: "all",
             project: "all",
+            leadType: "all",
             apartmentType: "all",
             stage: "all",
             status: "all",
         })
     }
 
-    const isFilterApplied = Object.values(filters).some(v => v !== "all")
+    const isFilterApplied = filters.campaign !== "all" || filters.source !== "all" || filters.project !== "all" || filters.leadType !== "all" || filters.apartmentType !== "all" || filters.stage !== "all" || filters.status !== "all"
 
     const isCampaignVisible = table.getColumn("campaign")?.getIsVisible() ?? true
     const isSourceVisible = table.getColumn("source")?.getIsVisible() ?? true
@@ -346,13 +382,14 @@ export default function ApartmentReport() {
                 </p>
             </div>
 
-            <div className="rounded-xl bg-card border shadow-sm p-6 space-y-6">
+            <Card className="border-none shadow-md bg-background/80 backdrop-blur-md sticky top-12 z-30 ring-1 ring-border/50">
+                <CardContent className="p-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-end transition-all duration-300">
                     
                     {isCampaignVisible && (
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                <Megaphone className="h-3 w-3" /> Campaign
+                                <Globe className="h-3 w-3" /> Campaign Type
                             </Label>
                             <Popover open={campaignOpen} onOpenChange={setCampaignOpen}>
                                 <PopoverTrigger asChild>
@@ -395,18 +432,22 @@ export default function ApartmentReport() {
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[180px] p-0">
                                     <Command>
-                                        <CommandGroup>
-                                            <CommandItem onSelect={() => { setFilters(f => ({ ...f, source: "all" })); setSourceOpen(false) }}>
-                                                <Check className={cn("mr-2 h-4 w-4", filters.source === "all" ? "opacity-100" : "opacity-0")} />
-                                                All Sources
-                                            </CommandItem>
-                                            {["Meta", "Google", "Website", "Social Media"].map(s => (
-                                                <CommandItem key={s} onSelect={() => { setFilters(f => ({ ...f, source: s })); setSourceOpen(false) }}>
-                                                    <Check className={cn("mr-2 h-4 w-4", filters.source === s ? "opacity-100" : "opacity-0")} />
-                                                    {s}
+                                        <CommandInput placeholder="Search source..." />
+                                        <CommandList>
+                                            <CommandEmpty>No source found.</CommandEmpty>
+                                            <CommandGroup>
+                                                <CommandItem onSelect={() => { setFilters(f => ({ ...f, source: "all" })); setSourceOpen(false) }}>
+                                                    <Check className={cn("mr-2 h-4 w-4", filters.source === "all" ? "opacity-100" : "opacity-0")} />
+                                                    All Sources
                                                 </CommandItem>
-                                            ))}
-                                        </CommandGroup>
+                                                {["Meta", "Google", "Website", "Magic Bricks", "Housing.com"].map(s => (
+                                                    <CommandItem key={s} onSelect={() => { setFilters(f => ({ ...f, source: s })); setSourceOpen(false) }}>
+                                                        <Check className={cn("mr-2 h-4 w-4", filters.source === s ? "opacity-100" : "opacity-0")} />
+                                                        {s}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
                                     </Command>
                                 </PopoverContent>
                             </Popover>
@@ -421,29 +462,63 @@ export default function ApartmentReport() {
                             <Popover open={projectOpen} onOpenChange={setProjectOpen}>
                                 <PopoverTrigger asChild>
                                     <Button variant="outline" className="w-full justify-between font-normal h-10 border-none bg-muted/30 text-xs text-left">
-                                        {filters.project === "all" ? "All Projects" : filters.project}
+                                        <span className="truncate">{filters.project === "all" ? "All Projects" : filters.project}</span>
                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[200px] p-0">
                                     <Command>
-                                        <CommandGroup>
-                                            <CommandItem onSelect={() => { setFilters(f => ({ ...f, project: "all" })); setProjectOpen(false) }}>
-                                                <Check className={cn("mr-2 h-4 w-4", filters.project === "all" ? "opacity-100" : "opacity-0")} />
-                                                All Projects
-                                            </CommandItem>
-                                            {["Project A", "Project B", "Alpha", "Omega"].map(p => (
-                                                <CommandItem key={p} onSelect={() => { setFilters(f => ({ ...f, project: p })); setProjectOpen(false) }}>
-                                                    <Check className={cn("mr-2 h-4 w-4", filters.project === p ? "opacity-100" : "opacity-0")} />
-                                                    {p}
+                                        <CommandInput placeholder="Search project..." />
+                                        <CommandList>
+                                            <CommandEmpty>No project found.</CommandEmpty>
+                                            <CommandGroup>
+                                                <CommandItem onSelect={() => { setFilters(f => ({ ...f, project: "all" })); setProjectOpen(false) }}>
+                                                    <Check className={cn("mr-2 h-4 w-4", filters.project === "all" ? "opacity-100" : "opacity-0")} />
+                                                    All Projects
                                                 </CommandItem>
-                                            ))}
-                                        </CommandGroup>
+                                                {PROJECTS.map(p => (
+                                                    <CommandItem key={p} onSelect={() => { setFilters(f => ({ ...f, project: p })); setProjectOpen(false) }}>
+                                                        <Check className={cn("mr-2 h-4 w-4", filters.project === p ? "opacity-100" : "opacity-0")} />
+                                                        {p}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
                                     </Command>
                                 </PopoverContent>
                             </Popover>
                         </div>
                     )}
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
+                            <Zap className="h-3 w-3" /> Lead Type
+                        </Label>
+                        <Popover open={leadTypeOpen} onOpenChange={setLeadTypeOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" className="w-full justify-between font-normal h-10 border-none bg-muted/30 text-xs">
+                                    <span className="truncate">{filters.leadType === "all" ? "All" : filters.leadType}</span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[180px] p-0">
+                                <Command>
+                                    <CommandGroup>
+                                        <CommandItem onSelect={() => { setFilters(f => ({ ...f, leadType: "all" })); setLeadTypeOpen(false) }}>
+                                            <Check className={cn("mr-2 h-4 w-4", filters.leadType === "all" ? "opacity-100" : "opacity-0")} />
+                                            All
+                                        </CommandItem>
+                                        {["New Lead", "Re-engaged Lead"].map(t => (
+                                            <CommandItem key={t} onSelect={() => { setFilters(f => ({ ...f, leadType: t })); setLeadTypeOpen(false) }}>
+                                                <Check className={cn("mr-2 h-4 w-4", filters.leadType === t ? "opacity-100" : "opacity-0")} />
+                                                {t}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
 
                     {isAptTypeVisible && (
                         <div className="space-y-2">
@@ -464,7 +539,7 @@ export default function ApartmentReport() {
                                                 <Check className={cn("mr-2 h-4 w-4", filters.apartmentType === "all" ? "opacity-100" : "opacity-0")} />
                                                 All Types
                                             </CommandItem>
-                                            {["1BHK", "2BHK", "3BHK", "4BHK", "Penthouse"].map(t => (
+                                            {["1 BHK", "2 BHK", "3 BHK", "4 BHK", "Penthouse"].map(t => (
                                                 <CommandItem key={t} onSelect={() => { setFilters(f => ({ ...f, apartmentType: t })); setAptTypeOpen(false) }}>
                                                     <Check className={cn("mr-2 h-4 w-4", filters.apartmentType === t ? "opacity-100" : "opacity-0")} />
                                                     {t}
@@ -499,38 +574,6 @@ export default function ApartmentReport() {
                                             {["Prospect", "SVS", "SVS Done", "Lost"].map(s => (
                                                 <CommandItem key={s} onSelect={() => { setFilters(f => ({ ...f, stage: s })); setStageOpen(false) }}>
                                                     <Check className={cn("mr-2 h-4 w-4", filters.stage === s ? "opacity-100" : "opacity-0")} />
-                                                    {s}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                    )}
-
-                    {isStatusVisible && (
-                        <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                <Tag className="h-3 w-3" /> Status
-                            </Label>
-                            <Popover open={statusOpen} onOpenChange={setStatusOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button variant="outline" className="w-full justify-between font-normal h-10 border-none bg-muted/30 text-xs text-left">
-                                        {filters.status === "all" ? "All Status" : filters.status}
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[150px] p-0">
-                                    <Command>
-                                        <CommandGroup>
-                                            <CommandItem onSelect={() => { setFilters(f => ({ ...f, status: "all" })); setStatusOpen(false) }}>
-                                                <Check className={cn("mr-2 h-4 w-4", filters.status === "all" ? "opacity-100" : "opacity-0")} />
-                                                All Status
-                                            </CommandItem>
-                                            {["Hot", "Warm", "Cold"].map(s => (
-                                                <CommandItem key={s} onSelect={() => { setFilters(f => ({ ...f, status: s })); setStatusOpen(false) }}>
-                                                    <Check className={cn("mr-2 h-4 w-4", filters.status === s ? "opacity-100" : "opacity-0")} />
                                                     {s}
                                                 </CommandItem>
                                             ))}
@@ -575,35 +618,16 @@ export default function ApartmentReport() {
                         </Button>
                     </div>
                 </div>
-            </div>
+            </CardContent>
+        </Card>
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden">
                     <CardHeader className="bg-muted/5 py-4 border-b">
                         <CardTitle className="text-sm font-bold flex items-center gap-2">
-                            <BarChart3 className="h-4 w-4 text-rose-500" />
-                            Interest by Property Type
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6 h-[300px]">
-                        <ChartContainer config={chartConfig} className="h-full">
-                            <BarChart data={aptTypeChartData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                                <ChartTooltip content={<ChartTooltipContent />} />
-                                <Bar dataKey="value" fill="var(--color-interests)" radius={[4, 4, 0, 0]} barSize={40} />
-                            </BarChart>
-                        </ChartContainer>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden">
-                    <CardHeader className="bg-muted/5 py-4 border-b">
-                        <CardTitle className="text-sm font-bold flex items-center gap-2">
-                            <PieChartIcon className="h-4 w-4 text-purple-500" />
-                            Prospect Stage Distribution
+                            <PieChartIcon className="h-4 w-4 text-rose-500" />
+                            Interest Stage Distribution
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-6 h-[300px]">
@@ -617,6 +641,7 @@ export default function ApartmentReport() {
                                     outerRadius={90}
                                     paddingAngle={5}
                                     dataKey="value"
+                                    label={({ name, value }) => `${name}: ${value}`}
                                 >
                                     {stageChartData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -625,6 +650,26 @@ export default function ApartmentReport() {
                                 <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
                                 <ChartLegend content={<ChartLegendContent nameKey="name" />} />
                             </PieChart>
+                        </ChartContainer>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden">
+                    <CardHeader className="bg-muted/5 py-4 border-b">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4 text-rose-500" />
+                            Interests by Project
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 h-[300px]">
+                        <ChartContainer config={chartConfig} className="h-full">
+                            <BarChart data={projectChartData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                                <ChartTooltip content={<ChartTooltipContent />} />
+                                <Bar dataKey="value" fill="var(--color-interests)" radius={[4, 4, 0, 0]} barSize={40} />
+                            </BarChart>
                         </ChartContainer>
                     </CardContent>
                 </Card>

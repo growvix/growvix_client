@@ -59,6 +59,7 @@ import {
 const SOURCES = ["META", "Google", "Incoming Calls", "Magic Bricks", "Housing.com", "99 Acres", "Website"]
 const PROJECTS = ["P1", "P2", "P3", "P4"]
 const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#f472b6']
+const BUDGET_INDICES = [0, 2, 8, 10, 12]
 
 const chartConfig = {
     leads: {
@@ -139,6 +140,7 @@ const NON_PAID_SOURCES = ["Website", "Incoming Calls"]
 export default function SourceLevelReport() {
     const { setBreadcrumbs } = useBreadcrumb()
     const [sourceFilter, setSourceFilter] = useState("all")
+    const [leadTypeFilter, setLeadTypeFilter] = useState("all")
     const [dateFilter, setDateFilter] = useState("")
     const [timeFilter, setTimeFilter] = useState("")
 
@@ -149,10 +151,11 @@ export default function SourceLevelReport() {
         ])
     }, [setBreadcrumbs])
 
-    const isFilterApplied = sourceFilter !== "all" || dateFilter !== "" || timeFilter !== ""
+    const isFilterApplied = sourceFilter !== "all" || leadTypeFilter !== "all" || dateFilter !== "" || timeFilter !== ""
 
     const clearFilters = () => {
         setSourceFilter("all")
+        setLeadTypeFilter("all")
         setDateFilter("")
         setTimeFilter("")
     }
@@ -181,15 +184,19 @@ export default function SourceLevelReport() {
         const totalsMap: any = {}
         const allSources = [...PAID_SOURCES, ...NON_PAID_SOURCES]
         let gLeads = 0, gProspects = 0, gSV = 0, gBookings = 0;
+        const leadMultiplier = leadTypeFilter === "all" ? 1.0 : leadTypeFilter === "new" ? 0.7 : 0.3
 
         allSources.forEach(source => {
             const colTotals = Array(METRICS.length).fill(0)
             PROJECTS.forEach(proj => {
-                const projectData = MOCK_SOURCE_DATA[source][proj]
+                const projectData = MOCK_SOURCE_DATA[source][proj].map((v: number, i: number) => 
+                    // Apply multiplier to count columns, but not to rates (CPL etc calculated later)
+                    ![2, 8, 10, 12, 0].includes(i) ? v * leadMultiplier : v
+                )
                 METRICS.forEach((_, colIdx) => {
                     // Sum vertical counts
                     if (![2, 8, 10, 12].includes(colIdx)) {
-                        colTotals[colIdx] += projectData[colIdx]
+                        colTotals[colIdx] += Math.round(projectData[colIdx])
                     }
                 })
             })
@@ -209,7 +216,7 @@ export default function SourceLevelReport() {
             sourceTotals: totalsMap, 
             globalSummary: { totalLeads: gLeads, totalProspects: gProspects, totalSV: gSV, totalBookings: gBookings } 
         }
-    }, [sourceFilter])
+    }, [sourceFilter, leadTypeFilter])
 
     const getGroupData = (sourceList: string[]) => {
         const filtered = sourceList.filter(s => sourceFilter === "all" || s === sourceFilter)
@@ -235,14 +242,34 @@ export default function SourceLevelReport() {
         rows.push(["Generated At:", new Date().toLocaleString()])
         rows.push([])
 
+        const hideBudget = leadTypeFilter !== "all" // Budget is shown for the integrated 'All Types' view but hidden for segments
+
         const addTableToExcel = (title: string, group: any) => {
             if (!group) return
+            const isNonPaid = title === "NON-PAID SOURCES"
+            const hideBudgetInThisTable = hideBudget || isNonPaid
+            
             rows.push([title])
-            rows.push(["Source", ...METRICS])
+            const headers = ["Source", ...METRICS.filter((_, i) => !(hideBudgetInThisTable && BUDGET_INDICES.includes(i)))]
+            rows.push(headers)
+            
             group.sources.forEach((s: string) => {
-                rows.push([s, ...sourceTotals[s].map((v: number, i: number) => [0, 2, 8, 10, 12].includes(i) ? `₹${v.toLocaleString('en-IN')}` : v.toLocaleString('en-IN'))])
+                const sourceData = sourceTotals[s]
+                const row = [s]
+                METRICS.forEach((_, i) => {
+                    if (hideBudgetInThisTable && BUDGET_INDICES.includes(i)) return
+                    const val = sourceData[i]
+                    row.push(BUDGET_INDICES.includes(i) ? `₹${val.toLocaleString('en-IN')}` : val.toLocaleString('en-IN'))
+                })
+                rows.push(row)
             })
-            rows.push(["GRAND TOTAL", ...group.total.map((v: number, i: number) => [0, 2, 8, 10, 12].includes(i) ? `₹${v.toLocaleString('en-IN')}` : v.toLocaleString('en-IN'))])
+            const totalRow = ["GRAND TOTAL"]
+            METRICS.forEach((_, i) => {
+                if (hideBudgetInThisTable && BUDGET_INDICES.includes(i)) return
+                const val = group.total[i]
+                totalRow.push(BUDGET_INDICES.includes(i) ? `₹${val.toLocaleString('en-IN')}` : val.toLocaleString('en-IN'))
+            })
+            rows.push(totalRow)
             rows.push([])
         }
 
@@ -256,6 +283,10 @@ export default function SourceLevelReport() {
 
     const renderTable = (title: string, groupData: any, colorClass: string) => {
         if (!groupData) return null
+        const hideBudget = leadTypeFilter !== "all" 
+        const isNonPaid = title === "NON-PAID SOURCES"
+        const hideBudgetInThisTable = hideBudget || isNonPaid
+        const displayMetrics = METRICS.filter((_, i) => !(hideBudgetInThisTable && BUDGET_INDICES.includes(i)))
 
         return (
             <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden mb-8">
@@ -273,8 +304,8 @@ export default function SourceLevelReport() {
                             <thead>
                                 <tr className="bg-muted/10 border-b border-primary/10">
                                     <th className="font-extrabold text-[11px] uppercase tracking-widest text-left px-6 py-4 border-r border-muted/20">Source</th>
-                                    {METRICS.map((m, idx) => (
-                                        <th key={m} className={`font-extrabold text-[11px] uppercase tracking-widest text-center min-w-[110px] py-4 align-bottom ${idx < METRICS.length - 1 ? 'border-r border-muted/20' : ''}`}>
+                                    {displayMetrics.map((m, idx) => (
+                                        <th key={m} className={`font-extrabold text-[11px] uppercase tracking-widest text-center min-w-[110px] py-4 align-bottom ${idx < displayMetrics.length - 1 ? 'border-r border-muted/20' : ''}`}>
                                             {m}
                                         </th>
                                     ))}
@@ -286,11 +317,14 @@ export default function SourceLevelReport() {
                                         <td className="font-bold px-6 py-4 text-sm text-foreground border-r border-muted/20 dark:bg-black group-hover:bg-primary/5 uppercase">
                                             {source}
                                         </td>
-                                        {sourceTotals[source].map((val: number, vIdx: number) => (
-                                            <td key={vIdx} className={`text-center px-4 py-4 text-xs font-medium ${vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 11 ? 'font-bold text-primary bg-primary/5 italic' : ''}`}>
-                                                {[0, 2, 8, 10, 12].includes(vIdx) ? `₹${val.toLocaleString('en-IN')}` : val.toLocaleString('en-IN')}
-                                            </td>
-                                        ))}
+                                        {sourceTotals[source].map((val: number, vIdx: number) => {
+                                            if (hideBudgetInThisTable && BUDGET_INDICES.includes(vIdx)) return null
+                                            return (
+                                                <td key={vIdx} className={`text-center px-4 py-4 text-xs font-medium ${vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 11 ? 'font-bold text-primary bg-primary/5 italic' : ''}`}>
+                                                    {BUDGET_INDICES.includes(vIdx) ? `₹${val.toLocaleString('en-IN')}` : val.toLocaleString('en-IN')}
+                                                </td>
+                                            )
+                                        })}
                                     </tr>
                                 ))}
                                 {/* Grand Total Row */}
@@ -298,11 +332,14 @@ export default function SourceLevelReport() {
                                     <td className="px-6 py-4 text-sm uppercase tracking-wider text-primary">
                                         GRAND TOTAL
                                     </td>
-                                    {groupData.total.map((val: number, vIdx: number) => (
-                                        <td key={vIdx} className={`text-center px-4 py-4 text-xs ${vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 11 ? 'bg-primary/10 text-primary' : 'text-primary'}`}>
-                                            {[0, 2, 8, 10, 12].includes(vIdx) ? `₹${val.toLocaleString('en-IN')}` : val.toLocaleString('en-IN')}
-                                        </td>
-                                    ))}
+                                    {groupData.total.map((val: number, vIdx: number) => {
+                                        if (hideBudgetInThisTable && BUDGET_INDICES.includes(vIdx)) return null
+                                        return (
+                                            <td key={vIdx} className={`text-center px-4 py-4 text-xs ${vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 11 ? 'bg-primary/10 text-primary' : 'text-primary'}`}>
+                                                {BUDGET_INDICES.includes(vIdx) ? `₹${val.toLocaleString('en-IN')}` : val.toLocaleString('en-IN')}
+                                            </td>
+                                        )
+                                    })}
                                 </tr>
                             </tbody>
                         </table>
@@ -325,9 +362,9 @@ export default function SourceLevelReport() {
             </div>
 
             {/* Filters Row */}
-            <Card className="border-none shadow-md bg-background/60 backdrop-blur-md">
+            <Card className="border-none shadow-md bg-background/80 backdrop-blur-md sticky top-12 z-30 ring-1 ring-border/50">
                 <CardContent className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
                         <div className="flex flex-col gap-2">
                             <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/80 flex items-center gap-2">
                                 <Filter className="h-3 w-3" />
@@ -340,6 +377,22 @@ export default function SourceLevelReport() {
                                 <SelectContent>
                                     <SelectItem value="all">All Channels</SelectItem>
                                     {SOURCES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/80 flex items-center gap-2">
+                                <Users className="h-3 w-3" />
+                                Lead Type
+                            </Label>
+                            <Select value={leadTypeFilter} onValueChange={setLeadTypeFilter}>
+                                <SelectTrigger className="h-10 bg-muted/30 border-none hover:bg-muted/50 transition-colors">
+                                    <SelectValue placeholder="All Types" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Types</SelectItem>
+                                    <SelectItem value="new">New Lead</SelectItem>
+                                    <SelectItem value="reengaged">Re-engaged Lead</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

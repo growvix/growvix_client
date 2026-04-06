@@ -69,6 +69,18 @@ import {
 import { getCookie } from "@/utils/cookies"
 import axios from "axios"
 import { API } from "@/config/api"
+import { gql } from "@apollo/client"
+import { useQuery } from "@apollo/client/react"
+import type { GetAllProjectsQueryResponse, GetAllProjectsQueryVariables } from "@/types"
+
+const GET_ALL_PROJECTS = gql`
+  query GetAllProjects($organization: String!) {
+    getAllProjects(organization: $organization) {
+      product_id
+      name
+    }
+  }
+`;
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
     PieChart, 
@@ -157,6 +169,18 @@ export default function BookingDoneReport() {
         ])
     }, [setBreadcrumbs])
 
+    const { data: projectsData } = useQuery<GetAllProjectsQueryResponse, GetAllProjectsQueryVariables>(GET_ALL_PROJECTS, {
+        variables: { organization },
+        skip: !organization
+    });
+
+    const PROJECTS = useMemo(() => {
+        if (!projectsData?.getAllProjects) return []
+        return projectsData.getAllProjects
+            .filter((p: any) => p && p.name)
+            .map((p: any) => `P${p.product_id} - ${p.name}`)
+    }, [projectsData])
+
     // Fetch users
     useEffect(() => {
         async function fetchUsers() {
@@ -185,30 +209,29 @@ export default function BookingDoneReport() {
 
     // Mock Data generation
     useEffect(() => {
-        const mockUsersList = users.length > 0 ? users.map(u => u.name) : ["User 1", "User 2", "User 3", "User 4"]
-        
-        const projects = ["Project A", "Project B", "Alpha", "Omega"]
+        const mockUsersList = users.length > 0 ? users.map((u: any) => u.name) : ["User 1", "User 2", "User 3", "User 4"]
+        const projectsList = PROJECTS.length > 0 ? PROJECTS : ["P1 - Sky High", "P2 - Emerald Valley"]
         const sources = ["Meta", "Google", "Website", "Social Media"]
-        const leads = ["Lead #100", "Lead #101", "Lead #102", "Lead #103", "Lead #104"]
+        const leads = ["Siddharth Malhotra", "Kiara Advani", "Ranveer Singh", "Alia Bhatt", "Varun Dhawan"]
         const responseTypes = ["Online", "Offline"]
         const leadTypes = ["New Lead", "Re-engaged Lead"]
-
+ 
         const mockData: BookingDoneData[] = []
-        for (let i = 1; i <= 50; i++) {
+        for (let i = 1; i <= 60; i++) {
             mockData.push({
                 id: `${i}`,
-                project: projects[Math.floor(Math.random() * projects.length)],
+                project: projectsList[Math.floor(Math.random() * projectsList.length)],
                 source: sources[Math.floor(Math.random() * sources.length)],
-                booking_done_lead: leads[Math.floor(Math.random() * leads.length)] + i,
+                booking_done_lead: leads[Math.floor(Math.random() * leads.length)],
                 sales_user: mockUsersList[Math.floor(Math.random() * mockUsersList.length)],
                 response_type: responseTypes[Math.floor(Math.random() * responseTypes.length)] as any,
                 lead_type: leadTypes[Math.floor(Math.random() * leadTypes.length)] as any,
-                booking_done_date: format(new Date(2026, 3, Math.floor(Math.random() * 15) + 1), "yyyy-MM-dd"),
-                booking_done_time: `${Math.floor(Math.random() * 11) + 1}:${Math.floor(Math.random() * 59).toString().padStart(2, '0')} AM`,
+                booking_done_date: format(new Date(2026, 3, Math.floor(Math.random() * 25) + 1), "yyyy-MM-dd"),
+                booking_done_time: `${Math.floor(Math.random() * 12) + 1}:00 PM`
             })
         }
         setData(mockData)
-    }, [users]) 
+    }, [users, PROJECTS]) 
 
     const filteredData = useMemo(() => {
         return data.filter(item => {
@@ -266,8 +289,8 @@ export default function BookingDoneReport() {
         },
         {
             accessorKey: "booking_done_lead",
-            header: "Booking Lead",
-            meta: { label: "Booking Lead" },
+            header: "Lead Name",
+            meta: { label: "Lead Name" },
         },
         {
             accessorKey: "sales_user",
@@ -276,8 +299,8 @@ export default function BookingDoneReport() {
         },
         {
             accessorKey: "response_type",
-            header: "Campaign",
-            meta: { label: "Campaign" },
+            header: "Campaign Type",
+            meta: { label: "Campaign Type" },
         },
         {
             accessorKey: "lead_type",
@@ -321,7 +344,7 @@ export default function BookingDoneReport() {
             ["Booking Done Report"],
             ["Generated At:", new Date().toLocaleString('en-IN')],
             [],
-            ["Project", "Source", "Booking Lead", "Sales User", "Campaign", "Lead Type", "Date", "Time"]
+            ["Project", "Source", "Lead Name", "Sales User", "Campaign Type", "Lead Type", "Date", "Time"]
         ]
 
         filteredData.forEach(item => {
@@ -370,7 +393,8 @@ export default function BookingDoneReport() {
                 </p>
             </div>
 
-            <div className="rounded-xl bg-card border shadow-sm p-6 space-y-6">
+            <Card className="border-none shadow-md bg-background/80 backdrop-blur-md sticky top-12 z-30 ring-1 ring-border/50">
+                <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-9 gap-4 items-end transition-all duration-300">
                     
                     {isProjectVisible && (
@@ -392,7 +416,7 @@ export default function BookingDoneReport() {
                                                 <Check className={cn("mr-2 h-4 w-4", filters.project === "all" ? "opacity-100" : "opacity-0")} />
                                                 All Projects
                                             </CommandItem>
-                                            {["Project A", "Project B", "Alpha", "Omega"].map(p => (
+                                            {PROJECTS.map(p => (
                                                 <CommandItem key={p} onSelect={() => { setFilters(f => ({ ...f, project: p })); setProjectOpen(false) }}>
                                                     <Check className={cn("mr-2 h-4 w-4", filters.project === p ? "opacity-100" : "opacity-0")} />
                                                     {p}
@@ -459,7 +483,7 @@ export default function BookingDoneReport() {
                                                     <Check className={cn("mr-2 h-4 w-4", filters.salesUser === "all" ? "opacity-100" : "opacity-0")} />
                                                     All Users
                                                 </CommandItem>
-                                                {users.map(u => (
+                                                {users.map((u: any) => (
                                                     <CommandItem key={u._id} onSelect={() => { setFilters(f => ({ ...f, salesUser: u.name })); setSalesOpen(false) }}>
                                                         <Check className={cn("mr-2 h-4 w-4", filters.salesUser === u.name ? "opacity-100" : "opacity-0")} />
                                                         {u.name}
@@ -476,7 +500,7 @@ export default function BookingDoneReport() {
                     {isResponseTypeVisible && (
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                <Globe className="h-3 w-3" /> Campaign
+                                <Globe className="h-3 w-3" /> Campaign Type
                             </Label>
                             <Popover open={responseTypeOpen} onOpenChange={setResponseTypeOpen}>
                                 <PopoverTrigger asChild>
@@ -595,7 +619,8 @@ export default function BookingDoneReport() {
                         </Button>
                     </div>
                 </div>
-            </div>
+            </CardContent>
+        </Card>
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">

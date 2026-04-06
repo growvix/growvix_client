@@ -165,12 +165,12 @@ export default function SidebarLayout() {
                 <AppSidebar />
                 <SidebarInset >
                     {isAdminImpersonating && (
-                        <div className="sticky z-5 top-0 bg-red-500/90 text-white text-xs py-1 px-3 flex justify-center items-center gap-1.5 font-medium  animate-in slide-in-from-top-2">
-                            <AlertCircle className="h-3.5 w-3.5" />
+                        <div className="sticky z-30 top-0 bg-red-500/90 text-white text-xs py-1 px-3 flex justify-center items-center gap-1.5 font-medium  animate-in slide-in-from-top-2">
+                             <AlertCircle className="h-3.5 w-3.5" />
                             You are currently viewing the system as {getCookie('userName')}
                         </div>
                     )}
-                    <header className="sticky z-5 top-0 bg-white dark:bg-black flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 mb-1">
+                    <header className="sticky z-30 top-0 bg-white dark:bg-black flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 mb-1">
 
                             <PageBreadcrumb items={breadcrumbItems} />
 
