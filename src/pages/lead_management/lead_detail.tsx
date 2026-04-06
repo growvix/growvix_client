@@ -3019,7 +3019,7 @@ export default function LeadDetail() {
                         <Card className="overflow-hidden shadow-none py-0 border-2 dark:bg-input/50">
                             <div className="flex items-center justify-between p-3 sm:p-4">
                                 <div className="flex flex-col">
-                                    <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Lead location</CardTitle>
+                                    <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Lead Country</CardTitle>
                                     <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">{leadDetail?.profile?.location || 'India'}</span>
                                 </div>
                                 <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
@@ -3559,15 +3559,15 @@ export default function LeadDetail() {
                                             const projectDetail = allProjects.find((p: any) => p.product_id === ip.project_id);
                                             return (
                                                 <CarouselItem key={ip.project_id}>
-                                                    <div className="p-4 h-full flex flex-col justify-center">
+                                                    <div className="px-4 h-full flex flex-col justify-center">
                                                         <div className="flex gap-5 items-start">
                                                             {/* Project Image/Logo */}
-                                                            <div className="w-24 h-24 rounded-2xl bg-zinc-800 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-zinc-700 dark:border-zinc-800 shadow-xl shrink-0">
+                                                            <div className="w-65 h-35 rounded-2xl bg-transparent flex items-center justify-center overflow-hidden shrink-0">
                                                                 {projectDetail?.img_location?.logo ? (
                                                                     <img
                                                                         src={projectDetail.img_location.logo}
                                                                         alt={ip.project_name}
-                                                                        className="w-full h-full object-cover"
+                                                                        className="w-full h-full object-contain"
                                                                     />
                                                                 ) : (
                                                                     <MapPinCheck className="h-10 w-10 text-zinc-600" />
@@ -3577,7 +3577,7 @@ export default function LeadDetail() {
                                                             {/* Project Information & Actions */}
                                                             <div className="flex-1 min-w-0 flex flex-col gap-4">
                                                                 <div className="flex justify-between items-start">
-                                                                    <div className="flex items-center gap-3 overflow-hidden">
+                                                                    <div className="flex items-center gap-3 overflow-hidden mt-5">
                                                                         <h4 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter truncate leading-none">
                                                                             {ip.project_name}
                                                                         </h4>
@@ -3644,43 +3644,46 @@ export default function LeadDetail() {
                                                                 </div>
 
                                                                 {/* Actions */}
-                                                                {canEdit && (
-                                                                    <div className="flex items-center gap-4 pt-1">
-                                                                        <Button
-                                                                            size="sm"
-                                                                            className="h-9 px-4 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex-1 shadow-lg border-2 border-transparent"
-                                                                            onClick={() => {
-                                                                                const encodedId = encodeProjectId(ip.project_id)
-                                                                                navigate(`/project_showcase?id=${encodedId}`, {
-                                                                                    state: {
-                                                                                        bookingLead: {
-                                                                                            _id: leadDetail?._id,
-                                                                                            profile_id: leadDetail?.profile_id,
-                                                                                            name: leadDetail?.profile?.name || 'Unknown',
-                                                                                            phone: leadDetail?.profile?.phone || '',
-                                                                                        }
-                                                                                    }
-                                                                                })
-                                                                            }}
-                                                                        >
-                                                                            Click Booking
-                                                                        </Button>
-                                                                        <Button
-                                                                            size="sm"
-                                                                            variant="outline"
-                                                                            className="h-9 px-4 rounded-full border-2 border-zinc-200 dark:border-zinc-800 font-black text-[10px] uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex-1 shrink-0"
-                                                                            onClick={() => {
-                                                                                setSiteVisitProject({ id: ip.project_id, name: ip.project_name });
-                                                                                setSiteVisitSheetOpen(true);
-                                                                            }}
-                                                                        >
-                                                                            Schedule Site Visit
-                                                                        </Button>
-                                                                    </div>
-                                                                )}
+
                                                             </div>
+
                                                         </div>
+                                                        {canEdit && (
+                                                            <div className="flex items-center gap-4 pt-1">
+                                                                <Button
+                                                                    size="sm"
+                                                                    className="h-9 px-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex-1 shadow-lg border-2 border-transparent"
+                                                                    onClick={() => {
+                                                                        const encodedId = encodeProjectId(ip.project_id)
+                                                                        navigate(`/project_showcase?id=${encodedId}`, {
+                                                                            state: {
+                                                                                bookingLead: {
+                                                                                    _id: leadDetail?._id,
+                                                                                    profile_id: leadDetail?.profile_id,
+                                                                                    name: leadDetail?.profile?.name || 'Unknown',
+                                                                                    phone: leadDetail?.profile?.phone || '',
+                                                                                }
+                                                                            }
+                                                                        })
+                                                                    }}
+                                                                >
+                                                                    Click Booking
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="h-9 px-4 border-2 border-zinc-200 dark:border-zinc-800 font-black text-[10px] uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex-1 shrink-0"
+                                                                    onClick={() => {
+                                                                        setSiteVisitProject({ id: ip.project_id, name: ip.project_name });
+                                                                        setSiteVisitSheetOpen(true);
+                                                                    }}
+                                                                >
+                                                                    Schedule Site Visit
+                                                                </Button>
+                                                            </div>
+                                                        )}
                                                     </div>
+
                                                 </CarouselItem>
                                             );
                                         })
@@ -3789,10 +3792,10 @@ export default function LeadDetail() {
                                                     </AvatarFallback>
                                                 </Avatar>
                                                 <div className="space-y-0">
-                                                    <CardTitle className="text-sm font-bold tracking-tight truncate max-w-[120px]" title={exe.name}>
+                                                    <CardTitle className="text-xl font-bold tracking-tight truncate max-w-[120px]" title={exe.name}>
                                                         {exe.name}
                                                     </CardTitle>
-                                                    <CardDescription className="text-[9px] font-bold opacity-50 uppercase tracking-tighter">
+                                                    <CardDescription className="text-[10px] font-bold opacity-50 uppercase tracking-tighter">
                                                         Active Executive
                                                     </CardDescription>
                                                 </div>
@@ -3836,10 +3839,10 @@ export default function LeadDetail() {
                                                     "flex flex-col items-center justify-center py-1 text-center",
                                                     (idx + 1) % 3 !== 0 && "border-r border-muted/10"
                                                 )}>
-                                                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter mb-0.5 truncate w-full px-1">
+                                                    <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-tighter mb-0.5 truncate w-full px-1">
                                                         {stat.key} :
                                                     </span>
-                                                    <span className="text-xs font-black text-zinc-900 dark:text-zinc-100">
+                                                    <span className="font-black text-zinc-900 dark:text-zinc-100">
                                                         {stat.value}
                                                     </span>
                                                 </div>

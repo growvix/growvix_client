@@ -444,7 +444,7 @@ export default function CpLeadEntry() {
                                                 <SelectValue placeholder="Enter campaign name" />
                                             </SelectTrigger>
                                             <SelectContent side="bottom" position="item-aligned" className="rounded-xl border-zinc-200 dark:border-zinc-800 shadow-2xl">
-                                                {(['CP', 'cp', 'cp_user', 'channel_partner'].includes(getCookie('category')) || ['CP', 'cp', 'cp_user', 'channel_partner'].includes(getCookie('userRole')) || ['CP', 'cp', 'cp_user', 'channel_partner'].includes(getCookie('role')) ? ['Channel Partner', 'Online', 'Offline'] : ['Online', 'Offline']).map(type => (
+                                                {(['CP', 'cp', 'cp_user', 'channel_partner'].includes(getCookie('category') || '') || ['CP', 'cp', 'cp_user', 'channel_partner'].includes(getCookie('userRole') || '') || ['CP', 'cp', 'cp_user', 'channel_partner'].includes(getCookie('role') || '') ? ['Channel Partner', 'Online', 'Offline'] : ['Online', 'Offline']).map(type => (
                                                     <SelectItem key={type} value={type} className="py-3 font-medium uppercase text-[10px] tracking-widest">{type}</SelectItem>
                                                 ))}
                                             </SelectContent>
