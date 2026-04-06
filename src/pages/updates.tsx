@@ -19,11 +19,24 @@ import {
     Search,
     SearchX,
     Info,
-    Sparkles
+    Sparkles,
+    Gem
 } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
+import type { LucideIcon } from "lucide-react"
+
+interface UpdateCard {
+    title: string
+    description: string
+    icon: LucideIcon
+    badge?: string
+    colorClass: string
+    bgClass: string
+    hoverBorder: string
+    hoverGradient: string
+}
 
 export default function UpdatesPage() {
     const { setBreadcrumbs } = useBreadcrumb()
@@ -49,7 +62,7 @@ export default function UpdatesPage() {
         ])
     }, [setBreadcrumbs])
 
-    const updateCards = [
+    const updateCards: UpdateCard[] = [
         {
             title: "AI Project Management",
             description: "Transform your project workflows with intelligent task prioritization and automated scheduling.",
@@ -131,6 +144,16 @@ export default function UpdatesPage() {
             hoverBorder: "hover:border-pink-300 dark:hover:border-pink-800",
             hoverGradient: "from-pink-50/50 dark:from-pink-950/20",
         },
+        {
+            title: "Account Management",
+            description: "Master high-value client portfolios with strategic renewal intelligence, performance-driven analytics, and end-to-end relationship tracking.",
+            icon: Gem,
+            badge: "New",
+            colorClass: "text-cyan-600 dark:text-cyan-400",
+            bgClass: "bg-cyan-100 dark:bg-cyan-900/40",
+            hoverBorder: "hover:border-cyan-300 dark:hover:border-cyan-800",
+            hoverGradient: "from-cyan-50/50 dark:from-cyan-950/20",
+        },
     ]
 
     const filteredCards = updateCards.filter(
@@ -177,9 +200,16 @@ export default function UpdatesPage() {
                                     <Icon size={28} strokeWidth={2} />
                                 </div>
                                 <div className="flex flex-col gap-1 mt-1">
-                                    <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                                        {card.title}
-                                    </CardTitle>
+                                    <div className="flex items-center gap-2">
+                                        <CardTitle className="text-lg group-hover:text-primary transition-colors">
+                                            {card.title}
+                                        </CardTitle>
+                                        {card.badge && (
+                                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-primary/10 text-primary border border-primary/20">
+                                                {card.badge}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </CardHeader>
                             <CardContent className="z-1 pb-6 pt-2">
