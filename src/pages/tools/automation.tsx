@@ -7,7 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { UserRoundCog, Import, UsersRound, FileDown, Search, SearchX, SearchCode, MailPlus, Phone, Megaphone } from "lucide-react"
+import { UserRoundCog, Import, UsersRound, FileDown, Search, SearchX, SearchCode, MailPlus, Phone, Megaphone, MessageCircle } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -59,24 +59,15 @@ export default function Automation() {
             hoverGradient: "from-blue-50/50 dark:from-blue-950/20",
             path: "",
         },
-        {
-            title: "Email Templates",
-            description: "Create and manage reusable email templates with simple or design editors.",
-            icon: MailPlus,
-            colorClass: "text-purple-600 dark:text-purple-400",
-            bgClass: "bg-purple-100 dark:bg-purple-900/40",
-            hoverBorder: "hover:border-purple-300 dark:hover:border-purple-800",
-            hoverGradient: "from-purple-50/50 dark:from-purple-950/20",
-            path: "/automation/mail_templates",
-        },
+
         {
             title: "Lead Capture Forms",
             description: "Create and manage reusable lead capture forms with simple or design editors.",
             icon: FileDown,
-            colorClass: "text-emerald-600 dark:text-emerald-400",
-            bgClass: "bg-emerald-100 dark:bg-emerald-900/40",
-            hoverBorder: "hover:border-emerald-300 dark:hover:border-emerald-800",
-            hoverGradient: "from-emerald-50/50 dark:from-emerald-950/20",
+            colorClass: "text-red-600 dark:text-red-400",
+            bgClass: "bg-red-100 dark:bg-red-900/40",
+            hoverBorder: "hover:border-red-300 dark:hover:border-red-800",
+            hoverGradient: "from-red-50/50 dark:from-red-950/20",
             path: "/automation/leadcapture",
         },
         {
@@ -88,6 +79,36 @@ export default function Automation() {
             hoverBorder: "hover:border-orange-300 dark:hover:border-orange-800",
             hoverGradient: "from-orange-50/50 dark:from-orange-950/20",
             path: "/automation/track_source_subsource",
+        },
+        {
+            title: "Email Templates",
+            description: "Create and manage reusable email templates with simple or design editors.",
+            icon: MailPlus,
+            colorClass: "text-purple-600 dark:text-purple-400",
+            bgClass: "bg-purple-100 dark:bg-purple-900/40",
+            hoverBorder: "hover:border-purple-300 dark:hover:border-purple-800",
+            hoverGradient: "from-purple-50/50 dark:from-purple-950/20",
+            path: "/automation/mail_templates",
+        },
+        {
+            title: "SMS Templates",
+            description: "Create and manage reusable SMS templates.",
+            icon: MessageCircle,
+            colorClass: "text-green-600 dark:text-green-400",
+            bgClass: "bg-green-100 dark:bg-green-900/40",
+            hoverBorder: "hover:border-green-300 dark:hover:border-green-800",
+            hoverGradient: "from-green-50/50 dark:from-green-950/20",
+            path: "",
+        },
+        {
+            title: "WhatsApp Templates",
+            description: "Create and manage reusable WhatsApp templates.",
+            icon: MessageCircle,
+            colorClass: "text-green-600 dark:text-green-400",
+            bgClass: "bg-green-100 dark:bg-green-900/40",
+            hoverBorder: "hover:border-green-300 dark:hover:border-green-800",
+            hoverGradient: "from-green-50/50 dark:from-green-950/20",
+            path: "",
         },
 
 
