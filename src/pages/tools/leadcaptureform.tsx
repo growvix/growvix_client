@@ -359,6 +359,10 @@ export default function LeadCaptureForm() {
                         created_at: new Date().toISOString(),
                     }],
                     exe_user: getCookie('user_id'),
+                    interested_projects: [{ 
+                        project_id: selectedProject?.product_id, 
+                        project_name: selectedProject?.name 
+                    }],
                     notes: manualRequirements.map(m => `${m.key}: ${m.value}`).join(' | ')
                 }
 

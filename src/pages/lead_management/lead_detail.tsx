@@ -3352,7 +3352,7 @@ export default function LeadDetail() {
                                                                             setSiteVisitSheetOpen(true);
                                                                         }}
                                                                     >
-                                                                       Schedule Site Visit
+                                                                        Schedule Site Visit
                                                                     </Button>
                                                                 </div>
                                                             </div>
