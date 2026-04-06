@@ -30,6 +30,11 @@ import CampaignLevelReport from "./pages/reports/campaign_level_report";
 import SourceLevelReport from "./pages/reports/source_level_report";
 import SubSourceLevelReport from "./pages/reports/subSource_level_report";
 import ProjectLevelReport from "./pages/reports/project_level_report";
+import SVSReport from "./pages/reports/svs_report";
+import SVSDoneReport from "./pages/reports/svs_done_report";
+import BookingDoneReport from "./pages/reports/booking_done_report";
+import OpportunityReport from "./pages/reports/opportunity_report";
+import ApartmentReport from "./pages/reports/apartment_report";
 import TeamManagement from "./pages/setting/team/team_management";
 import TeamDetailPage from "./pages/setting/team/team_detail";
 import CpTeamManagement from "./pages/setting/cp_team/cp_team_management";
@@ -86,6 +91,8 @@ const RoleBasedRedirect = () => {
   return <Navigate to="/executive_dashboard" replace />;
 };
 
+const LostReport = React.lazy(() => import("@/pages/reports/lost_report"))
+
 export default function App() {
   return (
     <ThemeProvider storageKey="vite-ui-theme" defaultTheme="system">
@@ -140,6 +147,12 @@ export default function App() {
 
 
             <Route path="/reports/project_level_report" element={<ProjectLevelReport />} />
+            <Route path="/reports/svs_report" element={<SVSReport />} />
+            <Route path="/reports/svs_done_report" element={<SVSDoneReport />} />
+            <Route path="/reports/booking_done_report" element={<BookingDoneReport />} />
+            <Route path="/reports/opportunity_report" element={<OpportunityReport />} />
+            <Route path="/reports/apartment_report" element={<ApartmentReport />} />
+            <Route path="/reports/lost_report" element={<LostReport />} />
             {/* <Route path="/general_reports" element={<GeneralReports />} /> */}
             <Route path="/lead_stage_analysis" element={<LeadStageAnalysis />} />
 

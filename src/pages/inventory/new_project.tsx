@@ -750,10 +750,18 @@ export default function NewProject() {
         // Frontend validation
         const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
         const allowedDocTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+        
+        // 500MB size limit for brochures, 5MB for logo
+        const MAX_BROCHURE_SIZE = 500 * 1024 * 1024; // 500MB limit for brochures
+        const MAX_LOGO_SIZE = 5 * 1024 * 1024;
 
         if (type === 'logo') {
             if (!allowedImageTypes.includes(file.type)) {
                 toast.error('Only image files are allowed for the logo (JPEG, PNG, GIF, WebP)')
+                return
+            }
+            if (file.size > MAX_LOGO_SIZE) {
+                toast.error('Logo file size exceeds 5MB limit')
                 return
             }
         } else if (type === 'brochure') {
@@ -761,11 +769,19 @@ export default function NewProject() {
                 toast.error('Only identity documents (PDF/DOC) and images are allowed for the brochure')
                 return
             }
+            if (file.size > MAX_BROCHURE_SIZE) {
+                toast.error('Brochure file size exceeds 50MB limit')
+                return
+            }
         }
 
-        const compressedFile = await compressImage(file, { quality: 0.8, maxWidth: 1200 })
+        // Only compress logo, keep brochure as-is for quality and format preservation
+        const fileToUpload = type === 'logo' 
+            ? await compressImage(file, { quality: 0.8, maxWidth: 1200 })
+            : file;
+
         const formDataUpload = new FormData()
-        formDataUpload.append('images', compressedFile)
+        formDataUpload.append('images', fileToUpload)
 
         try {
             const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formDataUpload, {

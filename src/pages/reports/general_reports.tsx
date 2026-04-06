@@ -7,7 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { Megaphone, Globe, GitBranch, Building2, Search, SearchX, ArrowRight, BarChart3 } from "lucide-react"
+import { Megaphone, Globe, GitBranch, Building2, Search, SearchX, ArrowRight, BarChart3, Calendar, CalendarCheck, Trophy, Lightbulb, Home, XCircle, PieChart } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -83,6 +83,72 @@ export default function ReportsTemplate() {
             accentColor: "orange",
             path: "/reports/project_level_report",
         },
+        {
+            title: "Site Visit Schedule Report",
+            description: "Monitor and manage scheduled site visits with detailed filters and custom columns.",
+            icon: Calendar,
+            colorClass: "text-pink-600 dark:text-pink-400",
+            bgClass: "bg-pink-100/50 dark:bg-pink-900/30",
+            hoverBorder: "hover:border-pink-400/50 dark:hover:border-pink-700/50",
+            hoverGradient: "group-hover:from-pink-500/10 dark:group-hover:from-pink-500/5",
+            accentColor: "pink",
+            path: "/reports/svs_report",
+        },
+        {
+            title: "Site Visit Done Report",
+            description: "Review completed site visits with Pre-Sales and Sales user performance and feedback.",
+            icon: CalendarCheck,
+            colorClass: "text-indigo-600 dark:text-indigo-400",
+            bgClass: "bg-indigo-100/50 dark:bg-indigo-900/30",
+            hoverBorder: "hover:border-indigo-400/50 dark:hover:border-indigo-700/50",
+            hoverGradient: "group-hover:from-indigo-500/10 dark:group-hover:from-indigo-500/5",
+            accentColor: "indigo",
+            path: "/reports/svs_done_report",
+        },
+        {
+            title: "Booking Done Report",
+            description: "Celebrate and track conversion success with detailed booking analytics and sales performance.",
+            icon: Trophy,
+            colorClass: "text-amber-600 dark:text-amber-400",
+            bgClass: "bg-amber-100/50 dark:bg-amber-900/30",
+            hoverBorder: "hover:border-amber-400/50 dark:hover:border-amber-700/50",
+            hoverGradient: "group-hover:from-amber-500/10 dark:group-hover:from-amber-500/5",
+            accentColor: "amber",
+            path: "/reports/booking_done_report",
+        },
+        {
+            title: "Opportunity Report",
+            description: "Manage high-potential leads with cross-team notes, call history, and multi-user tracking.",
+            icon: Lightbulb,
+            colorClass: "text-yellow-600 dark:text-yellow-400",
+            bgClass: "bg-yellow-100/50 dark:bg-yellow-900/30",
+            hoverBorder: "hover:border-yellow-400/50 dark:hover:border-yellow-700/50",
+            hoverGradient: "group-hover:from-yellow-500/10 dark:group-hover:from-yellow-500/5",
+            accentColor: "yellow",
+            path: "/reports/opportunity_report",
+        },
+        {
+            title: "Property Interest Report",
+            description: "Detailed unit-level reporting tracking interest by BHK type and sales progression stages.",
+            icon: Home,
+            colorClass: "text-rose-600 dark:text-rose-400",
+            bgClass: "bg-rose-100/50 dark:bg-rose-900/30",
+            hoverBorder: "hover:border-rose-400/50 dark:hover:border-rose-700/50",
+            hoverGradient: "group-hover:from-rose-500/10 dark:group-hover:from-rose-500/5",
+            accentColor: "rose",
+            path: "/reports/apartment_report",
+        },
+        {
+            title: "Lost Report",
+            description: "Analyzing churn reasons and identifying re-engagement opportunities with team-based visibility.",
+            icon: XCircle,
+            colorClass: "text-violet-600 dark:text-violet-400",
+            bgClass: "bg-violet-100/50 dark:bg-violet-950/30",
+            hoverBorder: "hover:border-violet-400/50 dark:hover:border-violet-700/50",
+            hoverGradient: "group-hover:from-violet-500/10 dark:group-hover:from-violet-500/5",
+            accentColor: "violet",
+            path: "/reports/lost_report",
+        },
     ]
 
     const filteredCards = reportCards.filter(
@@ -98,13 +164,13 @@ export default function ReportsTemplate() {
             <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] -z-10" />
             <div className="absolute bottom-[10%] left-[-5%] w-[300px] h-[300px] bg-blue-500/5 rounded-full blur-[80px] -z-10" />
 
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 z-10">
-                <div className="space-y-1.5">
-                    <h1 className="text-4xl font-black tracking-tight text-foreground flex items-center gap-3">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 z-10 text-left items-start">
+                <div className="space-y-1.5 text-left items-start">
+                    <h1 className="text-4xl font-black tracking-tight text-foreground flex items-center gap-3 text-left items-start">
                         <BarChart3 className="h-9 w-9 text-primary animate-pulse" />
                         Reports Portal
                     </h1>
-                    <p className="text-muted-foreground font-medium text-lg italic opacity-80">
+                    <p className="text-muted-foreground font-medium text-lg italic opacity-80 text-left items-start">
                         Harness data-driven insights to optimize your sales funnel.
                     </p>
                 </div>
@@ -133,15 +199,15 @@ export default function ReportsTemplate() {
                             {/* Animated background gradient */}
                             <div className={`absolute inset-0 bg-gradient-to-br ${card.hoverGradient} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
 
-                            <CardHeader className="flex flex-col items-start gap-4 pb-4 z-10">
+                            <CardHeader className="flex flex-col items-start gap-4 pb-4 z-10 text-left items-start">
                                 <div className={`p-4 rounded-2xl ring-1 ring-inset ring-foreground/5 shadow-inner transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 ${card.bgClass} ${card.colorClass}`}>
                                     <Icon size={28} strokeWidth={2.5} />
                                 </div>
-                                <div className="space-y-1.5 pt-2">
-                                    <CardTitle className="text-xl font-bold tracking-tight group-hover:text-primary transition-colors duration-300">
+                                <div className="space-y-1.5 pt-2 text-left items-start">
+                                    <CardTitle className="text-xl font-bold tracking-tight group-hover:text-primary transition-colors duration-300 text-left items-start">
                                         {card.title}
                                     </CardTitle>
-                                    <CardDescription className="text-sm font-medium leading-relaxed opacity-70">
+                                    <CardDescription className="text-sm font-medium leading-relaxed opacity-70 text-left items-start">
                                         {card.description}
                                     </CardDescription>
                                 </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import axios from "axios"
 import { toast } from "sonner"
 import { useNavigate } from "react-router-dom"
-import { Eye, EyeOff, Loader2, GalleryVerticalEnd } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { API } from "@/config/api"
 import { encryptPassword } from "@/utils/encryption"
 import { cn } from "@/lib/utils"
@@ -16,8 +16,19 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useTheme } from "@/components/theme-provider"
+// Import logo assets
+import lightLogo from "@/assets/logo/light.png"
+import darkLogo from "@/assets/logo/dark.png"
 
 export default function CpLoginPage() {
+    const { theme } = useTheme()
+
+    // Determine if we should show dark variant
+    const isDark = theme === "dark" || 
+      (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+  
+    const smallLogo = isDark ? darkLogo : lightLogo
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [showPassword, setShowPassword] = useState(false)
@@ -101,12 +112,19 @@ export default function CpLoginPage() {
         <div className="grid min-h-svh lg:grid-cols-2">
             <div className="flex flex-col gap-4 p-6 md:p-10">
                 <div className="flex justify-center gap-2 md:justify-start">
-                    <a href="#" className="flex items-center gap-2 font-medium">
-                        <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-                            <GalleryVerticalEnd className="size-4" />
+                    <div className="flex items-center gap-3">
+                        <div className="flex aspect-square size-10 items-center justify-center">
+                            <img 
+                                src={smallLogo} 
+                                alt="Logo" 
+                                className="size-10 object-contain"
+                            />
                         </div>
-                        GROWVIX — Channel Partner
-                    </a>
+                        <div className="flex flex-col justify-center">
+                            <span className="text-xl font-bold leading-none tracking-tight text-black dark:text-white uppercase">Growvix</span>
+                            <span className="text-[10px] font-bold text-muted-foreground mt-0.5 uppercase tracking-wider">Channel Partner CRM</span>
+                        </div>
+                    </div>
                 </div>
                 <div className="flex flex-1 items-center justify-center">
                     <div className="w-full max-w-xs">

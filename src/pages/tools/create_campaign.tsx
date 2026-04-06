@@ -525,7 +525,9 @@ export default function CreateCampaign() {
 
                                 <div className="rounded-xl border bg-gradient-to-br from-background to-muted/20 p-6 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between shadow-sm">
                                     <div>
-                                        <h2 className="text-2xl font-bold tracking-tight">{campaignConfig.campaignName}</h2>
+                                        <h2 className="text-2xl font-bold tracking-tight">
+                                            <span className="text-red-500">Campaign: </span> {campaignConfig.campaignName}
+                                        </h2>
                                         <div className="flex items-center gap-3 mt-2">
                                             <Badge variant="outline" className="bg-background">
                                                 {campaignConfig.sources.length} Sources
@@ -554,7 +556,7 @@ export default function CreateCampaign() {
                                             <div key={sIdx} className="rounded-lg border bg-card overflow-hidden shadow-sm">
                                                 <div className="bg-muted/30 px-5 py-3 border-b flex items-center justify-between">
                                                     <div className="font-semibold flex items-center gap-2">
-                                                        {source.sourceName}
+                                                        <span className="text-red-500">Source: </span> {source.sourceName}
                                                     </div>
                                                 </div>
                                                 <div className="divide-y divide-border/50 bg-background">
@@ -562,12 +564,12 @@ export default function CreateCampaign() {
                                                         <div key={ssIdx} className="px-5 py-3 flex items-center justify-between hover:bg-muted/10 transition-colors">
                                                             <div className="flex items-center gap-4">
                                                                 <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
-                                                                <span className="font-medium text-sm">{sub.subSourceName}</span>
+                                                                <span className="font-medium text-sm"><span className="text-red-500">Sub-Source: </span> {sub.subSourceName}</span>
                                                             </div>
                                                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                                                 {!campaignConfig.project && sub.project && (
                                                                     <span className="hidden sm:inline-block bg-primary/5 text-primary border border-primary/20 rounded px-2 py-0.5 text-xs font-medium">
-                                                                        {sub.project.projectName}
+                                                                        <span className="text-red-500">Project: </span>{sub.project.projectName}
                                                                     </span>
                                                                 )}
                                                             </div>

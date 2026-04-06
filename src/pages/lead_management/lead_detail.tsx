@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { apolloClient } from '@/lib/apolloClient'
 import { getCookie } from '@/utils/cookies'
 import { API_URL, getSanitizedAvatarUrl } from '@/config/api'
+import { leadClient } from "@/grpc/leadClient"
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, } from "@/components/ui/card"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, } from "@/components/ui/sheet"
@@ -54,7 +55,11 @@ import {
     Paperclip,
     X,
     ArrowLeft,
-    Image as ImageIcon
+    PhoneIncoming,
+    PhoneOutgoing,
+    Image as ImageIcon,
+    Search,
+    RefreshCw
 } from "lucide-react";
 import type { Lead, GetLeadByIdQueryResponse, GetLeadByIdQueryVariables, UpdateLeadMutationResponse, UpdateLeadMutationVariables, Stage, PropertyRequirement, GetAllProjectsQueryResponse, GetAllProjectsQueryVariables, GetLeadStagesQueryResponse, GetLeadStagesQueryVariables, GetOrganizationUsersQueryResponse, GetOrganizationUsersQueryVariables, DeleteLeadMutationResponse, DeleteLeadMutationVariables } from "@/types"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog"
@@ -155,7 +160,17 @@ const GET_LEAD_BY_ID = gql`
                 project_id
                 project_name
             }
-            merge_id
+            merge_id {
+                UUID
+                id
+                name
+            }
+            is_secondary
+            merged_into {
+                UUID
+                id
+                name
+            }
             acquired {
                 campaign
                 source
@@ -165,6 +180,7 @@ const GET_LEAD_BY_ID = gql`
                 medium
                 _id
             }
+            number_of_re_engagement
             createdAt   
             updatedAt
             exe_user
@@ -238,6 +254,18 @@ const UPDATE_LEAD = gql`
             profile {
                 phone
                 email
+                name
+            }
+            merge_id {
+                UUID
+                id
+                name
+            }
+            is_secondary
+            merged_into {
+                UUID
+                id
+                name
             }
         }
     }
@@ -795,6 +823,159 @@ export default function LeadDetail() {
     const [siteVisitTime, setSiteVisitTime] = useState('')
     const [siteVisitLoading, setSiteVisitLoading] = useState(false)
     const [siteVisitSheetOpen, setSiteVisitSheetOpen] = useState(false)
+    // Offline Call state
+    const [offlineCallDate, setOfflineCallDate] = useState<Date | undefined>(new Date())
+    const [offlineCallTime, setOfflineCallTime] = useState('')
+    const [offlineCallSheetOpen, setOfflineCallSheetOpen] = useState(false)
+
+
+
+    // Lead Merging & Swapping State
+    const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
+    const [mergeSearchQuery, setMergeSearchQuery] = useState("");
+    const [mergeSearchResults, setMergeSearchResults] = useState<any[]>([]);
+    const [isSearchingLeads, setIsSearchingLeads] = useState(false);
+    const [isMergingLead, setIsMergingLead] = useState(false);
+    const [originalLead, setOriginalLead] = useState<Lead | null>(null);
+    const [isShowingSecondary, setIsShowingSecondary] = useState(false);
+
+    const handleSearchLeads = async (query: string) => {
+        setMergeSearchQuery(query);
+        if (query.length < 2) {
+            setMergeSearchResults([]);
+            return;
+        }
+        setIsSearchingLeads(true);
+        try {
+            const organization = getCookie("organization") || "";
+            const { leads } = await leadClient.getAllLeads({
+                organization,
+                limit: 10,
+                filters: { name: query }
+            });
+            // Filter out current lead if it appears in search
+            setMergeSearchResults(leads.filter((l: any) => l.lead_id.toString() !== id));
+        } catch (error) {
+            console.error("Search error:", error);
+        } finally {
+            setIsSearchingLeads(false);
+        }
+    };
+
+    const handleMergeLead = async (secondaryLead: any) => {
+        if (!leadDetail?._id || !organization) return;
+
+        if (secondaryLead.is_secondary) {
+            toast.error("This lead is already merged into another lead");
+            return;
+        }
+
+        if (secondaryLead.merge_id && Array.isArray(secondaryLead.merge_id) && secondaryLead.merge_id.length > 0) {
+            toast.error("This is a primary lead and cannot be merged as a secondary lead");
+            return;
+        }
+
+        setIsMergingLead(true);
+        try {
+            const currentMerges = leadDetail.merge_id || [];
+            // Use lead_id if it's an object with toString, or just lead_id if it's a string
+            const secondaryUuid = secondaryLead.lead_id?.toString() || secondaryLead.lead_id;
+
+            const newMerge = {
+                UUID: secondaryUuid,
+                id: secondaryLead.profile_id.toString(),
+                name: secondaryLead.name
+            };
+
+            await Promise.all([
+                updateLead({
+                    variables: {
+                        organization,
+                        id: leadDetail._id,
+                        input: {
+                            merge_id: [...currentMerges, newMerge]
+                        }
+                    }
+                }),
+                updateLead({
+                    variables: {
+                        organization,
+                        id: secondaryUuid,
+                        input: {
+                            is_secondary: true,
+                            merged_into: {
+                                UUID: leadDetail._id,
+                                id: leadDetail.profile_id.toString(),
+                                name: leadDetail.profile.name
+                            }
+                        }
+                    }
+                })
+            ]);
+
+            toast.success(`Lead merged successfully`);
+            setIsMergeDialogOpen(false);
+            setMergeSearchQuery("");
+            setMergeSearchResults([]);
+            refetchLead();
+        } catch (error) {
+            console.error("Merge error:", error);
+            toast.error("Failed to merge leads");
+        } finally {
+            setIsMergingLead(false);
+        }
+    };
+
+    const handleToggleSwap = async () => {
+        if (!leadDetail?._id || !organization) return;
+
+        if (isShowingSecondary || leadDetail.is_secondary) {
+            // Revert to original or go back to primary lead
+            if (originalLead) {
+                setLeadDetail(originalLead);
+                setIsShowingSecondary(false);
+            } else if (leadDetail.merged_into) {
+                setLoading(true);
+                try {
+                    const { data } = await apolloClient.query<GetLeadByIdQueryResponse, GetLeadByIdQueryVariables>({
+                        query: GET_LEAD_BY_ID,
+                        variables: { organization, id: leadDetail.merged_into.UUID },
+                        fetchPolicy: 'network-only'
+                    });
+                    if (data?.getLeadById) {
+                        setLeadDetail(data.getLeadById);
+                        setIsShowingSecondary(false);
+                    }
+                } catch (err) {
+                    console.error("Failed to load primary lead:", err);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        } else {
+            // Swap to first secondary lead if exists
+            const mergeInfo = leadDetail.merge_id?.[0];
+            if (mergeInfo) {
+                setOriginalLead(leadDetail);
+                setLoading(true);
+                try {
+                    const { data } = await apolloClient.query<GetLeadByIdQueryResponse, GetLeadByIdQueryVariables>({
+                        query: GET_LEAD_BY_ID,
+                        variables: { organization, id: mergeInfo.UUID },
+                        fetchPolicy: 'network-only'
+                    });
+                    if (data?.getLeadById) {
+                        setLeadDetail(data.getLeadById);
+                        setIsShowingSecondary(true);
+                    }
+                } catch (err) {
+                    console.error("Failed to load secondary lead:", err);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        }
+    };
 
     // Site Visit Conducted state
     const [conductedSheetOpen, setConductedSheetOpen] = useState(false)
@@ -970,6 +1151,11 @@ export default function LeadDetail() {
 
         return (parts[0][0] + parts[1][0]).toUpperCase();
     }
+    useEffect(() => {
+        setIsShowingSecondary(false);
+        setOriginalLead(null);
+    }, [id]);
+
     useEffect(() => {
         let cancelled = false
         async function run() {
@@ -1263,15 +1449,15 @@ export default function LeadDetail() {
             toast.error('Missing required data for site visit')
             return
         }
-        if (!siteVisitDate || !siteVisitTime) {
-            toast.error('Please select both date and time for the site visit')
+        if (!siteVisitDate) {
+            toast.error('Please select a date for the site visit')
             return
         }
         setSiteVisitLoading(true)
         try {
             // Combine date and time
             const dateStr = format(siteVisitDate, "yyyy-MM-dd");
-            const combinedDateTimeString = `${dateStr}T${siteVisitTime}:00`;
+            const combinedDateTimeString = siteVisitTime ? `${dateStr}T${siteVisitTime}:00` : `${dateStr}T00:00:00`;
             const dateObj = new Date(combinedDateTimeString);
 
             if (isNaN(dateObj.getTime())) {
@@ -1467,6 +1653,146 @@ export default function LeadDetail() {
                                         <Badge variant="secondary" className="text-[10px] h-5 opacity-70">
                                             #{leadDetail?.profile_id ?? ""}
                                         </Badge>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        {(leadDetail?.merge_id && leadDetail.merge_id.length > 0) || leadDetail?.is_secondary || leadDetail?.merged_into || isShowingSecondary ? (
+                                            <div className="flex items-center gap-1.5">
+                                                <Badge
+                                                    variant="default"
+                                                    className="bg-black text-white dark:bg-zinc-800 dark:text-zinc-200 text-[10px] h-5 px-2 font-medium"
+                                                >
+                                                    Merged
+                                                </Badge>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={handleToggleSwap}
+                                                                className="h-5 w-5 p-0 hover:bg-transparent"
+                                                            >
+                                                                <Badge variant="secondary" className="text-[10px] h-5 opacity-70 ml-2 bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200">
+                                                                    <RefreshCw className={cn("h-3.5 w-3.5 text-zinc-600 dark:text-zinc-400 transition-transform duration-300", (isShowingSecondary || leadDetail?.is_secondary) && "rotate-180")} />
+                                                                </Badge>
+                                                            </Button>
+
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>{(isShowingSecondary || leadDetail?.is_secondary) ? "Show Primary Lead" : "Show Secondary Lead"}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            </div>
+                                        ) : (
+                                            <Dialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <DialogTrigger asChild>
+                                                                <Badge
+                                                                    variant="default"
+                                                                    className={cn(
+                                                                        "bg-black text-white dark:bg-zinc-800 text-[10px] h-5 px-2 font-medium",
+                                                                        canEdit ? "cursor-pointer hover:bg-zinc-900" : "opacity-50 cursor-not-allowed"
+                                                                    )}
+                                                                    onClick={(e) => {
+                                                                        if (!canEdit) {
+                                                                            e.preventDefault();
+                                                                            toast.error("Only the assigned executive can merge this lead");
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    Merge
+                                                                </Badge>
+                                                            </DialogTrigger>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Merge with another lead</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                                <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden border-none bg-white text-slate-950 dark:bg-zinc-950 dark:text-zinc-100 shadow-2xl">
+                                                    <DialogHeader className="p-6 pb-2">
+                                                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                                                            Merge Leads
+                                                        </DialogTitle>
+                                                        <p className="text-sm text-slate-500 dark:text-zinc-400">Search for a lead to merge with <span className="text-slate-900 dark:text-zinc-200 font-medium">{leadName}</span>.</p>
+                                                    </DialogHeader>
+                                                    <div className="p-6 pt-2 space-y-4">
+                                                        <div className="relative">
+                                                            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 dark:text-zinc-500" />
+                                                            <Input
+                                                                placeholder="Search by ID, name, email or number..."
+                                                                value={mergeSearchQuery}
+                                                                onChange={(e) => handleSearchLeads(e.target.value)}
+                                                                className="pl-9 bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus-visible:ring-primary/20 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus-visible:ring-zinc-700 h-10"
+                                                            />
+                                                        </div>
+
+                                                        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                                                            {isSearchingLeads ? (
+                                                                <div className="flex items-center justify-center py-8">
+                                                                    <Loader2 className="h-6 w-6 animate-spin text-primary/50" />
+                                                                </div>
+                                                            ) : mergeSearchResults.length > 0 ? (
+                                                                mergeSearchResults.map((lead) => (
+                                                                    <div
+                                                                        key={lead.lead_id.toString()}
+                                                                        className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50 border border-slate-100 hover:bg-slate-50 hover:border-slate-200 dark:bg-zinc-900/50 dark:border-zinc-800/50 dark:hover:bg-zinc-900 dark:hover:border-zinc-700 transition-all group"
+                                                                    >
+                                                                        <div className="flex items-center gap-3">
+                                                                            <Avatar className="h-10 w-10 border border-slate-200 dark:border-zinc-800">
+                                                                                <AvatarFallback className="bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-400 text-xs">
+                                                                                    {getUserAvatar(lead.name)}
+                                                                                </AvatarFallback>
+                                                                            </Avatar>
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-sm font-semibold text-slate-900 dark:text-zinc-100">{lead.name}</span>
+                                                                                <div className="flex flex-col mt-0.5">
+                                                                                    <span className="text-[10px] text-slate-600 dark:text-zinc-400 font-medium tracking-wide">#{lead.profile_id}</span>
+                                                                                    {lead.is_secondary && (
+                                                                                        <span className="text-[9px] text-red-500 font-bold uppercase mt-0.5">Already Merged</span>
+                                                                                    )}
+                                                                                    {lead.merge_id && lead.merge_id.length > 0 && (
+                                                                                        <span className="text-[9px] text-blue-500 font-bold uppercase mt-0.5">Primary Lead</span>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="secondary"
+                                                                            disabled={isMergingLead}
+                                                                            onClick={() => handleMergeLead(lead)}
+                                                                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 px-4 text-xs font-bold rounded-full dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white"
+                                                                        >
+                                                                            Select
+                                                                        </Button>
+                                                                    </div>
+                                                                ))
+                                                            ) : mergeSearchQuery.length >= 2 ? (
+                                                                <div className="text-center py-8 text-slate-400 dark:text-zinc-500 text-sm">
+                                                                    No leads found matching your search.
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-center py-8 text-slate-400 dark:text-zinc-500 text-xs">
+                                                                    Enter at least 2 characters to search.
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        <Button
+                                                            variant="ghost"
+                                                            className="w-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-900 h-10 font-medium"
+                                                            onClick={() => setIsMergeDialogOpen(false)}
+                                                        >
+                                                            Close
+                                                        </Button>
+                                                    </div>
+                                                </DialogContent>
+                                            </Dialog>
+                                        )}
                                     </div>
                                 </div>
                                 {leadDetail?.exe_user_name && (
@@ -2020,104 +2346,113 @@ export default function LeadDetail() {
                                     </Sheet>
                                 </div>
 
-                                <div className="flex justify-center">
-                                    <Sheet open={siteVisitSheetOpen} onOpenChange={setSiteVisitSheetOpen}>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <SheetTrigger asChild>
-                                                    <Button variant="outline" size="icon" disabled={!canEdit} className="my-2 bg-orange-50 text-white hover:bg-orange-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                        <CalendarClock className="size-4 sm:size-5 text-orange-500 dark:text-orange-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors" />
-                                                    </Button>
-                                                </SheetTrigger>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>Schedule Site Visit</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                        <SheetContent className="w-lg">
-                                            <SheetHeader>
-                                                <SheetTitle>Schedule Site Visit</SheetTitle>
-                                                <SheetDescription>
-                                                    Plan and confirm the site visit.
-                                                </SheetDescription>
-                                            </SheetHeader>
-                                            <div className="px-4 py-4">
-                                                <form onSubmit={handleSiteVisit} className="space-y-4">
-                                                    <div className="space-y-4">
-                                                        <div className="flex flex-col space-y-2">
-                                                            <Label htmlFor="siteVisitProject">Project</Label>
-                                                            <Select
-                                                                value={siteVisitProject ? String(siteVisitProject.id) : ""}
-                                                                onValueChange={(val) => {
-                                                                    const proj = allProjects.find((p: any) => String(p.product_id) === val)
-                                                                    if (proj) setSiteVisitProject({ id: proj.product_id, name: proj.name })
-                                                                }}
-                                                            >
-                                                                <SelectTrigger id="siteVisitProject" className="w-full">
-                                                                    <SelectValue placeholder="Select a project" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectGroup>
-                                                                        <SelectLabel>Available Projects</SelectLabel>
-                                                                        {allProjects.map((p: any) => (
-                                                                            <SelectItem key={p.product_id} value={String(p.product_id)}>
-                                                                                {p.name} {p.location ? `— ${p.location}` : ''}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectGroup>
-                                                                </SelectContent>
-                                                            </Select>
+                                {canEdit && (
+                                    <div className="flex justify-center">
+                                        <Sheet open={siteVisitSheetOpen} onOpenChange={setSiteVisitSheetOpen}>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <SheetTrigger asChild>
+                                                        <Button variant="outline" size="icon" disabled={!canEdit} className="my-2 bg-orange-50 text-white hover:bg-orange-100 hover:text-white size-9 sm:size-10 md:size-10 rounded-md transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:opacity-50 disabled:cursor-not-allowed">
+                                                            <CalendarClock className="size-4 sm:size-5 text-orange-500 dark:text-orange-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors" />
+                                                        </Button>
+                                                    </SheetTrigger>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>Schedule Site Visit</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                            <SheetContent className="w-lg">
+                                                <SheetHeader>
+                                                    <SheetTitle>Schedule Site Visit</SheetTitle>
+                                                    <SheetDescription>
+                                                        Plan and confirm the site visit.
+                                                    </SheetDescription>
+                                                </SheetHeader>
+                                                <div className="px-4 py-4">
+                                                    <form onSubmit={handleSiteVisit} className="space-y-4">
+                                                        <div className="space-y-4">
+                                                            <div className="flex flex-col space-y-2">
+                                                                <Label htmlFor="siteVisitProject">Project</Label>
+                                                                <Select
+                                                                    value={siteVisitProject ? String(siteVisitProject.id) : ""}
+                                                                    onValueChange={(val) => {
+                                                                        const proj = allProjects.find((p: any) => String(p.product_id) === val)
+                                                                        if (proj) setSiteVisitProject({ id: proj.product_id, name: proj.name })
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger id="siteVisitProject" className="w-full">
+                                                                        <SelectValue placeholder="Select a project" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectGroup>
+                                                                            <SelectLabel>Available Projects</SelectLabel>
+                                                                            {allProjects.map((p: any) => (
+                                                                                <SelectItem key={p.product_id} value={String(p.product_id)}>
+                                                                                    {p.name} {p.location ? `— ${p.location}` : ''}
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectGroup>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                            <div className="flex flex-col space-y-2">
+                                                                <Label htmlFor="siteVisitDate">Date</Label>
+                                                                <DatePicker date={siteVisitDate} setDate={setSiteVisitDate} />
+                                                            </div>
                                                         </div>
-                                                        <div className="flex flex-col space-y-2">
-                                                            <Label htmlFor="siteVisitDate">Date</Label>
-                                                            <DatePicker date={siteVisitDate} setDate={setSiteVisitDate} />
+                                                        <div className="space-y-4 mt-2">
+                                                            <div className="flex flex-col space-y-2">
+                                                                <Label htmlFor="siteVisitTime">Time (Optional)</Label>
+                                                                <TimePicker time={siteVisitTime} setTime={setSiteVisitTime} />
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="space-y-4 mt-2">
-                                                        <div className="flex flex-col space-y-2">
-                                                            <Label htmlFor="siteVisitTime">Time</Label>
-                                                            <TimePicker time={siteVisitTime} setTime={setSiteVisitTime} />
-                                                        </div>
-                                                    </div>
-                                                    <Button type="submit" className="w-full mt-4" disabled={siteVisitLoading}>
-                                                        {siteVisitLoading ? 'Scheduling...' : 'Schedule Visit'}
-                                                    </Button>
-                                                </form>
-                                                <Separator className="my-5" />
-                                                <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Previous Site Visits</h4>
-                                                <ScrollArea className="h-[400px]">
-                                                    {leadDetail?.activities?.filter(a => a.updates === 'site_visit').length ? (
-                                                        leadDetail.activities
-                                                            .filter(a => a.updates === 'site_visit')
-                                                            .map((activity) => (
-                                                                <div key={activity.id} className="mb-3 p-3 rounded-lg border bg-muted/30">
-                                                                    <div className="flex items-center justify-between mb-1">
-                                                                        <span className="text-xs text-muted-foreground">
-                                                                            {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : 'N/A'}
-                                                                        </span>
-                                                                        <div className="flex items-center gap-1.5">
-                                                                            {activity.site_visit_project_name && (
-                                                                                <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                                                                                    {activity.site_visit_project_name}
-                                                                                </Badge>
-                                                                            )}
-                                                                            {activity.site_visit_date && (
-                                                                                <Badge variant="outline" className="text-xs">
-                                                                                    Visit: {new Date(activity.site_visit_date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                                                                                </Badge>
-                                                                            )}
+                                                        <Button type="submit" className="w-full mt-4" disabled={siteVisitLoading}>
+                                                            {siteVisitLoading ? 'Scheduling...' : 'Schedule Visit'}
+                                                        </Button>
+                                                    </form>
+                                                    <Separator className="my-5" />
+                                                    <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Previous Site Visits</h4>
+                                                    <ScrollArea className="h-[400px]">
+                                                        {leadDetail?.activities?.filter(a => a.updates === 'site_visit').length ? (
+                                                            leadDetail.activities
+                                                                .filter(a => a.updates === 'site_visit')
+                                                                .map((activity) => (
+                                                                    <div key={activity.id} className="mb-3 p-3 rounded-lg border bg-muted/30">
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <span className="text-xs text-muted-foreground">
+                                                                                {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : 'N/A'}
+                                                                            </span>
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                {activity.site_visit_project_name && (
+                                                                                    <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                                                                        {activity.site_visit_project_name}
+                                                                                    </Badge>
+                                                                                )}
+                                                                                {activity.site_visit_date && (
+                                                                                    <Badge variant="outline" className="text-xs">
+                                                                                        Visit: {(() => {
+                                                                                            const d = new Date(activity.site_visit_date);
+                                                                                            const options: Intl.DateTimeFormatOptions = { dateStyle: 'short' };
+                                                                                            if (d.getHours() !== 0 || d.getMinutes() !== 0) {
+                                                                                                options.timeStyle = 'short';
+                                                                                            }
+                                                                                            return d.toLocaleString([], options);
+                                                                                        })()}
+                                                                                    </Badge>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
-                                                                </div>
-                                                            ))
-                                                    ) : (
-                                                        <p className="text-sm text-muted-foreground text-center py-4">No visits scheduled yet</p>
-                                                    )}
-                                                </ScrollArea>
-                                            </div>
-                                        </SheetContent>
-                                    </Sheet>
-                                </div>
+                                                                ))
+                                                        ) : (
+                                                            <p className="text-sm text-muted-foreground text-center py-4">No visits scheduled yet</p>
+                                                        )}
+                                                    </ScrollArea>
+                                                </div>
+                                            </SheetContent>
+                                        </Sheet>
+                                    </div>
+                                )}
 
                                 <div className="flex justify-center">
                                     <Sheet open={conductedSheetOpen} onOpenChange={setConductedSheetOpen}>
@@ -2174,7 +2509,14 @@ export default function LeadDetail() {
                                                                     </div>
                                                                     {activity.site_visit_date && (
                                                                         <p className="text-sm font-medium mb-2">
-                                                                            {new Date(activity.site_visit_date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                                                                            {(() => {
+                                                                                const d = new Date(activity.site_visit_date);
+                                                                                const options: Intl.DateTimeFormatOptions = { dateStyle: 'medium' };
+                                                                                if (d.getHours() !== 0 || d.getMinutes() !== 0) {
+                                                                                    options.timeStyle = 'short';
+                                                                                }
+                                                                                return d.toLocaleString([], options);
+                                                                            })()}
                                                                         </p>
                                                                     )}
                                                                     {activity.user_name && (
@@ -2312,13 +2654,84 @@ export default function LeadDetail() {
                                                 <p>Offline call</p>
                                             </TooltipContent>
                                         </Tooltip>
-                                        <SheetContent>
-                                            <SheetHeader>
-                                                <SheetTitle>Log Offline Call</SheetTitle>
-                                                <SheetDescription>
-                                                    Record details from an external call.
+                                        <SheetContent className="w-full sm:max-w-md bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
+                                            <SheetHeader className="mb-6">
+                                                <SheetTitle className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Log Offline Call</SheetTitle>
+                                                <SheetDescription className="text-sm text-muted-foreground">
+                                                    Record telephony interactions manually.
                                                 </SheetDescription>
                                             </SheetHeader>
+
+                                            <div className="space-y-6">
+                                                {/* Call Timing Selector */}
+                                                <div className="flex flex-col space-y-4 ps-2 pe-2">
+                                                    <div className="flex flex-col space-y-2">
+                                                        <Label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Date</Label>
+                                                        <DatePicker date={offlineCallDate} setDate={setOfflineCallDate} />
+                                                    </div>
+
+                                                    <div className="flex flex-col space-y-2">
+                                                        <Label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Time</Label>
+                                                        <TimePicker time={offlineCallTime} setTime={setOfflineCallTime} />
+                                                    </div>
+                                                </div>
+
+                                                <Separator className="opacity-50" />
+
+                                                {/* Incoming Calls Section */}
+                                                <div className="space-y-2 ps-2 pe-2">
+                                                    <Label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Incoming</Label>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full h-12 justify-between border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all font-semibold"
+                                                        onClick={() => toast.info('Purchase the IVR to use this feature')}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <PhoneIncoming className="size-4 text-emerald-500" />
+                                                            <span className="text-zinc-600 dark:text-zinc-400">Add incoming record</span>
+                                                        </div>
+                                                        <Plus className="size-4 opacity-50" />
+                                                    </Button>
+                                                </div>
+
+                                                {/* Outgoing Calls Section */}
+                                                <div className="space-y-2 ps-2 pe-2">
+                                                    <Label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Outgoing</Label>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full h-12 justify-between border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all font-semibold"
+                                                        onClick={() => toast.info('Purchase the IVR to use this feature')}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <PhoneOutgoing className="size-4 text-emerald-500" />
+                                                            <span className="text-zinc-600 dark:text-zinc-400">Add outgoing record</span>
+                                                        </div>
+                                                        <Plus className="size-4 opacity-50" />
+                                                    </Button>
+                                                </div>
+
+                                                {/* Dummy Submit Button */}
+                                                <div className="ps-2 pe-2 pt-2">
+                                                    <Button
+                                                        className="w-full h-12 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold hover:opacity-90 transition-all rounded-xl"
+                                                        onClick={() => toast.info('Purchase the IVR to use this feature')}
+                                                    >
+                                                        Submit Information
+                                                    </Button>
+                                                </div>
+
+                                                <Separator className="my-8" />
+
+                                                {/* Previous Calls History */}
+                                                <div className="space-y-4 ps-2 pe-2">
+                                                    <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-400">Previous Offline Calls</h4>
+                                                    <div className="flex flex-col items-center justify-center py-10 text-center space-y-2 opacity-50">
+                                                        <Smartphone className="size-10 text-zinc-300 mb-2" />
+                                                        <p className="text-sm font-medium">No calls logged yet</p>
+                                                        <p className="text-xs max-w-[200px]">Manual call logs will appear here for audit history.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </SheetContent>
                                     </Sheet>
                                 </div>
@@ -2902,7 +3315,7 @@ export default function LeadDetail() {
                                                             await addRequirementMutation({
                                                                 variables: {
                                                                     organization,
-                                                                    leadId: leadDetail._id,
+                                                                    leadId: leadDetail?._id,
                                                                     key: reqKey.trim(),
                                                                     value: reqValue.trim(),
                                                                 },
@@ -2956,7 +3369,7 @@ export default function LeadDetail() {
                                     <Carousel
                                         opts={{ align: "start", loop: true }}
                                         plugins={[Autoplay({ delay: 2000, stopOnInteraction: false })]}
-                                        className="w-full max-w-[94%] h-xs"
+                                        className="w-full max-w-[96%] h-xs group relative mx-auto"
                                     >
                                         <CarouselContent>
                                             {/* Structured property items */}
@@ -3021,8 +3434,8 @@ export default function LeadDetail() {
                                                 </CarouselItem>
                                             ))}
                                         </CarouselContent>
-                                        <CarouselPrevious />
-                                        <CarouselNext />
+                                        <CarouselPrevious className="-left-2 size-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 shadow-md z-10" />
+                                        <CarouselNext className="-right-2 size-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 shadow-md z-10" />
                                     </Carousel>
                                 ) : (
                                     <div className="text-center text-muted-foreground py-6 text-sm">
@@ -3034,11 +3447,11 @@ export default function LeadDetail() {
                     </Card>
                 </div>
                 <div className="xl:col-span-1 lg:col-span-1">
-                    <Card className="border-2 shadow-none dark:bg-black pt-2 gap-0 pb-0 h-full">
+                    <Card className="border-2 shadow-none dark:bg-black pt-2 gap-0 pb-2 h-full">
                         <CardHeader className="mt-0 pt-0 pb-0">
                             <div className="flex items-center justify-between">
                                 <Label className="text-muted-foreground  ">
-                                    Considered Projects
+                                    Interested Projects
                                 </Label>
                                 {canEdit && (
                                     <Sheet open={addProjectSheetOpen} onOpenChange={setAddProjectSheetOpen}>
@@ -3137,22 +3550,24 @@ export default function LeadDetail() {
                                     }),
                                 ]}
                                 orientation="vertical"
-                                className="w-full" >
-                                <CarouselContent className="h-[240px]">
+                                className="w-full relative group" >
+                                <CarouselPrevious className="-top-2 left-1/2 -translate-x-1/2 rotate-90 size-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 shadow-md border-none z-10" />
+                                <CarouselNext className="-bottom-2 left-1/2 -translate-x-1/2 rotate-90 size-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 shadow-md border-none z-10" />
+                                <CarouselContent className="h-[220px]">
                                     {leadDetail?.interested_projects && (leadDetail.interested_projects as any[]).length > 0 ? (
                                         (leadDetail.interested_projects as any[]).map((ip: any) => {
                                             const projectDetail = allProjects.find((p: any) => p.product_id === ip.project_id);
                                             return (
                                                 <CarouselItem key={ip.project_id}>
-                                                    <div className="p-4 h-full flex flex-col justify-center">
+                                                    <div className="px-4 h-full flex flex-col justify-center">
                                                         <div className="flex gap-5 items-start">
                                                             {/* Project Image/Logo */}
-                                                            <div className="w-24 h-24 rounded-2xl bg-zinc-800 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-zinc-700 dark:border-zinc-800 shadow-xl shrink-0">
+                                                            <div className="w-65 h-35 rounded-2xl bg-transparent flex items-center justify-center overflow-hidden shrink-0">
                                                                 {projectDetail?.img_location?.logo ? (
                                                                     <img
                                                                         src={projectDetail.img_location.logo}
                                                                         alt={ip.project_name}
-                                                                        className="w-full h-full object-cover"
+                                                                        className="w-full h-full object-contain"
                                                                     />
                                                                 ) : (
                                                                     <MapPinCheck className="h-10 w-10 text-zinc-600" />
@@ -3162,7 +3577,7 @@ export default function LeadDetail() {
                                                             {/* Project Information & Actions */}
                                                             <div className="flex-1 min-w-0 flex flex-col gap-4">
                                                                 <div className="flex justify-between items-start">
-                                                                    <div className="flex items-center gap-3 overflow-hidden">
+                                                                    <div className="flex items-center gap-3 overflow-hidden mt-5">
                                                                         <h4 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter truncate leading-none">
                                                                             {ip.project_name}
                                                                         </h4>
@@ -3170,13 +3585,13 @@ export default function LeadDetail() {
                                                                             {projectDetail?.property || 'PROJ'}
                                                                         </Badge>
                                                                     </div>
-                                                                    
+
                                                                     {canEdit && (
                                                                         <AlertDialog>
                                                                             <AlertDialogTrigger asChild>
-                                                                                <Button 
-                                                                                    variant="ghost" 
-                                                                                    size="icon" 
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
                                                                                     className="h-8 w-8 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-red-500/10 hover:border-red-500/20 group transition-all shrink-0"
                                                                                     disabled={removingProjectId === ip.project_id}
                                                                                 >
@@ -3229,41 +3644,46 @@ export default function LeadDetail() {
                                                                 </div>
 
                                                                 {/* Actions */}
-                                                                <div className="flex items-center gap-4 pt-1">
-                                                                    <Button
-                                                                        size="sm"
-                                                                        className="h-9 px-4 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex-1 shadow-lg border-2 border-transparent"
-                                                                        onClick={() => {
-                                                                            const encodedId = encodeProjectId(ip.project_id)
-                                                                            navigate(`/project_showcase?id=${encodedId}`, {
-                                                                                state: {
-                                                                                    bookingLead: {
-                                                                                        _id: leadDetail?._id,
-                                                                                        profile_id: leadDetail?.profile_id,
-                                                                                        name: leadDetail?.profile?.name || 'Unknown',
-                                                                                        phone: leadDetail?.profile?.phone || '',
-                                                                                    }
-                                                                                }
-                                                                            })
-                                                                        }}
-                                                                    >
-                                                                        BOOK
-                                                                    </Button>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="outline"
-                                                                        className="h-9 px-4 rounded-full border-2 border-zinc-200 dark:border-zinc-800 font-black text-[10px] uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex-1 shrink-0"
-                                                                        onClick={() => {
-                                                                            setSiteVisitProject({ id: ip.project_id, name: ip.project_name });
-                                                                            setSiteVisitSheetOpen(true);
-                                                                        }}
-                                                                    >
-                                                                        VISIT
-                                                                    </Button>
-                                                                </div>
+
                                                             </div>
+
                                                         </div>
+                                                        {canEdit && (
+                                                            <div className="flex items-center gap-4 pt-1">
+                                                                <Button
+                                                                    size="sm"
+                                                                    className="h-9 px-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex-1 shadow-lg border-2 border-transparent"
+                                                                    onClick={() => {
+                                                                        const encodedId = encodeProjectId(ip.project_id)
+                                                                        navigate(`/project_showcase?id=${encodedId}`, {
+                                                                            state: {
+                                                                                bookingLead: {
+                                                                                    _id: leadDetail?._id,
+                                                                                    profile_id: leadDetail?.profile_id,
+                                                                                    name: leadDetail?.profile?.name || 'Unknown',
+                                                                                    phone: leadDetail?.profile?.phone || '',
+                                                                                }
+                                                                            }
+                                                                        })
+                                                                    }}
+                                                                >
+                                                                    Click Booking
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="h-9 px-4 border-2 border-zinc-200 dark:border-zinc-800 font-black text-[10px] uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex-1 shrink-0"
+                                                                    onClick={() => {
+                                                                        setSiteVisitProject({ id: ip.project_id, name: ip.project_name });
+                                                                        setSiteVisitSheetOpen(true);
+                                                                    }}
+                                                                >
+                                                                    Schedule Site Visit
+                                                                </Button>
+                                                            </div>
+                                                        )}
                                                     </div>
+
                                                 </CarouselItem>
                                             );
                                         })
@@ -3333,7 +3753,7 @@ export default function LeadDetail() {
 
                         const renderCardContent = (exe: { mainId: string; name: string; image: string; altIds: string[] }) => {
                             const initials = getUserAvatar(exe.name);
-                            const exeStats = { whatsapp: 0, mail: 0, call: 0, sms: 0 };
+                            const exeStats = { whatsapp: 0, mail: 0, call: 0, sms: 0, notes: 0, site_visits: 0, site_visits_scheduled: 0, site_visits_conducted: 0, follow_ups_scheduled: 0, follow_ups_conducted: 0 };
 
                             if (leadDetail?.activities) {
                                 leadDetail.activities.forEach(a => {
@@ -3344,27 +3764,38 @@ export default function LeadDetail() {
                                         if (up === 'mail') exeStats.mail++;
                                         if (up === 'phonecall' || up === 'call') exeStats.call++;
                                         if (up === 'sms') exeStats.sms++;
-                                        if (up === '');
                                     }
                                 });
                             }
 
+                            const statsToShow = [
+                                { key: 'Whatsapp', value: exeStats.whatsapp },
+                                { key: 'Mail', value: exeStats.mail },
+                                { key: 'Call', value: exeStats.call },
+                                { key: 'SMS', value: exeStats.sms },
+                                { key: 'Notes', value: exeStats.notes },
+                                { key: 'SV Sched', value: exeStats.site_visits_scheduled },
+                                { key: 'SV Cond', value: exeStats.site_visits_conducted },
+                                { key: 'FU Sched', value: exeStats.follow_ups_scheduled },
+                                { key: 'FU Cond', value: exeStats.follow_ups_conducted },
+                            ];
+
                             return (
-                                <Card className="border-2 shadow-none dark:bg-input/50 pt-4 h-full relative overflow-hidden">
-                                    <CardContent className="p-4 pt-0">
-                                        <div className="flex items-center justify-between gap-2 mb-4 border-b border-muted/30 pb-2.5">
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="size-12 sm:size-12 ring-2 ring-primary/10 shadow-sm border border-primary/5">
+                                <Card className="border-2 shadow-none dark:bg-input/50 pt-2 h-full relative overflow-hidden bg-white dark:bg-zinc-950">
+                                    <CardContent className="p-3 pt-0">
+                                        <div className="flex items-center justify-between gap-2 mb-2 border-b border-muted/20 pb-1.5">
+                                            <div className="flex items-center gap-2">
+                                                <Avatar className="size-10 ring-1 ring-primary/5 shadow-sm border border-primary/5">
                                                     {exe.image ? <AvatarImage src={getSanitizedAvatarUrl(exe.image)} alt={exe.name} /> : null}
-                                                    <AvatarFallback className="text-xl font-bold uppercase bg-primary/5 text-primary">
+                                                    <AvatarFallback className="text-xs font-bold uppercase bg-primary/5 text-primary">
                                                         {exe.name !== 'Unassigned' ? initials : 'UN'}
                                                     </AvatarFallback>
                                                 </Avatar>
                                                 <div className="space-y-0">
-                                                    <CardTitle className="text-lg sm:text-xl md:text-xl font-bold tracking-tight truncate max-w-[140px] sm:max-w-[180px]" title={exe.name}>
+                                                    <CardTitle className="text-xl font-bold tracking-tight truncate max-w-[120px]" title={exe.name}>
                                                         {exe.name}
                                                     </CardTitle>
-                                                    <CardDescription className="text-[10px] sm:text-xs font-semibold opacity-50 uppercase tracking-widest">
+                                                    <CardDescription className="text-[10px] font-bold opacity-50 uppercase tracking-tighter">
                                                         Active Executive
                                                     </CardDescription>
                                                 </div>
@@ -3372,15 +3803,15 @@ export default function LeadDetail() {
 
                                             {/* Stacked Avatars Selector */}
                                             {executives.length > 1 && (
-                                                <div className="flex -space-x-3 sm:-space-x-4 pr-1">
+                                                <div className="flex -space-x-1.5 pr-1">
                                                     {executives.slice(0, 3).map((e, idx) => (
                                                         <TooltipProvider key={idx}>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
                                                                     <Avatar
                                                                         className={cn(
-                                                                            "size-9 sm:size-11 border-2 border-background cursor-pointer hover:-translate-y-1 transition-all duration-300 shadow-md",
-                                                                            activeExeIndex === idx ? "ring-2 ring-primary z-30 scale-110 shadow-lg" : "hover:z-20 opacity-90"
+                                                                            "size-6 border border-background cursor-pointer hover:-translate-y-0.5 transition-all shadow-sm",
+                                                                            activeExeIndex === idx ? "ring-1 ring-primary z-30 scale-105" : "opacity-80"
                                                                         )}
                                                                         onClick={(ev) => {
                                                                             ev.stopPropagation();
@@ -3388,65 +3819,61 @@ export default function LeadDetail() {
                                                                         }}
                                                                     >
                                                                         {e.image ? <AvatarImage src={getSanitizedAvatarUrl(e.image)} /> : null}
-                                                                        <AvatarFallback className="text-[10px] font-black bg-zinc-100 dark:bg-zinc-800">
+                                                                        <AvatarFallback className="text-[7px] font-black bg-zinc-100 dark:bg-zinc-800">
                                                                             {getUserAvatar(e.name)}
                                                                         </AvatarFallback>
                                                                     </Avatar>
                                                                 </TooltipTrigger>
-                                                                <TooltipContent className="text-[10px] font-bold uppercase">{e.name}</TooltipContent>
+                                                                <TooltipContent className="text-[8px] font-bold uppercase">{e.name}</TooltipContent>
                                                             </Tooltip>
                                                         </TooltipProvider>
                                                     ))}
-                                                    {executives.length > 3 && (
-                                                        <div className="size-9 sm:size-11 border-2 border-background rounded-full bg-secondary flex items-center justify-center text-[10px] font-black shadow-md z-0">
-                                                            +{executives.length - 3}
-                                                        </div>
-                                                    )}
                                                 </div>
                                             )}
                                         </div>
 
-                                        <ScrollArea className="h-44 pr-2">
-                                            <div className="space-y-1">
-                                                <div className="text-sm flex gap-10 items-center ps-2">
-                                                    <FontAwesomeIcon icon={faWhatsapp} className="text-zinc-500 dark:text-zinc-400" style={{ fontSize: "1.1rem" }} />
-                                                    <span className="font-medium text-muted-foreground">Whatsapp Engaged</span>
-                                                    <Button className="ml-auto h-7 w-12 font-bold bg-muted/30" variant="ghost" size="sm">{exeStats.whatsapp}</Button>
+                                        {/* 3x3 Compact Grid */}
+                                        <div className="grid grid-cols-3 gap-y-2 pt-1">
+                                            {statsToShow.map((stat, idx) => (
+                                                <div key={idx} className={cn(
+                                                    "flex flex-col items-center justify-center py-1 text-center",
+                                                    (idx + 1) % 3 !== 0 && "border-r border-muted/10"
+                                                )}>
+                                                    <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-tighter mb-0.5 truncate w-full px-1">
+                                                        {stat.key} :
+                                                    </span>
+                                                    <span className="font-black text-zinc-900 dark:text-zinc-100">
+                                                        {stat.value}
+                                                    </span>
                                                 </div>
-                                                <Separator className="my-2 opacity-50" />
-                                                <div className="text-sm flex gap-10 items-center ps-2">
-                                                    <Mail className="size-4 text-zinc-500 dark:text-zinc-400" />
-                                                    <span className="font-medium text-muted-foreground">Mail Engaged</span>
-                                                    <Button className="ml-auto h-7 w-12 font-bold bg-muted/30" variant="ghost" size="sm">{exeStats.mail}</Button>
-                                                </div>
-                                                <Separator className="my-2 opacity-50" />
-                                                <div className="text-sm flex gap-10 items-center ps-2">
-                                                    <PhoneCall className="size-4 text-zinc-500 dark:text-zinc-400" />
-                                                    <span className="font-medium text-muted-foreground">Phone Call Engaged</span>
-                                                    <Button className="ml-auto h-7 w-12 font-bold bg-muted/30" variant="ghost" size="sm">{exeStats.call}</Button>
-                                                </div>
-                                                <Separator className="my-2 opacity-50" />
-                                                <div className="text-sm flex gap-10 items-center ps-2">
-                                                    <MessagesSquare className="size-4 text-zinc-500 dark:text-zinc-400" />
-                                                    <span className="font-medium text-muted-foreground">SMS Engaged</span>
-                                                    <Button className="ml-auto h-7 w-12 font-bold bg-muted/30" variant="ghost" size="sm">{exeStats.sms}</Button>
-                                                </div>
-                                                <Separator className="my-2 opacity-50" />
-                                            </div>
-                                        </ScrollArea>
+                                            ))}
+                                        </div>
                                     </CardContent>
                                 </Card>
                             );
                         };
 
                         return (
-                            <div className="h-full">
-                                <div
-                                    key={`exe-card-${activeExeIndex}`}
-                                    className="h-full transition-all animate-in fade-in slide-in-from-right-2 duration-400"
+                            <div className="h-full relative group">
+                                <Carousel
+                                    className="w-full h-full"
+                                    opts={{ align: "start", loop: true }}
                                 >
-                                    {renderCardContent(executives[activeExeIndex] || executives[0])}
-                                </div>
+                                    <CarouselContent className="ml-0">
+                                        {executives.map((exe, i) => (
+                                            <CarouselItem key={i} className="pl-0">
+                                                {renderCardContent(exe)}
+                                            </CarouselItem>
+                                        ))}
+                                    </CarouselContent>
+
+                                    {executives.length > 1 && (
+                                        <>
+                                            <CarouselPrevious className="-left-2 size-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 shadow-sm z-10" />
+                                            <CarouselNext className="-right-2 size-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 shadow-sm z-10" />
+                                        </>
+                                    )}
+                                </Carousel>
                             </div>
                         );
                     })()}
@@ -3574,7 +4001,7 @@ export default function LeadDetail() {
                     </Card>
                 </div>
                 <div className="xl:col-span-2 lg:col-span-3 flex flex-col gap-2 shadow-0 tracking-tighter ">
-                    <Card className="border-2 shadow-none dark:bg-input/10 bg-background">
+                    <Card className="border-2 shadow-none dark:border-zinc-800 dark:bg-black bg-background">
                         <CardHeader className="mt-0">
                             <Tabs defaultValue="all" className="">
                                 <TabsList className="w-full mb-4 py-2 h-11 dark:bg-input/50">
@@ -3587,9 +4014,57 @@ export default function LeadDetail() {
                                     <TabsTrigger value="site_visit">Site visit</TabsTrigger>
                                     <TabsTrigger value="follow_up">Follow up</TabsTrigger>
                                     <TabsTrigger value="important">Important</TabsTrigger>
+                                    <TabsTrigger value="campaign_response">Campaign Response</TabsTrigger>
                                 </TabsList>
 
                                 <ScrollArea className="h-[75vh] pr-4">
+                                    <TabsContent value="campaign_response">
+                                        <div className="space-y-4 pt-4 ml-5 mr-4">
+                                            {leadDetail?.acquired && leadDetail.acquired.length > 0 ? (
+                                                leadDetail.acquired.map((acq: any, index: number) => (
+                                                    <div key={acq._id || index} className="p-4 rounded-xl border bg-card/50 shadow-sm hover:shadow-md transition-shadow dark:bg-zinc-900/50">
+                                                        <div className="flex justify-between items-start mb-3">
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Badge className={index === 0 ? "bg-emerald-600 text-white" : "bg-blue-600 text-white"}>
+                                                                        {index === 0 ? "Initial Lead" : `Re-engagement #${index}`}
+                                                                    </Badge>
+                                                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                                                        <Clock className="size-3" />
+                                                                        {acq.received ? new Date(acq.received).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}
+                                                                    </span>
+                                                                </div>
+                                                                <h3 className="text-lg font-bold text-foreground mt-1">
+                                                                    {acq.campaign || 'Direct Entry'}
+                                                                </h3>
+                                                            </div>
+                                                            <Badge variant="outline" className="px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold border-muted-foreground/30">
+                                                                {acq.medium || 'organic'}
+                                                            </Badge>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-2 gap-4 mt-2">
+                                                            <div className="space-y-1">
+                                                                <p className="text-[10px] text-muted-foreground uppercase font-semibold">Source</p>
+                                                                <p className="text-sm font-medium">{acq.source || 'N/A'}</p>
+                                                            </div>
+                                                            {acq.sub_source && (
+                                                                <div className="space-y-1">
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Sub Source</p>
+                                                                    <p className="text-sm font-medium">{acq.sub_source}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-muted/10 rounded-xl border-2 border-dashed">
+                                                    <Reply className="size-10 mb-2 opacity-50" />
+                                                    <p>No campaign response records found</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </TabsContent>
                                     <ol className="relative border-l-2 border-gray-200 dark:border-zinc-800 ml-5 pl-5">
                                         {allTimelineActivities && allTimelineActivities.length > 0 ? (
                                             allTimelineActivities.map((activity) => {
@@ -3768,14 +4243,20 @@ export default function LeadDetail() {
                                                                         <div className="flex flex-col gap-0.5">
                                                                             <span className="text-[13px] font-medium text-muted-foreground">Scheduled for</span>
                                                                             <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
-                                                                                {activity.site_visit_date ? new Date(activity.site_visit_date).toLocaleString([], {
-                                                                                    month: 'numeric',
-                                                                                    day: 'numeric',
-                                                                                    year: '2-digit',
-                                                                                    hour: '2-digit',
-                                                                                    minute: '2-digit',
-                                                                                    hour12: true
-                                                                                }) : 'N/A'}
+                                                                                {activity.site_visit_date ? (() => {
+                                                                                    const d = new Date(activity.site_visit_date);
+                                                                                    const options: Intl.DateTimeFormatOptions = {
+                                                                                        month: 'numeric',
+                                                                                        day: 'numeric',
+                                                                                        year: '2-digit',
+                                                                                    };
+                                                                                    if (d.getHours() !== 0 || d.getMinutes() !== 0) {
+                                                                                        options.hour = '2-digit';
+                                                                                        options.minute = '2-digit';
+                                                                                        options.hour12 = true;
+                                                                                    }
+                                                                                    return d.toLocaleString([], options);
+                                                                                })() : 'N/A'}
                                                                             </span>
                                                                         </div>
 
@@ -3881,3 +4362,4 @@ export default function LeadDetail() {
         </div>
     );
 };
+
