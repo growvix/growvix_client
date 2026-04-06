@@ -44,6 +44,10 @@ interface Lead {
         floor: string
     }
     project: string[]
+    interested_projects?: {
+        project_id?: number
+        project_name: string
+    }[]
     acquired: {
         campaign: string
         source: string
@@ -66,6 +70,7 @@ const initialLead: Lead = {
         floor: '',
     },
     project: [],
+    interested_projects: [],
     acquired: {
         campaign: '',
         source: '',
@@ -158,6 +163,9 @@ export default function AddLeadPage() {
                 ...lead,
                 organization,
                 exe_user: currentUserId,
+                interested_projects: lead.project.map(p => ({
+                    project_name: p
+                })),
                 acquired: [{
                     campaign: lead.acquired.campaign,
                     source: lead.acquired.source,
