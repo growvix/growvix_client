@@ -167,6 +167,7 @@ const GET_LEAD_BY_ID = gql`
                 medium
                 _id
             }
+            number_of_re_engagement
             createdAt   
             updatedAt
             exe_user
@@ -2347,7 +2348,7 @@ export default function LeadDetail() {
                                                         <Label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Date</Label>
                                                         <DatePicker date={offlineCallDate} setDate={setOfflineCallDate} />
                                                     </div>
-                                                    
+
                                                     <div className="flex flex-col space-y-2">
                                                         <Label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Time</Label>
                                                         <TimePicker time={offlineCallTime} setTime={setOfflineCallTime} />
@@ -2359,8 +2360,8 @@ export default function LeadDetail() {
                                                 {/* Incoming Calls Section */}
                                                 <div className="space-y-2 ps-2 pe-2">
                                                     <Label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Incoming</Label>
-                                                    <Button 
-                                                        variant="outline" 
+                                                    <Button
+                                                        variant="outline"
                                                         className="w-full h-12 justify-between border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all font-semibold"
                                                         onClick={() => toast.info('Purchase the IVR to use this feature')}
                                                     >
@@ -2375,8 +2376,8 @@ export default function LeadDetail() {
                                                 {/* Outgoing Calls Section */}
                                                 <div className="space-y-2 ps-2 pe-2">
                                                     <Label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Outgoing</Label>
-                                                    <Button 
-                                                        variant="outline" 
+                                                    <Button
+                                                        variant="outline"
                                                         className="w-full h-12 justify-between border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all font-semibold"
                                                         onClick={() => toast.info('Purchase the IVR to use this feature')}
                                                     >
@@ -2390,7 +2391,7 @@ export default function LeadDetail() {
 
                                                 {/* Dummy Submit Button */}
                                                 <div className="ps-2 pe-2 pt-2">
-                                                    <Button 
+                                                    <Button
                                                         className="w-full h-12 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold hover:opacity-90 transition-all rounded-xl"
                                                         onClick={() => toast.info('Purchase the IVR to use this feature')}
                                                     >
@@ -2697,7 +2698,7 @@ export default function LeadDetail() {
                         <Card className="overflow-hidden shadow-none py-0 border-2 dark:bg-input/50">
                             <div className="flex items-center justify-between p-3 sm:p-4">
                                 <div className="flex flex-col">
-                                    <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Lead Country</CardTitle>
+                                    <CardTitle className="text-xs sm:text-sm font-light text-muted-foreground">Lead location</CardTitle>
                                     <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-white">{leadDetail?.profile?.location || 'India'}</span>
                                 </div>
                                 <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-zinc-100 dark:bg-zinc-800">
@@ -3047,7 +3048,7 @@ export default function LeadDetail() {
                                     <Carousel
                                         opts={{ align: "start", loop: true }}
                                         plugins={[Autoplay({ delay: 2000, stopOnInteraction: false })]}
-                                        className="w-full max-w-[94%] h-xs"
+                                        className="w-full max-w-[96%] h-xs group relative mx-auto"
                                     >
                                         <CarouselContent>
                                             {/* Structured property items */}
@@ -3112,8 +3113,8 @@ export default function LeadDetail() {
                                                 </CarouselItem>
                                             ))}
                                         </CarouselContent>
-                                        <CarouselPrevious />
-                                        <CarouselNext />
+                                        <CarouselPrevious className="-left-2 size-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 shadow-md z-10" />
+                                        <CarouselNext className="-right-2 size-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 shadow-md z-10" />
                                     </Carousel>
                                 ) : (
                                     <div className="text-center text-muted-foreground py-6 text-sm">
@@ -3129,7 +3130,7 @@ export default function LeadDetail() {
                         <CardHeader className="mt-0 pt-0 pb-0">
                             <div className="flex items-center justify-between">
                                 <Label className="text-muted-foreground  ">
-                                    Intrested Projects
+                                    Interested Projects
                                 </Label>
                                 {canEdit && (
                                     <Sheet open={addProjectSheetOpen} onOpenChange={setAddProjectSheetOpen}>
@@ -3229,9 +3230,9 @@ export default function LeadDetail() {
                                 ]}
                                 orientation="vertical"
                                 className="w-full relative group" >
-                                <CarouselPrevious className="-top-8 left-1/2 -translate-x-1/2 rotate-90 size-7 opacity-60 hover:opacity-100 transition-opacity bg-transparent border-none shadow-none z-10" />
-                                <CarouselNext className="bottom-1 left-1/2 -translate-x-1/2 rotate-90 size-7 opacity-60 hover:opacity-100 transition-opacity bg-transparent border-none shadow-none z-10" />
-                                <CarouselContent className="h-[200px]">
+                                <CarouselPrevious className="-top-2 left-1/2 -translate-x-1/2 rotate-90 size-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 shadow-md border-none z-10" />
+                                <CarouselNext className="-bottom-2 left-1/2 -translate-x-1/2 rotate-90 size-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 shadow-md border-none z-10" />
+                                <CarouselContent className="h-[220px]">
                                     {leadDetail?.interested_projects && (leadDetail.interested_projects as any[]).length > 0 ? (
                                         (leadDetail.interested_projects as any[]).map((ip: any) => {
                                             const projectDetail = allProjects.find((p: any) => p.product_id === ip.project_id);
@@ -3437,12 +3438,6 @@ export default function LeadDetail() {
                                         if (up === 'mail') exeStats.mail++;
                                         if (up === 'phonecall' || up === 'call') exeStats.call++;
                                         if (up === 'sms') exeStats.sms++;
-                                        if (up === 'note') exeStats.notes++;
-                                        if (up === 'site_visit') exeStats.site_visits++;
-                                        if (up === 'site_visit_scheduled') exeStats.site_visits_scheduled++;
-                                        if (up === 'site_visit_conducted') exeStats.site_visits_conducted++;
-                                        if (up === 'follow_up_scheduled') exeStats.follow_ups_scheduled++;
-                                        if (up === 'follow_up_conducted') exeStats.follow_ups_conducted++;
                                     }
                                 });
                             }
@@ -3534,7 +3529,7 @@ export default function LeadDetail() {
 
                         return (
                             <div className="h-full relative group">
-                                <Carousel 
+                                <Carousel
                                     className="w-full h-full"
                                     opts={{ align: "start", loop: true }}
                                 >
@@ -3545,11 +3540,11 @@ export default function LeadDetail() {
                                             </CarouselItem>
                                         ))}
                                     </CarouselContent>
-                                    
+
                                     {executives.length > 1 && (
                                         <>
-                                            <CarouselPrevious className="left-1 size-7 opacity-20 group-hover:opacity-100 transition-opacity bg-background/80" />
-                                            <CarouselNext className="right-1 size-7 opacity-20 group-hover:opacity-100 transition-opacity bg-background/80" />
+                                            <CarouselPrevious className="-left-2 size-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 shadow-sm z-10" />
+                                            <CarouselNext className="-right-2 size-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 shadow-sm z-10" />
                                         </>
                                     )}
                                 </Carousel>
@@ -3693,9 +3688,57 @@ export default function LeadDetail() {
                                     <TabsTrigger value="site_visit">Site visit</TabsTrigger>
                                     <TabsTrigger value="follow_up">Follow up</TabsTrigger>
                                     <TabsTrigger value="important">Important</TabsTrigger>
+                                    <TabsTrigger value="campaign_response">Campaign Response</TabsTrigger>
                                 </TabsList>
 
                                 <ScrollArea className="h-[75vh] pr-4">
+                                    <TabsContent value="campaign_response">
+                                        <div className="space-y-4 pt-4 ml-5 mr-4">
+                                            {leadDetail?.acquired && leadDetail.acquired.length > 0 ? (
+                                                leadDetail.acquired.map((acq: any, index: number) => (
+                                                    <div key={acq._id || index} className="p-4 rounded-xl border bg-card/50 shadow-sm hover:shadow-md transition-shadow dark:bg-zinc-900/50">
+                                                        <div className="flex justify-between items-start mb-3">
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Badge className={index === 0 ? "bg-emerald-600 text-white" : "bg-blue-600 text-white"}>
+                                                                        {index === 0 ? "Initial Lead" : `Re-engagement #${index}`}
+                                                                    </Badge>
+                                                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                                                        <Clock className="size-3" />
+                                                                        {acq.received ? new Date(acq.received).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}
+                                                                    </span>
+                                                                </div>
+                                                                <h3 className="text-lg font-bold text-foreground mt-1">
+                                                                    {acq.campaign || 'Direct Entry'}
+                                                                </h3>
+                                                            </div>
+                                                            <Badge variant="outline" className="px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold border-muted-foreground/30">
+                                                                {acq.medium || 'organic'}
+                                                            </Badge>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-2 gap-4 mt-2">
+                                                            <div className="space-y-1">
+                                                                <p className="text-[10px] text-muted-foreground uppercase font-semibold">Source</p>
+                                                                <p className="text-sm font-medium">{acq.source || 'N/A'}</p>
+                                                            </div>
+                                                            {acq.sub_source && (
+                                                                <div className="space-y-1">
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Sub Source</p>
+                                                                    <p className="text-sm font-medium">{acq.sub_source}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-muted/10 rounded-xl border-2 border-dashed">
+                                                    <Reply className="size-10 mb-2 opacity-50" />
+                                                    <p>No campaign response records found</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </TabsContent>
                                     <ol className="relative border-l-2 border-gray-200 dark:border-zinc-800 ml-5 pl-5">
                                         {allTimelineActivities && allTimelineActivities.length > 0 ? (
                                             allTimelineActivities.map((activity) => {

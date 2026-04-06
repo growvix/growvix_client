@@ -157,6 +157,7 @@ export interface Lead {
     value: string;
   }[];
   important_activities?: ImportantActivity[];
+  number_of_re_engagement?: number;
   createdAt: string;
   updatedAt: string;
 }

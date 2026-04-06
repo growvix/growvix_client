@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+    import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { API } from '@/config/api'
 import { toast } from 'sonner'
@@ -280,22 +280,24 @@ export default function LeadCaptureForm() {
 
     const toggleAssignment = (person: any, type: 'user' | 'cp', category?: string) => {
         const personId = person._id
-        const isAssigned = assignedPeople.some(p => p.id === personId)
-
-        if (isAssigned) {
-            setAssignedPeople(assignedPeople.filter(p => p.id !== personId))
-        } else {
-            const newPerson: AssignedPerson = {
-                id: personId,
-                name: `${person.profile.firstName} ${person.profile.lastName}`,
-                email: person.profile.email,
-                phone: person.profile.phone,
-                role: type === 'user' ? person.role : 'Channel Partner',
-                category: (type === 'user' ? category : 'CP') as any,
-                type: type
+        
+        setAssignedPeople(prev => {
+            const isAssigned = prev.some(p => p.id === personId)
+            if (isAssigned) {
+                return prev.filter(p => p.id !== personId)
+            } else {
+                const newPerson: AssignedPerson = {
+                    id: personId,
+                    name: `${person.profile.firstName} ${person.profile.lastName}`,
+                    email: person.profile.email,
+                    phone: person.profile.phone,
+                    role: type === 'user' ? person.role : 'Channel Partner',
+                    category: (type === 'user' ? category : 'CP') as any,
+                    type: type
+                }
+                return [...prev, newPerson]
             }
-            setAssignedPeople([...assignedPeople, newPerson])
-        }
+        })
     }
 
     const handleConfirm = async () => {
@@ -862,13 +864,16 @@ export default function LeadCaptureForm() {
                                                                             }}
                                                                             className="font-medium cursor-pointer py-3"
                                                                         >
-                                                                            <div className="flex flex-col">
-                                                                                <span className="font-bold text-zinc-900 dark:text-zinc-100">
-                                                                                    {u.profile.firstName} {u.profile.lastName}
-                                                                                </span>
-                                                                                <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-bold uppercase leading-none mt-1">
-                                                                                    {u.profile.email} {u.department ? `• ${u.department}` : ''}
-                                                                                </span>
+                                                                            <div className="flex items-center w-full">
+                                                                                <Check className={cn("mr-3 h-4 w-4 shrink-0 transition-opacity", assignedPeople.some(ap => ap.id === u._id) ? "opacity-100 text-emerald-500" : "opacity-0")} />
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="font-bold text-zinc-900 dark:text-zinc-100">
+                                                                                        {u.profile.firstName} {u.profile.lastName}
+                                                                                    </span>
+                                                                                    <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-bold uppercase leading-none mt-1">
+                                                                                        {u.profile.email} {u.department ? `• ${u.department}` : ''}
+                                                                                    </span>
+                                                                                </div>
                                                                             </div>
                                                                         </CommandItem>
                                                                     ))}

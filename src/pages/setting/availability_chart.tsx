@@ -149,7 +149,7 @@ export default function AvailabilityChart() {
                             </TooltipTrigger>
                             <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
                                 <p className="font-medium">
-                                    Manage weekly availability for pre-sales users. Toggle off to mark leave and assign fallback users.
+                                    Manage weekly availability for users. Toggle off to mark leave and assign fallback users.
                                 </p>
                             </TooltipContent>
                         </Tooltip>
@@ -306,7 +306,7 @@ export default function AvailabilityChart() {
                     </div>
                     <div>
                         <p className="text-2xl font-bold">{totalUsers}</p>
-                        <p className="text-xs text-muted-foreground">Pre-Sales Users</p>
+                        <p className="text-xs text-muted-foreground">Active Users</p>
                     </div>
                 </div>
                 <div className="rounded-xl border bg-card p-4 flex items-center gap-3">
@@ -397,9 +397,9 @@ export default function AvailabilityChart() {
                         <div className="bg-muted p-5 rounded-2xl shadow-sm mb-4">
                             <Users className="h-8 w-8 text-muted-foreground" />
                         </div>
-                        <h3 className="text-base font-semibold mb-1">No Pre-Sales Users Found</h3>
+                        <h3 className="text-base font-semibold mb-1">No Active Users Found</h3>
                         <p className="text-sm text-muted-foreground">
-                            {search ? "Try adjusting your search" : "No active pre-sales users in your organization"}
+                            {search ? "Try adjusting your search" : "No active users in your organization"}
                         </p>
                     </div>
                 ) : (

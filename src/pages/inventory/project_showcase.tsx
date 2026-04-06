@@ -505,8 +505,8 @@ export default function ProjectShowcase() {
                                                 {/* Block Header - Click to show block image */}
                                                 <div
                                                     className={`p-3 cursor-pointer flex items-center justify-between transition-colors ${selectedBlock?.blockId === block.blockId && viewMode === 'block'
-                                                            ? 'bg-primary/10'
-                                                            : 'hover:bg-muted/50'
+                                                        ? 'bg-primary/10'
+                                                        : 'hover:bg-muted/50'
                                                         }`}
                                                     onClick={() => handleBlockClick(block)}
                                                 >
@@ -588,11 +588,12 @@ export default function ProjectShowcase() {
                                                         setCurrentImageIndex(0);
                                                     } else {
                                                         handleUnitClick(unit);
+
                                                     }
                                                 }}
                                                 className={`text-md font-bold transition-all py-0 min-w-10 text-center ${selectedUnit?.unitId === unit.unitId
-                                                        ? 'text-foreground scale-105'
-                                                        : 'text-muted-foreground opacity-40 hover:opacity-100'
+                                                    ? 'text-foreground scale-105'
+                                                    : 'text-muted-foreground opacity-40 hover:opacity-100'
                                                     }`}
                                             >
                                                 {unit.unitNumber}
