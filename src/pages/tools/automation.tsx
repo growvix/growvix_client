@@ -7,7 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { UserRoundCog, Import, UsersRound,FileDown, Search, SearchX, SearchCode, MailPlus, Phone, Megaphone } from "lucide-react"
+import { UserRoundCog, Import, UsersRound, FileDown, Search, SearchX, SearchCode, MailPlus, Phone, Megaphone } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -57,7 +57,7 @@ export default function Automation() {
             bgClass: "bg-blue-100 dark:bg-blue-900/40",
             hoverBorder: "hover:border-blue-300 dark:hover:border-blue-800",
             hoverGradient: "from-blue-50/50 dark:from-blue-950/20",
-            path: "/automation/virtual_number",
+            path: "",
         },
         {
             title: "Email Templates",

@@ -84,7 +84,7 @@ export default function GeneralSetting() {
             path: "/setting/attendance",
         },
         {
-            title: "Availability & Leave",
+            title: "Attendance & Availability",
             description: "Manage weekly availability, mark leaves, and assign fallback users for round-robin.",
             icon: CalendarCheck,
             colorClass: "text-teal-600 dark:text-teal-400",
