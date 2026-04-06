@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+    import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { API } from '@/config/api'
 import { toast } from 'sonner'
@@ -280,22 +280,24 @@ export default function LeadCaptureForm() {
 
     const toggleAssignment = (person: any, type: 'user' | 'cp', category?: string) => {
         const personId = person._id
-        const isAssigned = assignedPeople.some(p => p.id === personId)
-
-        if (isAssigned) {
-            setAssignedPeople(assignedPeople.filter(p => p.id !== personId))
-        } else {
-            const newPerson: AssignedPerson = {
-                id: personId,
-                name: `${person.profile.firstName} ${person.profile.lastName}`,
-                email: person.profile.email,
-                phone: person.profile.phone,
-                role: type === 'user' ? person.role : 'Channel Partner',
-                category: (type === 'user' ? category : 'CP') as any,
-                type: type
+        
+        setAssignedPeople(prev => {
+            const isAssigned = prev.some(p => p.id === personId)
+            if (isAssigned) {
+                return prev.filter(p => p.id !== personId)
+            } else {
+                const newPerson: AssignedPerson = {
+                    id: personId,
+                    name: `${person.profile.firstName} ${person.profile.lastName}`,
+                    email: person.profile.email,
+                    phone: person.profile.phone,
+                    role: type === 'user' ? person.role : 'Channel Partner',
+                    category: (type === 'user' ? category : 'CP') as any,
+                    type: type
+                }
+                return [...prev, newPerson]
             }
-            setAssignedPeople([...assignedPeople, newPerson])
-        }
+        })
     }
 
     const handleConfirm = async () => {
@@ -862,13 +864,16 @@ export default function LeadCaptureForm() {
                                                                             }}
                                                                             className="font-medium cursor-pointer py-3"
                                                                         >
-                                                                            <div className="flex flex-col">
-                                                                                <span className="font-bold text-zinc-900 dark:text-zinc-100">
-                                                                                    {u.profile.firstName} {u.profile.lastName}
-                                                                                </span>
-                                                                                <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-bold uppercase leading-none mt-1">
-                                                                                    {u.profile.email} {u.department ? `• ${u.department}` : ''}
-                                                                                </span>
+                                                                            <div className="flex items-center w-full">
+                                                                                <Check className={cn("mr-3 h-4 w-4 shrink-0 transition-opacity", assignedPeople.some(ap => ap.id === u._id) ? "opacity-100 text-emerald-500" : "opacity-0")} />
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="font-bold text-zinc-900 dark:text-zinc-100">
+                                                                                        {u.profile.firstName} {u.profile.lastName}
+                                                                                    </span>
+                                                                                    <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-bold uppercase leading-none mt-1">
+                                                                                        {u.profile.email} {u.department ? `• ${u.department}` : ''}
+                                                                                    </span>
+                                                                                </div>
                                                                             </div>
                                                                         </CommandItem>
                                                                     ))}
@@ -912,14 +917,17 @@ export default function LeadCaptureForm() {
                                                                         }}
                                                                         className="font-medium cursor-pointer py-3"
                                                                     >
-                                                                        <div className="flex flex-col">
-                                                                            <span className="font-bold text-zinc-900 dark:text-zinc-100">
-                                                                                {c.profile.firstName} {c.profile.lastName}
-                                                                            </span>
-                                                                            <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-bold uppercase leading-none mt-1">
-                                                                                {c.profile.email}
-                                                                            </span>
-                                                                        </div>
+                                                                            <div className="flex items-center w-full">
+                                                                                <Check className={cn("mr-3 h-4 w-4 shrink-0 transition-opacity", assignedPeople.some(ap => ap.id === c._id) ? "opacity-100 text-emerald-500" : "opacity-0")} />
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="font-bold text-zinc-900 dark:text-zinc-100">
+                                                                                        {c.profile.firstName} {c.profile.lastName}
+                                                                                    </span>
+                                                                                    <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-bold uppercase leading-none mt-1">
+                                                                                        {c.profile.email}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </div>
                                                                     </CommandItem>
                                                                 ))}
                                                             </CommandGroup>
@@ -934,9 +942,15 @@ export default function LeadCaptureForm() {
                                 {assignedPeople.length > 0 && (
                                     <div className="flex flex-wrap gap-2 pt-4">
                                         {assignedPeople.map(p => (
-                                            <Badge key={p.id} className="px-4 py-2 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl text-sm font-bold flex items-center gap-2">
+                                            <Badge key={p.id} className="px-4 py-2 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl text-sm font-bold flex items-center gap-2 pr-2">
                                                 {p.name}
-                                                <X className="w-4 h-4 cursor-pointer text-slate-400 dark:text-zinc-500 hover:text-red-500" onClick={() => setAssignedPeople(assignedPeople.filter(x => x.id !== p.id))} />
+                                                <button
+                                                    type="button"
+                                                    className="p-1 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-md transition-colors"
+                                                    onClick={() => setAssignedPeople(prev => prev.filter(x => x.id !== p.id))}
+                                                >
+                                                    <X className="w-4 h-4 text-slate-400 dark:text-zinc-500 hover:text-red-500" />
+                                                </button>
                                             </Badge>
                                         ))}
                                     </div>
