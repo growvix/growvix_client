@@ -767,7 +767,7 @@ export default function LeadCaptureForm() {
                                     </section>
                                 </div>
 
-                                <div className="mt-12 flex justify-end gap-4 border-t border-slate-100 pt-8 max-w-4xl mx-auto">
+                                <div className="mt-12 flex justify-end gap-4 pt-8 max-w-4xl mx-auto">
                                     <Button variant="outline" className="h-12 px-8 font-bold border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-xl" onClick={() => navigate(-1)}>Cancel</Button>
                                     <Button className="h-12 px-10 font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 rounded-xl shadow-lg shadow-zinc-200 dark:shadow-none" onClick={() => setCurrentStep(2)}>
                                         Next Step <ArrowRight className="ml-2 w-4 h-4" />
