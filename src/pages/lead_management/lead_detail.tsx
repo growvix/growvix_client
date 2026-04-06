@@ -1269,15 +1269,15 @@ export default function LeadDetail() {
             toast.error('Missing required data for site visit')
             return
         }
-        if (!siteVisitDate || !siteVisitTime) {
-            toast.error('Please select both date and time for the site visit')
+        if (!siteVisitDate) {
+            toast.error('Please select a date for the site visit')
             return
         }
         setSiteVisitLoading(true)
         try {
             // Combine date and time
             const dateStr = format(siteVisitDate, "yyyy-MM-dd");
-            const combinedDateTimeString = `${dateStr}T${siteVisitTime}:00`;
+            const combinedDateTimeString = siteVisitTime ? `${dateStr}T${siteVisitTime}:00` : `${dateStr}T00:00:00`;
             const dateObj = new Date(combinedDateTimeString);
 
             if (isNaN(dateObj.getTime())) {
@@ -2081,7 +2081,7 @@ export default function LeadDetail() {
                                                     </div>
                                                     <div className="space-y-4 mt-2">
                                                         <div className="flex flex-col space-y-2">
-                                                            <Label htmlFor="siteVisitTime">Time</Label>
+                                                            <Label htmlFor="siteVisitTime">Time (Optional)</Label>
                                                             <TimePicker time={siteVisitTime} setTime={setSiteVisitTime} />
                                                         </div>
                                                     </div>
@@ -2109,7 +2109,14 @@ export default function LeadDetail() {
                                                                             )}
                                                                             {activity.site_visit_date && (
                                                                                 <Badge variant="outline" className="text-xs">
-                                                                                    Visit: {new Date(activity.site_visit_date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                                                                    Visit: {(() => {
+                                                                                        const d = new Date(activity.site_visit_date);
+                                                                                        const options: Intl.DateTimeFormatOptions = { dateStyle: 'short' };
+                                                                                        if (d.getHours() !== 0 || d.getMinutes() !== 0) {
+                                                                                            options.timeStyle = 'short';
+                                                                                        }
+                                                                                        return d.toLocaleString([], options);
+                                                                                    })()}
                                                                                 </Badge>
                                                                             )}
                                                                         </div>
@@ -2180,7 +2187,14 @@ export default function LeadDetail() {
                                                                     </div>
                                                                     {activity.site_visit_date && (
                                                                         <p className="text-sm font-medium mb-2">
-                                                                            {new Date(activity.site_visit_date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                                                                            {(() => {
+                                                                                const d = new Date(activity.site_visit_date);
+                                                                                const options: Intl.DateTimeFormatOptions = { dateStyle: 'medium' };
+                                                                                if (d.getHours() !== 0 || d.getMinutes() !== 0) {
+                                                                                    options.timeStyle = 'short';
+                                                                                }
+                                                                                return d.toLocaleString([], options);
+                                                                            })()}
                                                                         </p>
                                                                     )}
                                                                     {activity.user_name && (
@@ -2979,7 +2993,7 @@ export default function LeadDetail() {
                                                             await addRequirementMutation({
                                                                 variables: {
                                                                     organization,
-                                                                    leadId: leadDetail._id,
+                                                                    leadId: leadDetail?._id,
                                                                     key: reqKey.trim(),
                                                                     value: reqValue.trim(),
                                                                 },
@@ -3326,7 +3340,7 @@ export default function LeadDetail() {
                                                                             })
                                                                         }}
                                                                     >
-                                                                        BOOK
+                                                                        Click Booking
                                                                     </Button>
                                                                     <Button
                                                                         size="sm"
@@ -3337,7 +3351,7 @@ export default function LeadDetail() {
                                                                             setSiteVisitSheetOpen(true);
                                                                         }}
                                                                     >
-                                                                        VISIT
+                                                                       Schedule Site Visit
                                                                     </Button>
                                                                 </div>
                                                             </div>
@@ -3860,14 +3874,20 @@ export default function LeadDetail() {
                                                                         <div className="flex flex-col gap-0.5">
                                                                             <span className="text-[13px] font-medium text-muted-foreground">Scheduled for</span>
                                                                             <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
-                                                                                {activity.site_visit_date ? new Date(activity.site_visit_date).toLocaleString([], {
-                                                                                    month: 'numeric',
-                                                                                    day: 'numeric',
-                                                                                    year: '2-digit',
-                                                                                    hour: '2-digit',
-                                                                                    minute: '2-digit',
-                                                                                    hour12: true
-                                                                                }) : 'N/A'}
+                                                                                {activity.site_visit_date ? (() => {
+                                                                                    const d = new Date(activity.site_visit_date);
+                                                                                    const options: Intl.DateTimeFormatOptions = {
+                                                                                        month: 'numeric',
+                                                                                        day: 'numeric',
+                                                                                        year: '2-digit',
+                                                                                    };
+                                                                                    if (d.getHours() !== 0 || d.getMinutes() !== 0) {
+                                                                                        options.hour = '2-digit';
+                                                                                        options.minute = '2-digit';
+                                                                                        options.hour12 = true;
+                                                                                    }
+                                                                                    return d.toLocaleString([], options);
+                                                                                })() : 'N/A'}
                                                                             </span>
                                                                         </div>
 
