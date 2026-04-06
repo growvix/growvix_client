@@ -182,19 +182,19 @@ export default function LeadCapture() {
                                         </AvatarFallback>
                                     </Avatar>
                                 </PopoverTrigger>
-                                <PopoverContent side="bottom" align="start" className="w-80 p-0 rounded-3xl overflow-hidden border-slate-100 dark:border-zinc-800 shadow-2xl shadow-zinc-200 dark:shadow-none">
-                                    <div className="bg-zinc-900 dark:bg-zinc-100 p-6">
+                                <PopoverContent side="bottom" align="start" className="w-80 p-0 rounded-3xl overflow-hidden border-slate-100 dark:border-zinc-800 dark:shadow-none">
+                                    <div className="bg-zinc-900 dark:bg-zinc-100 p-3">
                                         <div className="flex items-center gap-4">
-                                            <Avatar className="h-12 w-12 rounded-2xl border-none ring-offset-zinc-900 ring-white/10 ring-2">
+                                            <Avatar className="h-10 w-10 rounded-2xl border-none ring-offset-zinc-900 ring-white/10 ring-2">
                                                 {p.image && (
                                                     <AvatarImage src={getSanitizedAvatarUrl(p.image)} alt={p.name} />
                                                 )}
-                                                <AvatarFallback className="bg-white/10 dark:bg-zinc-900/10 text-lg font-bold text-white dark:text-zinc-900">
+                                                <AvatarFallback className="bg-white/10 dark:bg-zinc-900/10 text-lg font-semibold text-white dark:text-zinc-900">
                                                     {p.name[0]}
                                                 </AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <div className="text-white dark:text-zinc-900 font-bold text-base leading-tight">{p.name}</div>
+                                                <div className="text-white dark:text-zinc-900 font-semibold text-base leading-tight">{p.name}</div>
                                                 <div className="text-emerald-400 dark:text-emerald-600 text-[10px] font-black uppercase tracking-widest mt-1">{p.category || 'EXECUTIVE'}</div>
                                             </div>
                                         </div>
