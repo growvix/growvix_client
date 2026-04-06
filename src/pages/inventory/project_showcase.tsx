@@ -436,10 +436,10 @@ export default function ProjectShowcase() {
 
                 {/* ====== LEFT PANEL: Blocks & Floors / Plots ====== */}
                 <Card className="col-span-4 flex flex-col overflow-hidden">
-                    <CardHeader className="py-3 flex-shrink-0">
+                    <CardHeader className="py-3 shrink-0">
                         <CardTitle className="text-sm flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                                {project.property === 'plots' ? (
+                                {project?.property === 'plots' ? (
                                     <>
                                         <Layers className="h-4 w-4" />
                                         All Plots ({project.plots?.length || 0})
@@ -451,10 +451,10 @@ export default function ProjectShowcase() {
                                     </>
                                 )}
                             </div>
-                            {project.img_location?.brochure && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
+                            {project?.img_location?.brochure && (
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
                                     className="h-7 text-[10px] gap-1 px-2"
                                     onClick={() => setBrochureConfirmOpen(true)}
                                 >
@@ -466,10 +466,10 @@ export default function ProjectShowcase() {
                     </CardHeader>
                     <CardContent className="flex-1 p-2 overflow-hidden">
                         <ScrollArea className="h-full pr-2">
-                            {project.property === 'plots' ? (
-                                project.plots && project.plots.length > 0 ? (
+                            {project?.property === 'plots' ? (
+                                project?.plots && project.plots.length > 0 ? (
                                     <div className="grid grid-cols-5 gap-1">
-                                        {project.plots.map((plot) => (
+                                        {project?.plots?.map((plot) => (
                                             <button
                                                 key={plot.plotId}
                                                 onClick={() => setSelectedPlot(plot)}
@@ -492,9 +492,9 @@ export default function ProjectShowcase() {
                                     </div>
                                 )
                             ) : (
-                                project.blocks && project.blocks.length > 0 ? (
+                                project?.blocks && project.blocks.length > 0 ? (
                                     <div className="space-y-3">
-                                        {project.blocks.map((block) => (
+                                        {project?.blocks?.map((block) => (
                                             <div
                                                 key={block.blockId}
                                                 className={`rounded-lg border-2 transition-all ${selectedBlock?.blockId === block.blockId
@@ -554,7 +554,7 @@ export default function ProjectShowcase() {
 
                 {/* ====== MIDDLE PANEL: Floor Plan Images / Unit Numbers / Unit Details ====== */}
                 <Card className="col-span-4 flex flex-col overflow-hidden">
-                    <CardHeader className="py-0 flex-shrink-0">
+                    <CardHeader className="py-0 shrink-0">
                         <CardTitle className="text-sm flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <ImageIcon className="h-4 w-4" />
@@ -682,12 +682,14 @@ export default function ProjectShowcase() {
                                 </div>
                             )}
                         </div>
+
+
                     </CardContent>
                 </Card>
 
                 {/* ====== RIGHT PANEL: Old-style Unit Grid / Plot Details ====== */}
                 <Card className="col-span-4 flex flex-col overflow-hidden">
-                    <CardHeader className="py-3 flex-shrink-0">
+                    <CardHeader className="py-3 shrink-0">
                         <CardTitle className="text-sm flex items-center gap-2">
                             {project.property === 'plots' ? (
                                 <>
@@ -758,7 +760,7 @@ export default function ProjectShowcase() {
                                         {(selectedFloor.units as Unit[]).map((unit) => (
                                             <div
                                                 key={unit.unitId}
-                                                className={`p-3 rounded-lg border-2 transition-all hover:shadow-md cursor-pointer ${getStatusColor(unit.status)} ${selectedUnit?.unitId === unit.unitId ? 'ring-2 ring-primary ring-offset-1' : ''
+                                                className={`p-3 rounded-lg border-2 transition-all hover:shadow-md cursor-pointer ${getStatusColor(unit.status)} ${selectedUnit && selectedUnit.unitId === unit.unitId ? 'ring-2 ring-primary ring-offset-1' : ''
                                                     }`}
                                                 onClick={() => {
                                                     handleUnitClick(unit); // Show details in center panel
@@ -912,18 +914,18 @@ export default function ProjectShowcase() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Confirm Download</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to download the project brochure for {project.name}? This will download the file to your device.
+                            Are you sure you want to download the project brochure for {project?.name}? This will download the file to your device.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction onClick={() => {
-                            if (project.img_location?.brochure) {
+                            if (project?.img_location?.brochure) {
                                 const url = project.img_location.brochure;
                                 const fullUrl = url.startsWith('http') ? url : `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
                                 const a = document.createElement('a');
                                 a.href = fullUrl;
-                                a.download = url.split('/').pop() || `${project.name.replace(/\s+/g, '_')}_Brochure`;
+                                a.download = url.split('/').pop() || `${project?.name?.replace(/\s+/g, '_')}_Brochure`;
                                 document.body.appendChild(a);
                                 a.click();
                                 document.body.removeChild(a);
