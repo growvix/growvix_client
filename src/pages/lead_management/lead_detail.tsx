@@ -360,8 +360,8 @@ const GET_ALL_PROJECTS = gql`
 `;
 
 const ADD_INTERESTED_PROJECT = gql`
-    mutation AddInterestedProject($organization: String!, $leadId: String!, $projectId: Int!, $projectName: String!) {
-        addInterestedProject(organization: $organization, leadId: $leadId, projectId: $projectId, projectName: $projectName) {
+    mutation AddInterestedProject($organization: String!, $leadId: String!, $projectId: Int!) {
+        addInterestedProject(organization: $organization, leadId: $leadId, projectId: $projectId) {
             _id
             interested_projects {
                 project_id
@@ -3501,7 +3501,6 @@ export default function LeadDetail() {
                                                                                             organization,
                                                                                             leadId: leadDetail?._id,
                                                                                             projectId: p.product_id,
-                                                                                            projectName: p.name
                                                                                         }
                                                                                     });
                                                                                     toast.success(`Added ${p.name}`);
@@ -3566,7 +3565,7 @@ export default function LeadDetail() {
                                                                 {projectDetail?.img_location?.logo ? (
                                                                     <img
                                                                         src={projectDetail.img_location.logo}
-                                                                        alt={ip.project_name}
+                                                                        alt={ip.project_name || projectDetail?.name || `Project ${ip.project_id}`}
                                                                         className="w-full h-full object-contain"
                                                                     />
                                                                 ) : (
@@ -3579,7 +3578,7 @@ export default function LeadDetail() {
                                                                 <div className="flex justify-between items-start">
                                                                     <div className="flex items-center gap-3 overflow-hidden mt-5">
                                                                         <h4 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter truncate leading-none">
-                                                                            {ip.project_name}
+                                                                            {ip.project_name || projectDetail?.name || `Project #${ip.project_id}`}
                                                                         </h4>
                                                                         <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-none px-3 py-1 h-auto text-[10px] font-black uppercase tracking-widest shrink-0 shadow-sm rounded-full">
                                                                             {projectDetail?.property || 'PROJ'}
@@ -3602,7 +3601,7 @@ export default function LeadDetail() {
                                                                                 <AlertDialogHeader>
                                                                                     <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">Remove Project</AlertDialogTitle>
                                                                                     <AlertDialogDescription className="text-zinc-500 font-medium">
-                                                                                        Are you sure you want to remove <span className="font-bold text-zinc-900 dark:text-zinc-100 uppercase">{ip.project_name}</span>?
+                                                                                        Are you sure you want to remove <span className="font-bold text-zinc-900 dark:text-zinc-100 uppercase">{ip.project_name || projectDetail?.name || `Project #${ip.project_id}`}</span>?
                                                                                     </AlertDialogDescription>
                                                                                 </AlertDialogHeader>
                                                                                 <AlertDialogFooter>
@@ -3619,7 +3618,7 @@ export default function LeadDetail() {
                                                                                                         projectId: ip.project_id
                                                                                                     }
                                                                                                 });
-                                                                                                toast.success(`Removed ${ip.project_name}`);
+                                                                                                toast.success(`Removed ${ip.project_name || projectDetail?.name || 'project'}`);
                                                                                                 refetchLead();
                                                                                             } catch (err: any) {
                                                                                                 toast.error(err?.message || 'Failed to remove project');
@@ -3674,7 +3673,7 @@ export default function LeadDetail() {
                                                                     variant="outline"
                                                                     className="h-9 px-4 border-2 border-zinc-200 dark:border-zinc-800 font-black text-[10px] uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex-1 shrink-0"
                                                                     onClick={() => {
-                                                                        setSiteVisitProject({ id: ip.project_id, name: ip.project_name });
+                                                                        setSiteVisitProject({ id: ip.project_id, name: ip.project_name || projectDetail?.name || `Project #${ip.project_id}` });
                                                                         setSiteVisitSheetOpen(true);
                                                                     }}
                                                                 >

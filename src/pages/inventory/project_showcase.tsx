@@ -374,13 +374,13 @@ export default function ProjectShowcase() {
     const getMiddlePanelEmptyMessage = () => {
         switch (viewMode) {
             case 'unit':
-                return { title: 'No unit images', subtitle: 'No images uploaded for this unit' }
+                return { title: 'No Unit Plan', subtitle: `Unit plan image has not been uploaded for Unit ${selectedUnit?.unitNumber || ''}` }
             case 'floor':
-                return { title: 'No floor plan images', subtitle: 'Upload floor chart images in project edit' }
+                return { title: 'No Floor Plan', subtitle: `Floor plan image has not been uploaded for ${selectedFloor?.floorName || `Floor ${selectedFloor?.floorNumber}`}` }
             case 'block':
-                return { title: 'No block plan images', subtitle: 'Upload block plan images in project edit' }
+                return { title: 'No Block Plan', subtitle: `Block plan image has not been uploaded for ${selectedBlock?.blockName || 'this block'}` }
             default:
-                return { title: 'No images', subtitle: 'Select a block or floor to view' }
+                return { title: 'No Images', subtitle: 'Select a block or floor to view' }
         }
     }
 
@@ -452,9 +452,9 @@ export default function ProjectShowcase() {
                                 )}
                             </div>
                             {project?.img_location?.brochure && (
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
+                                <Button
+                                    variant="outline"
+                                    size="sm"
                                     className="h-7 text-[10px] gap-1 px-2"
                                     onClick={() => setBrochureConfirmOpen(true)}
                                 >
@@ -468,13 +468,13 @@ export default function ProjectShowcase() {
                         <ScrollArea className="h-full pr-2">
                             {project?.property === 'plots' ? (
                                 project?.plots && project.plots.length > 0 ? (
-                                    <div className="grid grid-cols-5 gap-1">
+                                    <div className="grid grid-cols-5 gap-1.5 p-1">
                                         {project?.plots?.map((plot) => (
                                             <button
                                                 key={plot.plotId}
                                                 onClick={() => setSelectedPlot(plot)}
-                                                className={`p-2 text-xs rounded border transition-all truncate hover:opacity-80 ${selectedPlot?.plotId === plot.plotId
-                                                    ? 'ring-2 ring-primary ring-offset-1'
+                                                className={`p-2 text-xs rounded border transition-all truncate hover:opacity-80 relative ${selectedPlot?.plotId === plot.plotId
+                                                    ? 'ring-2 ring-primary ring-offset-1 z-10'
                                                     : ''
                                                     } ${getStatusColor(plot.status)}`}
                                                 title={`Plot ${plot.plotNumber} - ${plot.size} sqft${plot.bookedBy ? ` | Booked by: #${plot.bookedBy.profileId}` : ''}`}
@@ -520,13 +520,13 @@ export default function ProjectShowcase() {
                                                 {/* Floors Grid - Only show when block is selected */}
                                                 {selectedBlock?.blockId === block.blockId && block.floors && block.floors.length > 0 && (
                                                     <div className="px-3 pb-3">
-                                                        <div className="grid grid-cols-5 gap-1">
+                                                        <div className="grid grid-cols-5 gap-1.5 p-1">
                                                             {[...block.floors].reverse().map((floor) => (
                                                                 <button
                                                                     key={floor.floorNumber}
                                                                     onClick={() => handleFloorClick(floor)}
-                                                                    className={`p-2 text-xs rounded border transition-all ${selectedFloor?.floorNumber === floor.floorNumber
-                                                                        ? 'bg-black text-white border-black dark:bg-white dark:text-black dark:border-white'
+                                                                    className={`p-2 text-xs rounded border-2 transition-all relative ${selectedFloor?.floorNumber === floor.floorNumber
+                                                                        ? 'bg-black text-white border-black dark:bg-white dark:text-black dark:border-white z-10 ring-2 ring-black/30 dark:ring-white/30'
                                                                         : 'bg-muted/50 hover:bg-muted border-border dark:bg-muted/50 dark:hover:bg-muted dark:border-border'
                                                                         }`}
                                                                 >
@@ -574,9 +574,9 @@ export default function ProjectShowcase() {
                     <CardContent className="flex-1 px-2 pb-2 pt-0 overflow-hidden flex flex-col">
                         {/* Horizontal Unit Number Selection (User's Mockup) */}
                         {project.property !== 'plots' && selectedFloor && selectedFloor.units && (
-                            <div className="mb-1 shrink-0 border-b pb-1">
+                            <div className="mb-1 shrink-0 border-b pb-0">
                                 <ScrollArea className="w-full" orientation="horizontal">
-                                    <div className="flex items-center gap-2 px-2">
+                                    <div className="flex items-center gap-2 px-2 pb-3">
                                         {(selectedFloor.units as Unit[]).map((unit) => (
                                             <button
                                                 key={unit.unitId}
@@ -591,7 +591,7 @@ export default function ProjectShowcase() {
 
                                                     }
                                                 }}
-                                                className={`text-md font-bold transition-all py-0 min-w-10 text-center ${selectedUnit?.unitId === unit.unitId
+                                                className={`text-md font-bold transition-all py-1 min-w-10 text-center ${selectedUnit?.unitId === unit.unitId
                                                     ? 'text-foreground scale-105'
                                                     : 'text-muted-foreground opacity-40 hover:opacity-100'
                                                     }`}
@@ -673,11 +673,11 @@ export default function ProjectShowcase() {
                                     )}
                                 </div>
                             ) : (
-                                <div className="h-full flex items-center justify-center text-center text-muted-foreground">
-                                    <div className="opacity-50">
-                                        <ImageIcon className="h-12 w-12 mx-auto mb-2" />
-                                        <p>{getMiddlePanelEmptyMessage().title}</p>
-                                        <p className="text-xs">{getMiddlePanelEmptyMessage().subtitle}</p>
+                                <div className="h-full flex items-center justify-center">
+                                    <div className="border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20 p-8 max-w-xs text-center">
+                                        <ImageIcon className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
+                                        <p className="text-sm font-medium text-muted-foreground">{getMiddlePanelEmptyMessage().title}</p>
+                                        <p className="text-xs text-muted-foreground/60 mt-1">{getMiddlePanelEmptyMessage().subtitle}</p>
                                     </div>
                                 </div>
                             )}
@@ -705,11 +705,11 @@ export default function ProjectShowcase() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 p-2 overflow-hidden">
+                        <ScrollArea className="h-full" orientation="vertical">
                         {project.property === 'plots' ? (
                             /* ==== Plot Details ==== */
                             selectedPlot ? (
-                                <ScrollArea className="h-full pr-3">
-                                    <div className="flex flex-col items-center p-6 text-center space-y-3">
+                                    <div className="flex flex-col items-center p-6 text-center space-y-3 pr-3">
                                         <div className={`p-4 rounded-full ${getStatusColor(selectedPlot.status).split(' ')[0]} bg-opacity-20`}>
                                             <Layers className={`h-12 w-12 ${getStatusColor(selectedPlot.status).split(' ')[1]}`} />
                                         </div>
@@ -743,7 +743,6 @@ export default function ProjectShowcase() {
                                             </Button>
                                         </div>
                                     </div>
-                                </ScrollArea>
                             ) : (
                                 <div className="h-full flex items-center justify-center text-center text-muted-foreground">
                                     <div>
@@ -755,12 +754,11 @@ export default function ProjectShowcase() {
                         ) : (
                             /* ==== Old-style Unit Grid (Green Boxes) ==== */
                             selectedFloor && selectedFloor.units && selectedFloor.units.length > 0 ? (
-                                <ScrollArea className="h-full pr-3">
-                                    <div className="grid grid-cols-4 gap-2">
+                                    <div className="grid grid-cols-4 gap-2.5 p-1 pr-3">
                                         {(selectedFloor.units as Unit[]).map((unit) => (
                                             <div
                                                 key={unit.unitId}
-                                                className={`p-3 rounded-lg border-2 transition-all hover:shadow-md cursor-pointer ${getStatusColor(unit.status)} ${selectedUnit && selectedUnit.unitId === unit.unitId ? 'ring-2 ring-primary ring-offset-1' : ''
+                                                className={`p-3 rounded-lg border-2 transition-all hover:shadow-md cursor-pointer relative ${getStatusColor(unit.status)} ${selectedUnit && selectedUnit.unitId === unit.unitId ? 'ring-2 ring-primary ring-offset-1 z-10' : ''
                                                     }`}
                                                 onClick={() => {
                                                     handleUnitClick(unit); // Show details in center panel
@@ -788,7 +786,6 @@ export default function ProjectShowcase() {
                                             </div>
                                         ))}
                                     </div>
-                                </ScrollArea>
                             ) : (
                                 <div className="h-full flex items-center justify-center text-center text-muted-foreground">
                                     <div>
@@ -798,6 +795,7 @@ export default function ProjectShowcase() {
                                 </div>
                             )
                         )}
+                        </ScrollArea>
                     </CardContent>
                 </Card>
             </div>

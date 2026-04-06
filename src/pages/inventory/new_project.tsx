@@ -1055,10 +1055,10 @@ export default function NewProject() {
                                                                         <SelectItem value="West">West</SelectItem>
                                                                         <SelectItem value="North">North</SelectItem>
                                                                         <SelectItem value="South">South</SelectItem>
-                                                                        <SelectItem value="North-East">NE</SelectItem>
-                                                                        <SelectItem value="South-East">SE</SelectItem>
-                                                                        <SelectItem value="North-West">NW</SelectItem>
-                                                                        <SelectItem value="South-West">SW</SelectItem>
+                                                                        <SelectItem value="North-East">North East</SelectItem>
+                                                                        <SelectItem value="South-East">South East</SelectItem>
+                                                                        <SelectItem value="North-West">North West</SelectItem>
+                                                                        <SelectItem value="South-West">South West</SelectItem>
                                                                     </SelectContent>
                                                                 </Select>
                                                                 <Select
@@ -1713,7 +1713,7 @@ export default function NewProject() {
                                                             <SelectContent>
                                                                 {['East', 'West', 'North', 'South', 'North-East', 'South-East', 'North-West', 'South-West'].map(d => (
                                                                     <SelectItem key={d} value={d}>
-                                                                        {d.length > 5 ? d.split('-').map(s => s[0]).join('') : d}
+                                                                        {d.replace('-', ' ')}
                                                                     </SelectItem>
                                                                 ))}
                                                             </SelectContent>

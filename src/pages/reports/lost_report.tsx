@@ -247,18 +247,46 @@ export default function LostReport() {
     }, [filters.team])
 
     const filteredData = useMemo(() => {
-        return data.filter(item => {
+        let result = data.filter(item => {
             if (filters.campaign !== "all" && item.campaign !== filters.campaign) return false
             if (filters.source !== "all" && item.source !== filters.source) return false
             if (filters.project !== "all" && item.project !== filters.project) return false
             
+            // Team-based filtering
+            if (filters.team === "Pre-Sales Team") {
+                if (!item.pre_sales_users || item.pre_sales_users.length === 0) return false
+            } else if (filters.team === "Sales Team") {
+                if (!item.sales_users || item.sales_users.length === 0) return false
+            }
+
             if (filters.users.length > 0) {
-                const combinedUsers = [...item.pre_sales_users, ...item.sales_users]
-                const matches = filters.users.some(u => combinedUsers.includes(u))
+                const relevantUsers = filters.team === "Pre-Sales Team" 
+                    ? item.pre_sales_users 
+                    : filters.team === "Sales Team" 
+                        ? item.sales_users 
+                        : [...item.pre_sales_users, ...item.sales_users]
+                const matches = filters.users.some(u => relevantUsers.includes(u))
                 if (!matches) return false
             }
             return true
         })
+
+        // Sort by team user name when a specific team is selected
+        if (filters.team === "Pre-Sales Team") {
+            result = [...result].sort((a, b) => {
+                const nameA = (a.pre_sales_users?.[0] || "").toLowerCase()
+                const nameB = (b.pre_sales_users?.[0] || "").toLowerCase()
+                return nameA.localeCompare(nameB)
+            })
+        } else if (filters.team === "Sales Team") {
+            result = [...result].sort((a, b) => {
+                const nameA = (a.sales_users?.[0] || "").toLowerCase()
+                const nameB = (b.sales_users?.[0] || "").toLowerCase()
+                return nameA.localeCompare(nameB)
+            })
+        }
+
+        return result
     }, [data, filters])
 
     // Chart Data

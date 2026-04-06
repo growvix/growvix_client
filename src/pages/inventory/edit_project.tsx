@@ -719,7 +719,7 @@ export default function EditProject() {
                                                             <Select value={plot.facing || 'East'} onValueChange={v => updatePlot(plot.plotId, { facing: v })}>
                                                                 <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                                                                 <SelectContent>
-                                                                    {['East', 'West', 'North', 'South', 'North-East', 'South-East', 'North-West', 'South-West'].map(d => <SelectItem key={d} value={d}>{d.length > 5 ? d.split('-').map(s => s[0]).join('') : d}</SelectItem>)}
+                                                                    {['East', 'West', 'North', 'South', 'North-East', 'South-East', 'North-West', 'South-West'].map(d => <SelectItem key={d} value={d}>{d.replace('-', ' ')}</SelectItem>)}
                                                                 </SelectContent>
                                                             </Select>
                                                             <Select value={plot.status} onValueChange={v => updatePlot(plot.plotId, { status: v as 'available' | 'booked' | 'sold' })}>
@@ -1081,7 +1081,7 @@ export default function EditProject() {
                                                             <SelectContent>
                                                                 {['East', 'West', 'North', 'South', 'North-East', 'South-East', 'North-West', 'South-West'].map(d => (
                                                                     <SelectItem key={d} value={d}>
-                                                                        {d.length > 5 ? d.split('-').map(s => s[0]).join('') : d}
+                                                                        {d.replace('-', ' ')}
                                                                     </SelectItem>
                                                                 ))}
                                                             </SelectContent>

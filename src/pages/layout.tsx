@@ -1,5 +1,5 @@
 import * as React from "react"
-import { AlertCircle, Loader2, Hash, LayoutDashboard, ClipboardList, PlusCircle, Package, BarChart3, TrendingUp, Settings, Handshake, UserCog, GitBranch, Users, Calendar, User, Trophy, Lightbulb, Home, XCircle } from "lucide-react"
+import { AlertCircle, Loader2, Headset, Hash, LayoutDashboard, ClipboardList, PlusCircle, Package, BarChart3, TrendingUp, Settings, Handshake, UserCog, GitBranch, Users, Calendar, User, Trophy, Lightbulb, Home, XCircle } from "lucide-react"
 import { useBreadcrumb } from "@/context/breadcrumb-context"
 import { PageBreadcrumb } from "@/components/page-breadcrumb"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -172,9 +172,11 @@ export default function SidebarLayout() {
                     )}
                     <header className="sticky z-30 top-0 bg-white dark:bg-black flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 mb-1">
 
-                            <PageBreadcrumb items={breadcrumbItems} />
+                        <PageBreadcrumb items={breadcrumbItems} />
 
                         <div className="me-2 md:me-4  ml-auto flex gap-3">
+                            <Button variant="outline" className="">Balance : ₹89</Button>
+                            <Button variant="destructive" className=""> <Headset className="h-4 w-4" /> +91 9345351731</Button>
                             <Button
                                 variant="outline"
                                 className="w-[300px] bg-input/30 dark:bg-input/50 text-dark/50 hover:bg-primary-900 hover:text-gray-400 rounded-xl transform transition duration-150 ease-out active:scale-95 active:shadow-inner focus:outline-none focus:ring-1 focus:ring-gray-300 flex justify-between"

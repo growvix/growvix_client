@@ -107,6 +107,9 @@ export const API = {
         WEEKLY: `${API_URL}/api/availability/weekly`,
         TOGGLE: `${API_URL}/api/availability/toggle`,
     },
+
+    // Support Tickets
+    SUPPORT_TICKETS: `${API_URL}/api/support-tickets`,
 };
 
 export default API;
