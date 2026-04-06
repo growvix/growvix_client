@@ -153,18 +153,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     avatar: "/user_icon.png"
   })
 
-  // Get user info from cookies and localStorage on mount
+  // Get user info from cookies and localStorage on mount and when profile updates
   React.useEffect(() => {
-    const userName = getCookie('userName') || 'User'
-    const email = getCookie('email') || 'user@example.com'
-    const userId = getCookie('user_id')
-    const avatar = (userId ? localStorage.getItem(`userAvatar_${userId}`) : null) || localStorage.getItem('userAvatar') || "/user_icon.png"
+    const updateUserFromStorage = () => {
+      const userName = getCookie('userName') || 'User'
+      const email = getCookie('email') || 'user@example.com'
+      const userId = getCookie('user_id')
+      const avatar = (userId ? localStorage.getItem(`userAvatar_${userId}`) : null) || localStorage.getItem('userAvatar') || "/user_icon.png"
+      
+      setUser({
+        name: userName,
+        email: email,
+        avatar: avatar,
+      })
+    }
+
+    updateUserFromStorage()
     
-    setUser({
-      name: userName,
-      email: email,
-      avatar: avatar,
-    })
+    // Listen for custom profile update events (from ProfilePage)
+    window.addEventListener('profileUpdate', updateUserFromStorage)
+    
+    // Also listen for storage events from other tabs
+    window.addEventListener('storage', updateUserFromStorage)
+
+    return () => {
+      window.removeEventListener('profileUpdate', updateUserFromStorage)
+      window.removeEventListener('storage', updateUserFromStorage)
+    }
   }, [])
 
   const rawRole = getCookie('role') || 'user';
