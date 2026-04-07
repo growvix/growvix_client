@@ -772,7 +772,7 @@ export default function NewProject() {
         // Frontend validation
         const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
         const allowedDocTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-        
+
         // 500MB size limit for brochures, 5MB for logo
         const MAX_BROCHURE_SIZE = 500 * 1024 * 1024; // 500MB limit for brochures
         const MAX_LOGO_SIZE = 5 * 1024 * 1024;
@@ -798,7 +798,7 @@ export default function NewProject() {
         }
 
         // Only compress logo, keep brochure as-is for quality and format preservation
-        const fileToUpload = type === 'logo' 
+        const fileToUpload = type === 'logo'
             ? await compressImage(file, { quality: 0.8, maxWidth: 1200 })
             : file;
 
@@ -1132,7 +1132,7 @@ export default function NewProject() {
                                                                             />
                                                                         </div>
                                                                         <div className="space-y-2 col-span-2">
-                                                                            <Label>Floor Plan Images (Max 5)</Label>
+                                                                            <Label>Block Plan Images (Max 5)</Label>
                                                                             <div className="flex gap-2">
                                                                                 <Input
                                                                                     type="file"

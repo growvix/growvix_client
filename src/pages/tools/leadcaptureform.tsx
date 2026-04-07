@@ -100,6 +100,44 @@ interface AssignedPerson {
     type: 'user' | 'cp'
 }
 
+const CONTACT_FIELD_GROUPS = [
+    {
+        title: 'Contact Fields',
+        fields: [
+            { id: 'email', label: 'Email Address' },
+            { id: 'location', label: 'Current Location' },
+            { id: 'street_address', label: 'Street address' },
+            { id: 'city', label: 'City' },
+            { id: 'state', label: 'State' },
+            { id: 'province', label: 'Province' },
+            { id: 'country', label: 'Country' },
+            { id: 'post_code', label: 'Post code' },
+            { id: 'zip_code', label: 'Zip code' },
+        ]
+    },
+    {
+        title: 'Demographic Questions',
+        fields: [
+            { id: 'dob', label: 'Date of birth' },
+            { id: 'gender', label: 'Gender' },
+            { id: 'marital_status', label: 'Marital status' },
+            { id: 'relationship_status', label: 'Relationship status' },
+            { id: 'military_status', label: 'Military status' },
+            { id: 'education_level', label: 'Education level' },
+        ]
+    },
+    {
+        title: 'Work Information',
+        fields: [
+            { id: 'job_title', label: 'Job title' },
+            { id: 'work_phone', label: 'Work phone number' },
+            { id: 'work_email', label: 'Work email' },
+            { id: 'company_name', label: 'Company name' },
+            { id: 'website', label: 'Website' },
+        ]
+    }
+]
+
 const STEPS = [
     { id: 1, title: 'STEP 1', icon: <Target className="w-6 h-6" />, label: 'Form Builder' },
     { id: 2, title: 'STEP 2', icon: <SlidersHorizontal className="w-6 h-6" />, label: 'Routing Options' },
@@ -155,7 +193,7 @@ export default function LeadCaptureForm() {
         parking_needed: '',
     })
 
-    // Fill Mode State
+    const [selectedContactFields, setSelectedContactFields] = useState<string[]>(['email', 'location'])
     const [isFillMode, setIsFillMode] = useState(false)
     const [leadData, setLeadData] = useState<any>({})
     const [submittingLead, setSubmittingLead] = useState(false)
@@ -164,12 +202,16 @@ export default function LeadCaptureForm() {
     const [selectedFields, setSelectedFields] = useState<string[]>([
         'budget', 'preferred_location', 'preferred_floor', 'interested_projects'
     ])
-    const [reqTab, setReqTab] = useState<'prebuilt' | 'manual'>('prebuilt')
+    const [reqTab, setReqTab] = useState<'contact' | 'requirements' | 'manual'>('contact')
     const [manualRequirements, setManualRequirements] = useState<{ key: string, value: string }[]>([])
     const [newManualKey, setNewManualKey] = useState('')
     const [newManualValue, setNewManualValue] = useState('')
     const [floorInput, setFloorInput] = useState('')
     const [isRequirementSheetOpen, setIsRequirementSheetOpen] = useState(false)
+    const [isContactSheetOpen, setIsContactSheetOpen] = useState(false)
+    const [contactTab, setContactTab] = useState<'prebuilt' | 'manual'>('prebuilt')
+    const [manualContactFields, setManualContactFields] = useState<{ key: string }[]>([])
+    const [newManualContactKey, setNewManualContactKey] = useState('')
 
     const toggleField = (fieldId: string) => {
         if (selectedFields.includes(fieldId)) {
@@ -267,10 +309,26 @@ export default function LeadCaptureForm() {
                     } else {
                         setContactInfo(loadedContactInfo)
                     }
-                    setSelectedFields(config.selected_fields)
+                    setSelectedFields(config.selected_fields || [])
                     setManualRequirements(config.manual_requirements?.map((m: any) => ({ ...m, value: '' })) || [])
-                    setAssignedPeople(config.assigned_people)
-                    setSelectedProject(config.project_id)
+                    setSelectedContactFields(config.selected_contact_fields || ['email', 'location'])
+                    setManualContactFields(config.manual_contact_fields || [])
+                    setAssignedPeople(config.assigned_people || [])
+
+                    // Resolve selected project from ID
+                    if (config.project_id) {
+                        const project = (projectsRes.data.data || []).find((p: any) => p._id === config.project_id || p.id === config.project_id)
+                        if (project) {
+                            setSelectedProject(project)
+                        } else {
+                            setSelectedProject(config.project_id)
+                        }
+                    }
+                    console.log('Loaded Configuration:', {
+                        contactFields: config.selected_contact_fields,
+                        manualFields: config.manual_contact_fields,
+                        requirements: config.selected_fields
+                    })
                 }
             }
         } catch (error) {
@@ -328,6 +386,8 @@ export default function LeadCaptureForm() {
                 contact_info: contactInfo,
                 selected_fields: selectedFields,
                 manual_requirements: manualRequirements,
+                selected_contact_fields: selectedContactFields,
+                manual_contact_fields: manualContactFields,
                 assigned_people: assignedPeople,
                 source: contactInfo.source || 'Manual Configuration',
                 status: 'Active'
@@ -338,6 +398,7 @@ export default function LeadCaptureForm() {
                 const leadPayload = {
                     organization: finalOrg,
                     profile: {
+                        ...contactInfo,
                         name: contactInfo.name,
                         email: contactInfo.email,
                         phone: contactInfo.phone,
@@ -356,8 +417,8 @@ export default function LeadCaptureForm() {
                     acquired: [{
                         campaign: contactInfo.campaign,
                         source: contactInfo.source,
-                        sub_source: 'Lead Capture Form',
-                        medium: 'Web Form',
+                        sub_source: contactInfo.sub_source || 'Lead Capture Form',
+                        medium: contactInfo.medium || 'Web Form',
                         received: new Date().toISOString(),
                         created_at: new Date().toISOString(),
                     }],
@@ -453,49 +514,103 @@ export default function LeadCaptureForm() {
                         {currentStep === 1 && (
                             <div className="animate-in fade-in slide-in-duration-500 max-w-5xl mx-auto py-8">
                                 <div className="max-w-4xl mx-auto space-y-12 border border-slate-100 dark:border-zinc-800 p-6 rounded-3xl bg-transparent transition-all hover:border-slate-200 dark:hover:border-zinc-700 shadow-sm">
-                                    {/* Contact Section */}
+                                    {/* Dynamic Contact Section */}
                                     <section className="space-y-6 ">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400" />
-                                            <h3 className="font-bold text-zinc-900 dark:text-zinc-100">Contact Information</h3>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400" />
+                                                <h3 className="font-bold text-zinc-900 dark:text-zinc-100">Contact Information</h3>
+                                            </div>
+                                            {!isFillMode && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-blue-600 font-bold bg-blue-50 hover:bg-blue-100 rounded-lg px-4 transition-all"
+                                                    onClick={() => setIsContactSheetOpen(true)}
+                                                >
+                                                    <Plus className="w-4 h-4 mr-1.5" /> Add
+                                                </Button>
+                                            )}
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                                             <div className="space-y-2.5">
                                                 <Label className="text-[13px] font-bold text-zinc-900 dark:text-zinc-400 flex items-center gap-1">Full Name <span className="text-red-500">*</span></Label>
                                                 <Input
+                                                    disabled={!isFillMode}
                                                     placeholder="Enter full name"
                                                     className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm rounded-xl shadow-sm"
                                                     value={contactInfo.name}
                                                     onChange={(e) => setContactInfo({ ...contactInfo, name: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2.5">
-                                                <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Email Address</Label>
-                                                <Input
-                                                    placeholder="Enter email address"
-                                                    className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm rounded-xl shadow-sm"
-                                                    value={contactInfo.email}
-                                                    onChange={(e) => setContactInfo({ ...contactInfo, email: e.target.value })}
+                                                    required
                                                 />
                                             </div>
                                             <div className="space-y-2.5">
                                                 <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400 flex items-center gap-1">Phone Number <span className="text-red-500">*</span></Label>
                                                 <Input
+                                                    disabled={!isFillMode}
                                                     placeholder="Enter phone number"
                                                     className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm rounded-xl shadow-sm"
                                                     value={contactInfo.phone}
                                                     onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })}
+                                                    required
                                                 />
                                             </div>
-                                            <div className="space-y-2.5">
-                                                <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Current Location</Label>
-                                                <Input
-                                                    placeholder="Enter current location"
-                                                    className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm rounded-xl shadow-sm"
-                                                    value={contactInfo.location}
-                                                    onChange={(e) => setContactInfo({ ...contactInfo, location: e.target.value })}
-                                                />
-                                            </div>
+
+                                            {/* Dynamic Contact Fields */}
+                                            {selectedContactFields.map(fieldId => {
+                                                const field = CONTACT_FIELD_GROUPS.flatMap((g: any) => g.fields).find((f: any) => f.id === fieldId);
+                                                if (!field) return null;
+                                                return (
+                                                    <div key={fieldId} className="space-y-2.5 relative group">
+                                                        <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">{field.label}</Label>
+                                                        <div className="relative">
+                                                            <Input
+                                                                disabled={!isFillMode}
+                                                                placeholder={`Enter ${field.label.toLowerCase()}`}
+                                                                className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm rounded-xl shadow-sm pr-12"
+                                                                value={(contactInfo as any)[fieldId] || ''}
+                                                                onChange={(e) => setContactInfo({ ...contactInfo, [fieldId]: e.target.value })}
+                                                            />
+                                                            {!isFillMode && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="absolute right-1 top-1 text-slate-300 hover:text-red-500 hover:bg-red-50"
+                                                                    onClick={() => setSelectedContactFields(prev => prev.filter(f => f !== fieldId))}
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+
+                                            {/* Manual Contact Fields */}
+                                            {manualContactFields.map((field, idx) => (
+                                                <div key={`manual-contact-${idx}`} className="space-y-2.5 relative group">
+                                                    <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">{field.key}</Label>
+                                                    <div className="relative">
+                                                        <Input
+                                                            disabled={!isFillMode}
+                                                            placeholder={`Enter ${field.key.toLowerCase()}`}
+                                                            className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm rounded-xl shadow-sm pr-12"
+                                                            value={(contactInfo as any)[field.key] || ''}
+                                                            onChange={(e) => setContactInfo({ ...contactInfo, [field.key]: e.target.value })}
+                                                        />
+                                                        {!isFillMode && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="absolute right-1 top-1 text-slate-300 hover:text-red-500 hover:bg-red-50"
+                                                                onClick={() => setManualContactFields(prev => prev.filter((_, i) => i !== idx))}
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </section>
 
@@ -508,14 +623,17 @@ export default function LeadCaptureForm() {
                                                 <div className="w-1.5 h-1.5 rounded-full bg-purple-500 dark:bg-purple-400" />
                                                 <h3 className="font-bold text-zinc-900 dark:text-zinc-100">Requirements</h3>
                                             </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-purple-600 font-bold bg-purple-50 hover:bg-purple-100 rounded-lg px-4 transition-colors"
-                                                onClick={() => setIsRequirementSheetOpen(true)}
-                                            >
-                                                <Plus className="w-4 h-4 mr-1.5" /> Add
-                                            </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-purple-600 font-bold bg-purple-50 hover:bg-purple-100 rounded-lg px-4 transition-colors"
+                                                    onClick={() => {
+                                                        setReqTab('requirements')
+                                                        setIsRequirementSheetOpen(true)
+                                                    }}
+                                                >
+                                                    <Plus className="w-4 h-4 mr-1.5" /> Add
+                                                </Button>
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
@@ -525,6 +643,7 @@ export default function LeadCaptureForm() {
                                                     <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Budget Range</Label>
                                                     <div className="relative">
                                                         <Input
+                                                            disabled={!isFillMode}
                                                             placeholder="e.g. 50L - 1Cr"
                                                             className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm rounded-xl shadow-sm pr-12"
                                                             value={contactInfo.budget}
@@ -539,6 +658,7 @@ export default function LeadCaptureForm() {
                                                     <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Preferred Location</Label>
                                                     <div className="relative">
                                                         <Input
+                                                            disabled={!isFillMode}
                                                             placeholder="Enter preferred location"
                                                             className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm rounded-xl shadow-sm pr-12"
                                                             value={contactInfo.preferred_location}
@@ -553,6 +673,7 @@ export default function LeadCaptureForm() {
                                                     <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Preferred Floor</Label>
                                                     <div className="relative">
                                                         <Input
+                                                            disabled={!isFillMode}
                                                             placeholder="e.g. Higher floor, 5th floor"
                                                             className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm rounded-xl shadow-sm pr-12"
                                                             value={contactInfo.preferred_floor}
@@ -567,6 +688,7 @@ export default function LeadCaptureForm() {
                                                     <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Interested Projects / Types</Label>
                                                     <div className="relative">
                                                         <Input
+                                                            disabled={!isFillMode}
                                                             placeholder="e.g. 2BHK, 3BHK, Villa"
                                                             className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm rounded-xl shadow-sm pr-12"
                                                             value={contactInfo.interested_projects}
@@ -582,6 +704,7 @@ export default function LeadCaptureForm() {
                                                     <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Square Footage (sqft)</Label>
                                                     <div className="relative">
                                                         <Input
+                                                            disabled={!isFillMode}
                                                             placeholder="Enter square footage"
                                                             className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm rounded-xl shadow-sm pr-12"
                                                             value={contactInfo.sqft}
@@ -620,6 +743,7 @@ export default function LeadCaptureForm() {
                                                     <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Bathrooms</Label>
                                                     <div className="relative">
                                                         <Input
+                                                            disabled={!isFillMode}
                                                             placeholder="Enter number of bathrooms"
                                                             className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm rounded-xl shadow-sm pr-12"
                                                             value={contactInfo.bathroom_count}
@@ -706,6 +830,7 @@ export default function LeadCaptureForm() {
                                                     <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">{req.key}</Label>
                                                     <div className="relative">
                                                         <Input
+                                                            disabled={!isFillMode}
                                                             placeholder={`Enter ${req.key.toLowerCase()}`}
                                                             className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm rounded-xl shadow-sm pr-12"
                                                         />
@@ -733,8 +858,9 @@ export default function LeadCaptureForm() {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                                             <div className="space-y-2.5">
-                                                <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Campaign Name</Label>
+                                                <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Campaign Name <span className="text-red-500">*</span></Label>
                                                 <Input
+                                                    disabled={!isFillMode}
                                                     placeholder="Enter campaign name"
                                                     className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm shadow-sm"
                                                     value={contactInfo.campaign}
@@ -742,8 +868,9 @@ export default function LeadCaptureForm() {
                                                 />
                                             </div>
                                             <div className="space-y-2.5">
-                                                <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Source</Label>
+                                                <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Source <span className="text-red-500">*</span></Label>
                                                 <Input
+                                                    disabled={!isFillMode}
                                                     placeholder="e.g. Facebook, Google"
                                                     className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm rounded-xl shadow-sm"
                                                     value={contactInfo.source}
@@ -753,21 +880,13 @@ export default function LeadCaptureForm() {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                                             <div className="space-y-2.5">
-                                                <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Sub Source</Label>
+                                                <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Sub Source <span className="text-red-500">*</span></Label>
                                                 <Input
+                                                    disabled={!isFillMode}
                                                     placeholder="e.g. Facebook, Google"
                                                     className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm rounded-xl shadow-sm"
                                                     value={contactInfo.sub_source}
                                                     onChange={(e) => setContactInfo({ ...contactInfo, sub_source: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2.5">
-                                                <Label className="text-[13px] font-bold text-slate-700 dark:text-zinc-400">Medium</Label>
-                                                <Input
-                                                    placeholder="e.g. Facebook, Google"
-                                                    className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm rounded-xl shadow-sm"
-                                                    value={contactInfo.medium}
-                                                    onChange={(e) => setContactInfo({ ...contactInfo, medium: e.target.value })}
                                                 />
                                             </div>
                                         </div>
@@ -1010,40 +1129,55 @@ export default function LeadCaptureForm() {
                                                         <div className="space-y-3.5">
                                                             <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400 flex items-center gap-1.5">Full Name <span className="text-red-500">*</span></Label>
                                                             <Input
+                                                                disabled={!isFillMode}
                                                                 placeholder="Enter lead full name"
                                                                 className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-zinc-900"
                                                                 value={contactInfo.name}
                                                                 onChange={(e) => setContactInfo({ ...contactInfo, name: e.target.value })}
-                                                                disabled={!isFillMode && false}
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-3.5">
-                                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Email Address</Label>
-                                                            <Input
-                                                                placeholder="Enter lead email address"
-                                                                className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-zinc-900"
-                                                                value={contactInfo.email}
-                                                                onChange={(e) => setContactInfo({ ...contactInfo, email: e.target.value })}
                                                             />
                                                         </div>
                                                         <div className="space-y-3.5">
                                                             <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400 flex items-center gap-1.5">Phone Number <span className="text-red-500">*</span></Label>
                                                             <Input
+                                                                disabled={!isFillMode}
                                                                 placeholder="Enter lead phone number"
                                                                 className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-zinc-900"
                                                                 value={contactInfo.phone}
                                                                 onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })}
                                                             />
                                                         </div>
-                                                        <div className="space-y-3.5">
-                                                            <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Current Location</Label>
-                                                            <Input
-                                                                placeholder="Enter lead location"
-                                                                className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-zinc-900"
-                                                                value={contactInfo.location}
-                                                                onChange={(e) => setContactInfo({ ...contactInfo, location: e.target.value })}
-                                                            />
-                                                        </div>
+
+                                                        {/* Preview Dynamic Contact Fields */}
+                                                        {selectedContactFields.map(fieldId => {
+                                                            const field = CONTACT_FIELD_GROUPS.flatMap((g: any) => g.fields).find((f: any) => f.id === fieldId);
+                                                            if (!field) return null;
+                                                            return (
+                                                                <div key={fieldId} className="space-y-3.5">
+                                                                    <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">{field.label}</Label>
+                                                                    <Input
+                                                                        disabled={!isFillMode}
+                                                                        placeholder={`Enter ${field.label.toLowerCase()}`}
+                                                                        className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-zinc-900"
+                                                                        value={(contactInfo as any)[fieldId] || ''}
+                                                                        onChange={(e) => setContactInfo({ ...contactInfo, [fieldId]: e.target.value })}
+                                                                    />
+                                                                </div>
+                                                            )
+                                                        })}
+
+                                                        {/* Preview Manual Contact Fields */}
+                                                        {manualContactFields.map((field, idx) => (
+                                                            <div key={`preview-manual-contact-${idx}`} className="space-y-3.5">
+                                                                <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">{field.key}</Label>
+                                                                <Input
+                                                                    disabled={!isFillMode}
+                                                                    placeholder={`Enter ${field.key.toLowerCase()}`}
+                                                                    className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-zinc-900"
+                                                                    value={(contactInfo as any)[field.key] || ''}
+                                                                    onChange={(e) => setContactInfo({ ...contactInfo, [field.key]: e.target.value })}
+                                                                />
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </section>
 
@@ -1061,6 +1195,7 @@ export default function LeadCaptureForm() {
                                                             <div className="space-y-3.5">
                                                                 <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Budget Range</Label>
                                                                 <Input
+                                                                    disabled={!isFillMode}
                                                                     placeholder="e.g. 50L - 1Cr"
                                                                     className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-zinc-900"
                                                                     value={contactInfo.budget}
@@ -1072,6 +1207,7 @@ export default function LeadCaptureForm() {
                                                             <div className="space-y-3.5">
                                                                 <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Preferred Location</Label>
                                                                 <Input
+                                                                    disabled={!isFillMode}
                                                                     placeholder="Enter preferred area"
                                                                     className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm"
                                                                     value={contactInfo.preferred_location}
@@ -1083,6 +1219,7 @@ export default function LeadCaptureForm() {
                                                             <div className="space-y-3.5">
                                                                 <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Preferred Floor</Label>
                                                                 <Input
+                                                                    disabled={!isFillMode}
                                                                     placeholder="e.g. 5th floor, Penthouse"
                                                                     className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm"
                                                                     value={contactInfo.preferred_floor}
@@ -1094,6 +1231,7 @@ export default function LeadCaptureForm() {
                                                             <div className="space-y-3.5">
                                                                 <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Interested Variants</Label>
                                                                 <Input
+                                                                    disabled={!isFillMode}
                                                                     placeholder="e.g. 2BHK Corner, 3BHK Loft"
                                                                     className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm"
                                                                     value={contactInfo.interested_projects}
@@ -1105,6 +1243,7 @@ export default function LeadCaptureForm() {
                                                             <div className="space-y-3.5">
                                                                 <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Area (sqft)</Label>
                                                                 <Input
+                                                                    disabled={!isFillMode}
                                                                     placeholder="Enter square footage"
                                                                     className="h-16 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-sm rounded-2xl shadow-sm focus:ring-1 focus:ring-zinc-400"
                                                                     value={contactInfo.sqft}
@@ -1135,6 +1274,7 @@ export default function LeadCaptureForm() {
                                                             <div className="space-y-3.5">
                                                                 <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Bathrooms</Label>
                                                                 <Input
+                                                                    disabled={!isFillMode}
                                                                     placeholder="Enter number of bathrooms"
                                                                     className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm"
                                                                     value={contactInfo.bathroom_count}
@@ -1203,6 +1343,7 @@ export default function LeadCaptureForm() {
                                                             <div key={idx} className="space-y-3.5">
                                                                 <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">{req.key}</Label>
                                                                 <Input
+                                                                    disabled={!isFillMode}
                                                                     placeholder={`Enter ${req.key.toLowerCase()}`}
                                                                     className="h-14 bg-white dark:bg-zinc-950 border-zinc-400 dark:border-zinc-800 text-sm rounded-2xl shadow-sm"
                                                                     value={req.value}
@@ -1231,6 +1372,7 @@ export default function LeadCaptureForm() {
                                                         <div className="space-y-4">
                                                             <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Campaign Name</Label>
                                                             <Select
+                                                                disabled={!isFillMode}
                                                                 value={contactInfo.campaign}
                                                                 onValueChange={(val) => isFillMode && setContactInfo({
                                                                     ...contactInfo,
@@ -1290,20 +1432,6 @@ export default function LeadCaptureForm() {
                                                                 </Select>
                                                             </div>
                                                         )}
-
-                                                        {/* Interaction Medium - Hidden for CP */}
-                                                        {!(getCookie('category') === 'CP' || getCookie('userRole') === 'CP' || getCookie('role') === 'cp') && (
-                                                            <div className="space-y-4">
-                                                                <Label className="text-[13px] font-black uppercase tracking-widest text-zinc-900 dark:text-zinc-400">Medium</Label>
-                                                                <Input 
-                                                                    disabled={!isFillMode}
-                                                                    placeholder="e.g. WhatsApp, Phone"
-                                                                    className="w-full h-10 bg-white dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 text-sm font-medium rounded-xl shadow-sm outline-none focus:ring-0 focus-visible:ring-0"
-                                                                    value={contactInfo.medium}
-                                                                    onChange={(e) => setContactInfo({...contactInfo, medium: e.target.value})}
-                                                                />
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 </section>
                                             </div>
@@ -1331,6 +1459,141 @@ export default function LeadCaptureForm() {
                     </div>
                 </main>
 
+                {/* Contact Information Selection Sheet */}
+                <Sheet open={isContactSheetOpen} onOpenChange={setIsContactSheetOpen}>
+                    <SheetContent className="overflow-y-auto">
+                        <SheetHeader>
+                            <SheetTitle>Contact Fields</SheetTitle>
+                            <SheetDescription>
+                                Add additional contact and demographic fields to your form.
+                            </SheetDescription>
+                        </SheetHeader>
+
+                        <div className="mt-6 space-y-6 px-4 pb-8">
+                            <div className="flex gap-2 border-b pb-4 overflow-x-auto">
+                                <Button
+                                    size="sm"
+                                    variant={contactTab === 'prebuilt' ? 'default' : 'outline'}
+                                    onClick={() => setContactTab('prebuilt')}
+                                    className="whitespace-nowrap"
+                                >
+                                    Pre-built
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant={contactTab === 'manual' ? 'default' : 'outline'}
+                                    onClick={() => setContactTab('manual')}
+                                    className="whitespace-nowrap"
+                                >
+                                    Manual Input
+                                </Button>
+                            </div>
+
+                            {contactTab === 'prebuilt' ? (
+                                <div className="space-y-8">
+                                    {CONTACT_FIELD_GROUPS.map((group: any) => (
+                                        <div key={group.title} className="space-y-4">
+                                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 px-1">{group.title}</h4>
+                                            <div className="grid grid-cols-1 gap-4">
+                                                {group.fields.map((field: any) => (
+                                                    <div
+                                                        key={field.id}
+                                                        className={cn(
+                                                            "p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between",
+                                                            selectedContactFields.includes(field.id) ? "border-blue-500 bg-blue-50/50 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
+                                                        )}
+                                                        onClick={() => {
+                                                            if (selectedContactFields.includes(field.id)) {
+                                                                setSelectedContactFields(prev => prev.filter(f => f !== field.id))
+                                                            } else {
+                                                                setSelectedContactFields(prev => [...prev, field.id])
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Label className="font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">{field.label}</Label>
+                                                        <Checkbox checked={selectedContactFields.includes(field.id)} onCheckedChange={() => { }} className="w-5 h-5 rounded-md" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    <Button
+                                        className="w-full h-11 font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl mt-6"
+                                        onClick={() => setIsContactSheetOpen(false)}
+                                    >
+                                        Apply Requirements
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[13px] font-bold">Field Name</Label>
+                                            <Input
+                                                placeholder="e.g. Alternate Phone, LinkedIn, etc."
+                                                className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 rounded-xl"
+                                                value={newManualContactKey}
+                                                onChange={(e) => setNewManualContactKey(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && newManualContactKey) {
+                                                        setManualContactFields([...manualContactFields, { key: newManualContactKey }])
+                                                        setNewManualContactKey('')
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                        <Button
+                                            className="w-full h-11 font-bold bg-slate-100 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 rounded-xl hover:bg-slate-200"
+                                            onClick={() => {
+                                                if (newManualContactKey) {
+                                                    setManualContactFields([...manualContactFields, { key: newManualContactKey }])
+                                                    setNewManualContactKey('')
+                                                }
+                                            }}
+                                        >
+                                            Add Custom Contact Field
+                                        </Button>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Current Manual Fields</Label>
+                                        {manualContactFields.length === 0 ? (
+                                            <div className="py-12 flex flex-col items-center gap-4 border-2 border-dashed border-slate-100 dark:border-zinc-800 rounded-2xl">
+                                                <p className="text-sm text-slate-400">No custom contact fields added</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                {manualContactFields.map((field, i) => (
+                                                    <div key={i} className="flex items-center justify-between p-4 border border-slate-100 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 shadow-sm transition-all hover:border-slate-200">
+                                                        <span className="font-bold text-zinc-900 dark:text-zinc-100">{field.key}</span>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-9 w-9 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                                            onClick={() => setManualContactFields(manualContactFields.filter((_, idx) => idx !== i))}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <Button
+                                        className="w-full h-11 font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl mt-6"
+                                        onClick={() => setIsContactSheetOpen(false)}
+                                    >
+                                        Apply Requirements
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </SheetContent>
+                </Sheet>
+
+                {/* Property Requirements Selection Sheet */}
                 <Sheet open={isRequirementSheetOpen} onOpenChange={setIsRequirementSheetOpen}>
                     <SheetContent className="overflow-y-auto">
                         <SheetHeader>
@@ -1340,245 +1603,123 @@ export default function LeadCaptureForm() {
                             </SheetDescription>
                         </SheetHeader>
 
-                        {/* Tabs */}
-                        <div className="flex gap-2 px-4 pt-4 border-b pb-4">
-                            <Button
-                                size="sm"
-                                variant={reqTab === 'prebuilt' ? 'default' : 'outline'}
-                                onClick={() => setReqTab('prebuilt')}
-                            >
-                                Pre-built Fields
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant={reqTab === 'manual' ? 'default' : 'outline'}
-                                onClick={() => setReqTab('manual')}
-                            >
-                                Manual Input
-                            </Button>
-                        </div>
-
-                        {reqTab === 'prebuilt' ? (
-                            <div className="space-y-6 p-4">
-                                {/* Square Footage */}
-                                <div
-                                    className={cn(
-                                        "p-4 rounded-xl border transition-all cursor-pointer",
-                                        selectedFields.includes('sqft') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
-                                    )}
-                                    onClick={() => toggleField('sqft')}
-                                >
-                                    <div className="flex items-center justify-between mb-3">
-                                        <Label className="font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">Square Footage (sqft)</Label>
-                                        <Checkbox checked={selectedFields.includes('sqft')} onCheckedChange={() => toggleField('sqft')} className="w-5 h-5 rounded-md" />
-                                    </div>
-                                    <Input disabled={!selectedFields.includes('sqft')} placeholder="e.g. 1200" className="h-10 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-400  " />
-                                </div>
-
-                                {/* BHK */}
-                                <div
-                                    className={cn(
-                                        "p-4 rounded-xl border transition-all cursor-pointer",
-                                        selectedFields.includes('bhk') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
-                                    )}
-                                    onClick={() => toggleField('bhk')}
-                                >
-                                    <div className="flex items-center justify-between mb-3 text-zinc-900 dark:text-zinc-100">
-                                        <Label className="font-bold cursor-pointer">Type (BHK)</Label>
-                                        <Checkbox checked={selectedFields.includes('bhk')} onCheckedChange={() => toggleField('bhk')} className="w-5 h-5 rounded-md" />
-                                    </div>
-                                    <div className={cn("flex flex-wrap gap-3 mt-1 transition-opacity", selectedFields.includes('bhk') ? "opacity-100" : "opacity-40")}>
-                                        {['1BHK', '2BHK', '3BHK', '4BHK', '5BHK+'].map(opt => (
-                                            <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer text-zinc-600 dark:text-zinc-400" onClick={(e) => e.stopPropagation()}>
-                                                <Checkbox disabled checked={false} />
-                                                {opt}
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Floor */}
-                                <div
-                                    className={cn(
-                                        "p-4 rounded-xl border transition-all cursor-pointer",
-                                        selectedFields.includes('preferred_floor') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
-                                    )}
-                                    onClick={() => toggleField('preferred_floor')}
-                                >
-                                    <div className="flex items-center justify-between mb-3">
-                                        <Label className="font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">Floor Preference</Label>
-                                        <Checkbox checked={selectedFields.includes('preferred_floor')} onCheckedChange={() => toggleField('preferred_floor')} className="w-5 h-5 rounded-md" />
-                                    </div>
-                                    <Input disabled placeholder="e.g. Higher floor, 5th floor" className="h-10 bg-muted/50" />
-                                </div>
-
-                                {/* Bathrooms */}
-                                <div
-                                    className={cn(
-                                        "p-4 rounded-xl border transition-all cursor-pointer",
-                                        selectedFields.includes('bathroom_count') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
-                                    )}
-                                    onClick={() => toggleField('bathroom_count')}
-                                >
-                                    <div className="flex items-center justify-between mb-3">
-                                        <Label className="font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">Bathrooms</Label>
-                                        <Checkbox checked={selectedFields.includes('bathroom_count')} onCheckedChange={() => toggleField('bathroom_count')} className="w-5 h-5 rounded-md" />
-                                    </div>
-                                    <Input disabled placeholder="e.g. 2" className="h-10 bg-muted/50" />
-                                </div>
-
-                                {/* Parking */}
-                                <div
-                                    className={cn(
-                                        "p-4 rounded-xl border transition-all cursor-pointer",
-                                        selectedFields.includes('parking_needed') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
-                                    )}
-                                    onClick={() => toggleField('parking_needed')}
-                                >
-                                    <div className="flex items-center justify-between mb-3">
-                                        <Label className="font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">Parking Needed</Label>
-                                        <Checkbox checked={selectedFields.includes('parking_needed')} onCheckedChange={() => toggleField('parking_needed')} className="w-5 h-5 rounded-md" />
-                                    </div>
-                                    <label className={cn("flex items-center gap-2 cursor-pointer text-zinc-600 dark:text-zinc-400", selectedFields.includes('parking_needed') ? "opacity-100" : "opacity-40")} onClick={(e) => e.stopPropagation()}>
-
-                                        <span className="text-sm font-medium">Include Parking Field</span>
-                                    </label>
-                                </div>
-
-                                {/* Price Range */}
-                                <div
-                                    className={cn(
-                                        "p-4 rounded-xl border transition-all cursor-pointer",
-                                        selectedFields.includes('budget') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
-                                    )}
-                                    onClick={() => toggleField('budget')}
-                                >
-                                    <div className="flex items-center justify-between mb-3">
-                                        <Label className="font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">Price Range (₹)</Label>
-                                        <Checkbox checked={selectedFields.includes('budget')} onCheckedChange={() => toggleField('budget')} className="w-5 h-5 rounded-md" />
-                                    </div>
-                                    <div className="flex gap-2 mt-1 opacity-50">
-                                        <Input disabled placeholder="Min" className="h-10 bg-muted/50" />
-                                        <span className="self-center text-muted-foreground">—</span>
-                                        <Input disabled placeholder="Max" className="h-10 bg-muted/50" />
-                                    </div>
-                                </div>
-
-                                {/* Furniture */}
-                                <div
-                                    className={cn(
-                                        "p-4 rounded-xl border transition-all cursor-pointer",
-                                        selectedFields.includes('furniture') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
-                                    )}
-                                    onClick={() => toggleField('furniture')}
-                                >
-                                    <div className="flex items-center justify-between mb-3 text-zinc-900 dark:text-zinc-100">
-                                        <Label className="font-bold cursor-pointer">Furniture</Label>
-                                        <Checkbox checked={selectedFields.includes('furniture')} onCheckedChange={() => toggleField('furniture')} className="w-5 h-5 rounded-md" />
-                                    </div>
-                                    <div className={cn("flex flex-wrap gap-3 mt-1 transition-opacity", selectedFields.includes('furniture') ? "opacity-100" : "opacity-40")}>
-                                        {['Semi-furnished', 'Fully furnished', 'Both', 'No furniture'].map(opt => (
-                                            <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer text-zinc-600 dark:text-zinc-400" onClick={(e) => e.stopPropagation()}>
-                                                <Checkbox disabled checked={false} />
-                                                {opt}
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Facing */}
-                                <div
-                                    className={cn(
-                                        "p-4 rounded-xl border transition-all cursor-pointer",
-                                        selectedFields.includes('facing') ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
-                                    )}
-                                    onClick={() => toggleField('facing')}
-                                >
-                                    <div className="flex items-center justify-between mb-3 text-zinc-900 dark:text-zinc-100">
-                                        <Label className="font-bold cursor-pointer">Facing</Label>
-                                        <Checkbox checked={selectedFields.includes('facing')} onCheckedChange={() => toggleField('facing')} className="w-5 h-5 rounded-md" />
-                                    </div>
-                                    <div className={cn("flex flex-wrap gap-3 mt-1 transition-opacity", selectedFields.includes('facing') ? "opacity-100" : "opacity-40")}>
-                                        {['North', 'South', 'East', 'West'].map(opt => (
-                                            <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer text-zinc-600 dark:text-zinc-400" onClick={(e) => e.stopPropagation()}>
-                                                <Checkbox disabled checked={false} />
-                                                {opt}
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-
+                        <div className="mt-6 space-y-6 px-4 pb-8">
+                            <div className="flex gap-2 border-b pb-4 overflow-x-auto">
                                 <Button
-                                    className="w-full h-11 font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl"
-                                    onClick={() => setIsRequirementSheetOpen(false)}
+                                    size="sm"
+                                    variant={reqTab === 'requirements' ? 'default' : 'outline'}
+                                    onClick={() => setReqTab('requirements')}
+                                    className="whitespace-nowrap"
                                 >
-                                    Apply Configuration
+                                    Pre-built
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant={reqTab === 'manual' ? 'default' : 'outline'}
+                                    onClick={() => setReqTab('manual')}
+                                    className="whitespace-nowrap"
+                                >
+                                    Manual Input
                                 </Button>
                             </div>
-                        ) : (
-                            <div className="space-y-6 p-4">
+
+                            {reqTab === 'requirements' ? (
                                 <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label>Requirement Title</Label>
-                                        <Input
-                                            placeholder="e.g. Garden, Facing, etc."
-                                            className="h-10"
-                                            value={newManualKey}
-                                            onChange={(e) => setNewManualKey(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && newManualKey) {
+                                    {[
+                                        { id: 'sqft', label: 'Square Footage (sqft)' },
+                                        { id: 'bhk', label: 'Type (BHK)' },
+                                        { id: 'preferred_floor', label: 'Floor Preference' },
+                                        { id: 'bathroom_count', label: 'Bathrooms' },
+                                        { id: 'parking_needed', label: 'Parking Needed' },
+                                        { id: 'budget', label: 'Price Range (₹)' },
+                                        { id: 'furniture', label: 'Furniture' },
+                                        { id: 'facing', label: 'Facing' },
+                                    ].map((field) => (
+                                        <div
+                                            key={field.id}
+                                            className={cn(
+                                                "p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between",
+                                                selectedFields.includes(field.id) ? "border-primary bg-primary/5 shadow-sm" : "border-zinc-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/50"
+                                            )}
+                                            onClick={() => toggleField(field.id)}
+                                        >
+                                            <Label className="font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">{field.label}</Label>
+                                            <Checkbox checked={selectedFields.includes(field.id)} onCheckedChange={() => toggleField(field.id)} className="w-5 h-5 rounded-md" />
+                                        </div>
+                                    ))}
+
+                                    <Button
+                                        className="w-full h-11 font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl mt-6"
+                                        onClick={() => setIsRequirementSheetOpen(false)}
+                                    >
+                                        Apply Requirements
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[13px] font-bold">Requirement Title</Label>
+                                            <Input
+                                                placeholder="e.g. Garden, Facing, etc."
+                                                className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 rounded-xl"
+                                                value={newManualKey}
+                                                onChange={(e) => setNewManualKey(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && newManualKey) {
+                                                        setManualRequirements([...manualRequirements, { key: newManualKey, value: '' }])
+                                                        setNewManualKey('')
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                        <Button
+                                            className="w-full h-11 font-bold bg-slate-100 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 rounded-xl hover:bg-slate-200"
+                                            onClick={() => {
+                                                if (newManualKey) {
                                                     setManualRequirements([...manualRequirements, { key: newManualKey, value: '' }])
                                                     setNewManualKey('')
                                                 }
                                             }}
-                                        />
+                                        >
+                                            Add Requirement
+                                        </Button>
                                     </div>
+
+                                    <div className="space-y-4">
+                                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Current Manual Requirements</Label>
+                                        {manualRequirements.length === 0 ? (
+                                            <div className="py-12 flex flex-col items-center gap-4 border-2 border-dashed border-slate-100 dark:border-zinc-800 rounded-2xl">
+                                                <p className="text-sm text-slate-400">No custom requirements added</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                {manualRequirements.map((req, i) => (
+                                                    <div key={i} className="flex items-center justify-between p-4 border border-slate-100 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 shadow-sm transition-all hover:border-slate-200">
+                                                        <span className="font-bold text-zinc-900 dark:text-zinc-100">{req.key}</span>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-9 w-9 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                                            onClick={() => setManualRequirements(manualRequirements.filter((_, idx) => idx !== i))}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <Button
-                                        className="w-full h-10 font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl"
-                                        onClick={() => {
-                                            if (newManualKey) {
-                                                setManualRequirements([...manualRequirements, { key: newManualKey, value: '' }])
-                                                setNewManualKey('')
-                                            }
-                                        }}
+                                        className="w-full h-11 font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl mt-6"
+                                        onClick={() => setIsRequirementSheetOpen(false)}
                                     >
-                                        Add Requirement
+                                        Apply Requirements
                                     </Button>
                                 </div>
-
-                                <div className="space-y-4">
-                                    <Label className="text-sm font-bold text-muted-foreground">Current Manual Requirements</Label>
-                                    {manualRequirements.length === 0 ? (
-                                        <div className="py-12 flex flex-col items-center gap-4 border-2 border-dashed rounded-xl">
-                                            <p className="text-sm text-muted-foreground">No custom requirements added</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {manualRequirements.map((req, i) => (
-                                                <div key={i} className="flex items-center justify-between p-3 border rounded-xl bg-card">
-                                                    <span className="font-medium">{req.key}</span>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                        onClick={() => setManualRequirements(manualRequirements.filter((_, idx) => idx !== i))}
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <Button
-                                    className="w-full h-11 font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl mt-6"
-                                    onClick={() => setIsRequirementSheetOpen(false)}
-                                >
-                                    Save Configuration
-                                </Button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </SheetContent>
                 </Sheet>
             </div>

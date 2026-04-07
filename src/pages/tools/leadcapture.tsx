@@ -271,7 +271,7 @@ export default function LeadCapture() {
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-10 w-10 p-0 rounded-2xl hover:bg-slate-50 dark:hover:bg-zinc-900 text-slate-200 dark:text-zinc-600 group">
-                                    <MoreHorizontal className="h-5 w-5 group-hover:text-zinc-600 dark:group-hover:text-zinc-100 transition-colors" />
+                                    <MoreHorizontal className="h-5 w-5 text-zinc-600 dark:text-zinc-100 transition-colors" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56 rounded-3xl border-slate-100 dark:border-zinc-800 shadow-2xl p-2.5">
