@@ -69,6 +69,18 @@ import {
 import { getCookie } from "@/utils/cookies"
 import axios from "axios"
 import { API } from "@/config/api"
+import { gql } from "@apollo/client"
+import { useQuery } from "@apollo/client/react"
+import type { GetAllProjectsQueryResponse, GetAllProjectsQueryVariables } from "@/types"
+
+const GET_ALL_PROJECTS = gql`
+  query GetAllProjects($organization: String!) {
+    getAllProjects(organization: $organization) {
+      product_id
+      name
+    }
+  }
+`;
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -175,6 +187,18 @@ export default function OpportunityReport() {
         ])
     }, [setBreadcrumbs])
 
+    const { data: projectsData } = useQuery<GetAllProjectsQueryResponse, GetAllProjectsQueryVariables>(GET_ALL_PROJECTS, {
+        variables: { organization },
+        skip: !organization
+    });
+
+    const PROJECTS = useMemo(() => {
+        if (!projectsData?.getAllProjects) return []
+        return projectsData.getAllProjects
+            .filter((p: any) => p && p.name)
+            .map((p: any) => `P${p.product_id} - ${p.name}`)
+    }, [projectsData])
+
     // Fetch users
     useEffect(() => {
         async function fetchUsers() {
@@ -204,11 +228,12 @@ export default function OpportunityReport() {
     // Mock Data generation
     useEffect(() => {
         const mockUsersList = users.length > 0 ? users.map(u => u.name) : ["Dinesh", "Dinesh Kumar", "Ramesh Kumar", "Suresh"]
-        const projects = ["Project A", "Project B", "Alpha", "Omega"]
+        const projectsList = PROJECTS.length > 0 ? PROJECTS : ["P1 - Sky High", "P2 - Emerald Valley"]
         const sources = ["Meta", "Google", "Website", "Social Media"]
+        const leads = ["Aryan Mehta", "Deepika Iyer", "Karan Johar", "Sonali Bendre", "Rohan Gavaskar", "Tanvi Jain"]
         const statuses = ["Hot", "Warm", "Cold"]
         const campaigns = ["Online", "Offline"]
-        const stages = ["Prospect", "SVS", "SVS Done", "Lost"]
+        const stages = ["Prospect", "SVS", "SVS Done"]
 
         const mockData: OpportunityData[] = []
         for (let i = 1; i <= 50; i++) {
@@ -219,8 +244,8 @@ export default function OpportunityReport() {
                 id: `${i}`,
                 campaign: campaigns[Math.floor(Math.random() * campaigns.length)] as any,
                 source: sources[Math.floor(Math.random() * sources.length)],
-                project: projects[Math.floor(Math.random() * projects.length)],
-                lead: `Opportunity Lead #${1000 + i}`,
+                project: projectsList[Math.floor(Math.random() * projectsList.length)],
+                lead: leads[Math.floor(Math.random() * leads.length)],
                 stage: stages[Math.floor(Math.random() * stages.length)] as any,
                 status: statuses[Math.floor(Math.random() * statuses.length)] as any,
                 pre_sales_users: Array.from({length: preCount}, () => mockUsersList[Math.floor(Math.random() * mockUsersList.length)]),
@@ -230,7 +255,7 @@ export default function OpportunityReport() {
             })
         }
         setData(mockData)
-    }, [users]) 
+    }, [users, PROJECTS]) 
 
     const filteredData = useMemo(() => {
         return data.filter(item => {
@@ -272,8 +297,8 @@ export default function OpportunityReport() {
     const columns: ColumnDef<OpportunityData>[] = useMemo(() => [
         {
             accessorKey: "campaign",
-            header: "Campaign",
-            meta: { label: "Campaign" },
+            header: "Campaign Type",
+            meta: { label: "Campaign Type" },
         },
         {
             accessorKey: "source",
@@ -474,7 +499,7 @@ export default function OpportunityReport() {
             ["Opportunity Report"],
             ["Generated At:", new Date().toLocaleString('en-IN')],
             [],
-            ["Campaign", "Source", "Project", "Lead", "Stage", "Status", "Pre-Sales Users", "Sales Users", "Last Note", "Last Call"]
+            ["Campaign Type", "Source", "Project", "Lead", "Stage", "Status", "Last Note", "Last Call"]
         ]
 
         filteredData.forEach(item => {
@@ -547,13 +572,14 @@ export default function OpportunityReport() {
                 </p>
             </div>
 
-            <div className="rounded-xl bg-card border shadow-sm p-6 space-y-6">
+            <Card className="border-none shadow-md bg-background/80 backdrop-blur-md sticky top-12 z-30 ring-1 ring-border/50">
+                <CardContent className="p-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 items-end transition-all duration-300">
                     
                     {isCampaignVisible && (
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                <Globe className="h-3 w-3" /> Campaign
+                                <Globe className="h-3 w-3" /> Campaign Type
                             </Label>
                             <Popover open={campaignOpen} onOpenChange={setCampaignOpen}>
                                 <PopoverTrigger asChild>
@@ -640,7 +666,7 @@ export default function OpportunityReport() {
                                                     <Check className={cn("mr-2 h-4 w-4", filters.project === "all" ? "opacity-100" : "opacity-0")} />
                                                     All Projects
                                                 </CommandItem>
-                                                {["Project A", "Project B", "Alpha", "Omega"].map(p => (
+                                                {PROJECTS.map(p => (
                                                     <CommandItem key={p} onSelect={() => { setFilters(f => ({ ...f, project: p })); setProjectOpen(false) }}>
                                                         <Check className={cn("mr-2 h-4 w-4", filters.project === p ? "opacity-100" : "opacity-0")} />
                                                         {p}
@@ -673,7 +699,7 @@ export default function OpportunityReport() {
                                                 <Check className={cn("mr-2 h-4 w-4", filters.stage === "all" ? "opacity-100" : "opacity-0")} />
                                                 All Stages
                                             </CommandItem>
-                                            {["Prospect", "SVS", "SVS Done", "Lost"].map(s => (
+                                            {["Prospect", "SVS", "SVS Done"].map(s => (
                                                 <CommandItem key={s} onSelect={() => { setFilters(f => ({ ...f, stage: s })); setStageOpen(false) }}>
                                                     <Check className={cn("mr-2 h-4 w-4", filters.stage === s ? "opacity-100" : "opacity-0")} />
                                                     {s}
@@ -820,30 +846,11 @@ export default function OpportunityReport() {
                         </Button>
                     </div>
                 </div>
-            </div>
+            </CardContent>
+        </Card>
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden">
-                    <CardHeader className="bg-muted/5 py-4 border-b">
-                        <CardTitle className="text-sm font-bold flex items-center gap-2">
-                            <BarChart3 className="h-4 w-4 text-primary" />
-                            Opportunities by Project
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6 h-[300px]">
-                        <ChartContainer config={chartConfig} className="h-full">
-                            <BarChart data={projectChartData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                                <ChartTooltip content={<ChartTooltipContent />} />
-                                <Bar dataKey="value" fill="var(--color-opportunities)" radius={[4, 4, 0, 0]} barSize={40} />
-                            </BarChart>
-                        </ChartContainer>
-                    </CardContent>
-                </Card>
-
                 <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden">
                     <CardHeader className="bg-muted/5 py-4 border-b">
                         <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -862,6 +869,7 @@ export default function OpportunityReport() {
                                     outerRadius={90}
                                     paddingAngle={5}
                                     dataKey="value"
+                                    label={({ name, value }) => `${name}: ${value}`}
                                 >
                                     {statusChartData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -870,6 +878,26 @@ export default function OpportunityReport() {
                                 <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
                                 <ChartLegend content={<ChartLegendContent nameKey="name" />} />
                             </PieChart>
+                        </ChartContainer>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden">
+                    <CardHeader className="bg-muted/5 py-4 border-b">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4 text-primary" />
+                            Opportunities by Project
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 h-[300px]">
+                        <ChartContainer config={chartConfig} className="h-full">
+                            <BarChart data={projectChartData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                                <ChartTooltip content={<ChartTooltipContent />} />
+                                <Bar dataKey="value" fill="var(--color-opportunities)" radius={[4, 4, 0, 0]} barSize={40} />
+                            </BarChart>
                         </ChartContainer>
                     </CardContent>
                 </Card>

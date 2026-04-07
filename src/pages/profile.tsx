@@ -119,7 +119,10 @@ export default function ProfilePage() {
     formData.append("image", file);
 
     try {
-      const response = await axios.post(API.UPLOAD.PROFILE_PICTURE, formData, {
+      const uploadUrl = avatarUrl && avatarUrl !== '/user_icon.png'
+        ? `${API.UPLOAD.PROFILE_PICTURE}?oldUrl=${encodeURIComponent(avatarUrl)}`
+        : API.UPLOAD.PROFILE_PICTURE;
+      const response = await axios.post(uploadUrl, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`

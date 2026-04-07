@@ -66,6 +66,18 @@ import {
 import { getCookie } from "@/utils/cookies"
 import axios from "axios"
 import { API } from "@/config/api"
+import { gql } from "@apollo/client"
+import { useQuery } from "@apollo/client/react"
+import type { GetAllProjectsQueryResponse, GetAllProjectsQueryVariables } from "@/types"
+
+const GET_ALL_PROJECTS = gql`
+  query GetAllProjects($organization: String!) {
+    getAllProjects(organization: $organization) {
+      product_id
+      name
+    }
+  }
+`;
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -161,6 +173,18 @@ export default function LostReport() {
         ])
     }, [setBreadcrumbs])
 
+    const { data: projectsData } = useQuery<GetAllProjectsQueryResponse, GetAllProjectsQueryVariables>(GET_ALL_PROJECTS, {
+        variables: { organization },
+        skip: !organization
+    });
+
+    const PROJECTS = useMemo(() => {
+        if (!projectsData?.getAllProjects) return []
+        return projectsData.getAllProjects
+            .filter((p: any) => p && p.name)
+            .map((p: any) => `P${p.product_id} - ${p.name}`)
+    }, [projectsData])
+
     // Fetch users
     useEffect(() => {
         async function fetchUsers() {
@@ -189,19 +213,19 @@ export default function LostReport() {
 
     // Mock Data generation
     useEffect(() => {
-        const mockUsersList = allUsers.length > 0 ? allUsers.map(u => u.name) : ["Dinesh", "Dinesh Kumar", "Ramesh Kumar", "Suresh"]
-        const projects = ["Project A", "Project B", "Alpha", "Omega"]
+        const mockUsersList = allUsers.length > 0 ? allUsers.map(u => u.name) : ["User 1", "User 2", "User 3", "User 4"]
+        const projectsList = PROJECTS.length > 0 ? PROJECTS : ["P1 - Sky High", "P2 - Emerald Valley"]
         const sources = ["Meta", "Google", "Website", "Social Media"]
         const campaigns = ["Online", "Offline"]
-
+ 
         const mockData: LostData[] = []
-        for (let i = 1; i <= 30; i++) {
+        for (let i = 1; i <= 60; i++) {
             mockData.push({
                 id: `${i}`,
                 campaign: campaigns[Math.floor(Math.random() * campaigns.length)] as any,
                 source: sources[Math.floor(Math.random() * sources.length)],
-                project: projects[Math.floor(Math.random() * projects.length)],
-                lead: `Lost Lead #${3000 + i}`,
+                project: projectsList[Math.floor(Math.random() * projectsList.length)],
+                lead: ["Aditi Nair", "Vivek Oberoi", "Zoya Hussain", "Kunal Nayyar"][Math.floor(Math.random() * 4)],
                 pre_sales_users: [mockUsersList[Math.floor(Math.random() * mockUsersList.length)]],
                 sales_users: [mockUsersList[Math.floor(Math.random() * mockUsersList.length)]],
                 last_note: "Budget mismatched. Opted for other project.",
@@ -209,7 +233,7 @@ export default function LostReport() {
             })
         }
         setData(mockData)
-    }, [allUsers]) 
+    }, [allUsers, PROJECTS]) 
 
     // Handle Team Filter Column Visibility
     useEffect(() => {
@@ -223,18 +247,46 @@ export default function LostReport() {
     }, [filters.team])
 
     const filteredData = useMemo(() => {
-        return data.filter(item => {
+        let result = data.filter(item => {
             if (filters.campaign !== "all" && item.campaign !== filters.campaign) return false
             if (filters.source !== "all" && item.source !== filters.source) return false
             if (filters.project !== "all" && item.project !== filters.project) return false
             
+            // Team-based filtering
+            if (filters.team === "Pre-Sales Team") {
+                if (!item.pre_sales_users || item.pre_sales_users.length === 0) return false
+            } else if (filters.team === "Sales Team") {
+                if (!item.sales_users || item.sales_users.length === 0) return false
+            }
+
             if (filters.users.length > 0) {
-                const combinedUsers = [...item.pre_sales_users, ...item.sales_users]
-                const matches = filters.users.some(u => combinedUsers.includes(u))
+                const relevantUsers = filters.team === "Pre-Sales Team" 
+                    ? item.pre_sales_users 
+                    : filters.team === "Sales Team" 
+                        ? item.sales_users 
+                        : [...item.pre_sales_users, ...item.sales_users]
+                const matches = filters.users.some(u => relevantUsers.includes(u))
                 if (!matches) return false
             }
             return true
         })
+
+        // Sort by team user name when a specific team is selected
+        if (filters.team === "Pre-Sales Team") {
+            result = [...result].sort((a, b) => {
+                const nameA = (a.pre_sales_users?.[0] || "").toLowerCase()
+                const nameB = (b.pre_sales_users?.[0] || "").toLowerCase()
+                return nameA.localeCompare(nameB)
+            })
+        } else if (filters.team === "Sales Team") {
+            result = [...result].sort((a, b) => {
+                const nameA = (a.sales_users?.[0] || "").toLowerCase()
+                const nameB = (b.sales_users?.[0] || "").toLowerCase()
+                return nameA.localeCompare(nameB)
+            })
+        }
+
+        return result
     }, [data, filters])
 
     // Chart Data
@@ -253,8 +305,8 @@ export default function LostReport() {
     const columns: ColumnDef<LostData>[] = useMemo(() => [
         {
             accessorKey: "campaign",
-            header: "Campaign",
-            meta: { label: "Campaign" },
+            header: "Campaign Type",
+            meta: { label: "Campaign Type" },
         },
         {
             accessorKey: "source",
@@ -268,8 +320,8 @@ export default function LostReport() {
         },
         {
             accessorKey: "lead",
-            header: "Lost Lead",
-            meta: { label: "Lost Lead" },
+            header: "Lead Name",
+            meta: { label: "Lead Name" },
         },
         {
             accessorKey: "pre_sales_users",
@@ -366,7 +418,7 @@ export default function LostReport() {
             ["Lost Report"],
             ["Generated At:", new Date().toLocaleString('en-IN')],
             [],
-            ["Campaign", "Source", "Project", "Lead", "Pre-Sales Users", "Sales Users", "Last Note", "Last Call"]
+            ["Campaign Type", "Source", "Project", "Lead Name", "Pre-Sales Users", "Sales Users", "Last Note", "Last Call"]
         ]
         filteredData.forEach(item => {
             rows.push([item.campaign, item.source, item.project, item.lead, item.pre_sales_users.join(", "), item.sales_users.join(", "), item.last_note, item.last_call])
@@ -418,18 +470,19 @@ export default function LostReport() {
                 </p>
             </div>
 
-            <div className="rounded-xl bg-card border shadow-sm p-6 space-y-6">
+            <Card className="border-none shadow-md bg-background/80 backdrop-blur-md sticky top-12 z-30 ring-1 ring-border/50">
+                <CardContent className="p-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end transition-all duration-300">
                     
                     {isCampaignVisible && (
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                <Globe className="h-3 w-3" /> Campaign
+                                <Globe className="h-3 w-3" /> Campaign Type
                             </Label>
                             <Popover open={campaignOpen} onOpenChange={setCampaignOpen}>
                                 <PopoverTrigger asChild>
                                     <Button variant="outline" className="w-full justify-between font-normal h-10 border-none bg-muted/30 text-xs">
-                                        {filters.campaign === "all" ? "All" : filters.campaign}
+                                        <span className="truncate">{filters.campaign === "all" ? "All" : filters.campaign}</span>
                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
@@ -504,7 +557,7 @@ export default function LostReport() {
                                                 <Check className={cn("mr-2 h-4 w-4", filters.project === "all" ? "opacity-100" : "opacity-0")} />
                                                 All Projects
                                             </CommandItem>
-                                            {["Project A", "Project B", "Alpha", "Omega"].map(p => (
+                                            {PROJECTS.map(p => (
                                                 <CommandItem key={p} onSelect={() => { setFilters(f => ({ ...f, project: p })); setProjectOpen(false) }}>
                                                     <Check className={cn("mr-2 h-4 w-4", filters.project === p ? "opacity-100" : "opacity-0")} />
                                                     {p}
@@ -606,7 +659,8 @@ export default function LostReport() {
                         </Button>
                     </div>
                 </div>
-            </div>
+            </CardContent>
+        </Card>
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">

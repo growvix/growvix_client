@@ -67,6 +67,18 @@ import {
 import { getCookie } from "@/utils/cookies"
 import axios from "axios"
 import { API } from "@/config/api"
+import { gql } from "@apollo/client"
+import { useQuery } from "@apollo/client/react"
+import type { GetAllProjectsQueryResponse, GetAllProjectsQueryVariables } from "@/types"
+
+const GET_ALL_PROJECTS = gql`
+  query GetAllProjects($organization: String!) {
+    getAllProjects(organization: $organization) {
+      product_id
+      name
+    }
+  }
+`;
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
     PieChart, 
@@ -94,7 +106,7 @@ type SVSDoneData = {
     source: string
     svs_lead: string
     user: string
-    response_type: "Online" | "Offline"
+    campaign_type: "Online" | "Offline"
     lead_type: "New Lead" | "Re-engaged Lead"
     svs_at: string
     svs_on: string
@@ -154,9 +166,21 @@ export default function SVSDoneReport() {
     useEffect(() => {
         setBreadcrumbs([
             { label: "Reports", href: "/reports_template" },
-            { label: "Site Visit Schedule Done Report" },
+            { label: "Site Visit Done Report" },
         ])
     }, [setBreadcrumbs])
+
+    const { data: projectsData } = useQuery<GetAllProjectsQueryResponse, GetAllProjectsQueryVariables>(GET_ALL_PROJECTS, {
+        variables: { organization },
+        skip: !organization
+    });
+
+    const PROJECTS = useMemo(() => {
+        if (!projectsData?.getAllProjects) return []
+        return projectsData.getAllProjects
+            .filter((p: any) => p && p.name)
+            .map((p: any) => `P${p.product_id} - ${p.name}`)
+    }, [projectsData])
 
     // Fetch users
     useEffect(() => {
@@ -188,9 +212,9 @@ export default function SVSDoneReport() {
     useEffect(() => {
         const mockUsersList = users.length > 0 ? users.map(u => u.name) : ["User 1", "User 2", "User 3", "User 4"]
         
-        const projects = ["Project A", "Project B", "Alpha", "Omega"]
+        const projectsList = PROJECTS.length > 0 ? PROJECTS : ["P1 - Sky High", "P2 - Emerald Valley"]
         const sources = ["Meta", "Google", "Website", "Social Media"]
-        const leads = ["Lead #200", "Lead #201", "Lead #202", "Lead #203", "Lead #204"]
+        const leads = ["Amit Verma", "Neha Kapoor", "Rahul Singh", "Pooja Sharma", "Vikram Malhotra", "Meera Reddy"]
         const responseTypes = ["Online", "Offline"]
         const leadTypes = ["New Lead", "Re-engaged Lead"]
 
@@ -198,11 +222,11 @@ export default function SVSDoneReport() {
         for (let i = 1; i <= 50; i++) {
             mockData.push({
                 id: `${i}`,
-                project: projects[Math.floor(Math.random() * projects.length)],
+                project: projectsList[Math.floor(Math.random() * projectsList.length)],
                 source: sources[Math.floor(Math.random() * sources.length)],
-                svs_lead: leads[Math.floor(Math.random() * leads.length)] + i,
+                svs_lead: leads[Math.floor(Math.random() * leads.length)],
                 user: mockUsersList[Math.floor(Math.random() * mockUsersList.length)],
-                response_type: responseTypes[Math.floor(Math.random() * responseTypes.length)] as any,
+                campaign_type: responseTypes[Math.floor(Math.random() * responseTypes.length)] as any,
                 lead_type: leadTypes[Math.floor(Math.random() * leadTypes.length)] as any,
                 svs_at: format(new Date(2026, 3, Math.floor(Math.random() * 5) + 1), "yyyy-MM-dd"),
                 svs_on: format(new Date(2026, 3, Math.floor(Math.random() * 10) + 10), "yyyy-MM-dd"),
@@ -210,14 +234,14 @@ export default function SVSDoneReport() {
             })
         }
         setData(mockData)
-    }, [users]) 
+    }, [PROJECTS, users]) 
 
     const filteredData = useMemo(() => {
         return data.filter(item => {
             if (filters.project !== "all" && item.project !== filters.project) return false
             if (filters.source !== "all" && item.source !== filters.source) return false
             if (filters.user !== "all" && item.user !== filters.user) return false
-            if (filters.responseType !== "all" && item.response_type !== filters.responseType) return false
+            if (filters.responseType !== "all" && item.campaign_type !== filters.responseType) return false
             if (filters.leadType !== "all" && item.lead_type !== filters.leadType) return false
             if (filters.svsAt && item.svs_at !== filters.svsAt) return false
             if (filters.svsOn && item.svs_on !== filters.svsOn) return false
@@ -269,8 +293,8 @@ export default function SVSDoneReport() {
         },
         {
             accessorKey: "svs_lead",
-            header: "Lead",
-            meta: { label: "Lead" },
+            header: "Lead Name",
+            meta: { label: "Lead Name" },
         },
         {
             accessorKey: "user",
@@ -278,9 +302,9 @@ export default function SVSDoneReport() {
             meta: { label: "Sales User" },
         },
         {
-            accessorKey: "response_type",
-            header: "Campaign",
-            meta: { label: "Campaign" },
+            accessorKey: "campaign_type",
+            header: "Campaign Type",
+            meta: { label: "Campaign Type" },
         },
         {
             accessorKey: "lead_type",
@@ -289,8 +313,8 @@ export default function SVSDoneReport() {
         },
         {
             accessorKey: "svs_on",
-            header: "SV Date",
-            meta: { label: "SV Date" },
+            header: "Site Visit Date",
+            meta: { label: "Site Visit Date" },
             cell: ({ row }) => format(new Date(row.getValue("svs_on")), "dd/MM/yyyy")
         },
         {
@@ -324,11 +348,11 @@ export default function SVSDoneReport() {
             ["Site Visit Done Report"],
             ["Generated At:", new Date().toLocaleString('en-IN')],
             [],
-            ["Project", "Source", "Lead", "Sales User", "Campaign", "Lead Type", "SV Date", "Time"]
+            ["Project", "Source", "Lead Name", "Campaign Type", "Lead Type", "User", "SVS At", "SVS On"]
         ]
 
         filteredData.forEach(item => {
-            rows.push([item.project, item.source, item.svs_lead, item.user, item.response_type, item.lead_type, item.svs_on, item.time])
+            rows.push([item.project, item.source, item.svs_lead, item.campaign_type, item.lead_type, item.user, item.svs_at, item.svs_on])
         })
 
         rows.push([])
@@ -374,7 +398,7 @@ export default function SVSDoneReport() {
                 </p>
             </div>
 
-            <div className="rounded-xl bg-card border shadow-sm p-6 space-y-6">
+            <div className="rounded-xl bg-card border shadow-sm p-6 space-y-6 sticky top-12 z-30 ring-1 ring-border/50 bg-background/80 backdrop-blur-md">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-9 gap-4 items-end transition-all duration-300">
                     
                     {isProjectVisible && (
@@ -396,7 +420,7 @@ export default function SVSDoneReport() {
                                                 <Check className={cn("mr-2 h-4 w-4", filters.project === "all" ? "opacity-100" : "opacity-0")} />
                                                 All Projects
                                             </CommandItem>
-                                            {["Project A", "Project B", "Alpha", "Omega"].map(p => (
+                                            {PROJECTS.map(p => (
                                                 <CommandItem key={p} onSelect={() => { setFilters(f => ({ ...f, project: p })); setProjectOpen(false) }}>
                                                     <Check className={cn("mr-2 h-4 w-4", filters.project === p ? "opacity-100" : "opacity-0")} />
                                                     {p}
@@ -480,7 +504,7 @@ export default function SVSDoneReport() {
                     {isResponseTypeVisible && (
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                <Globe className="h-3 w-3" /> Campaign
+                                <Globe className="h-3 w-3" /> Campaign Type
                             </Label>
                             <Popover open={responseTypeOpen} onOpenChange={setResponseTypeOpen}>
                                 <PopoverTrigger asChild>
@@ -544,7 +568,7 @@ export default function SVSDoneReport() {
                     {isSvsOnVisible && (
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                <CalendarCheck className="h-3 w-3" /> SV Date
+                                <CalendarCheck className="h-3 w-3" /> Site Visit Date
                             </Label>
                             <DatePicker
                                 date={filters.svsOn ? new Date(filters.svsOn) : undefined}
@@ -606,26 +630,6 @@ export default function SVSDoneReport() {
                 <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden">
                     <CardHeader className="bg-muted/5 py-4 border-b">
                         <CardTitle className="text-sm font-bold flex items-center gap-2">
-                            <BarChart3 className="h-4 w-4 text-emerald-500" />
-                            SV Done by Project
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6 h-[300px]">
-                        <ChartContainer config={chartConfig} className="h-full">
-                            <BarChart data={projectChartData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                                <ChartTooltip content={<ChartTooltipContent />} />
-                                <Bar dataKey="value" fill="var(--color-svs)" radius={[4, 4, 0, 0]} barSize={40} />
-                            </BarChart>
-                        </ChartContainer>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden">
-                    <CardHeader className="bg-muted/5 py-4 border-b">
-                        <CardTitle className="text-sm font-bold flex items-center gap-2">
                             <PieChartIcon className="h-4 w-4 text-emerald-500" />
                             Source Contribution
                         </CardTitle>
@@ -641,6 +645,7 @@ export default function SVSDoneReport() {
                                     outerRadius={90}
                                     paddingAngle={5}
                                     dataKey="value"
+                                    label={({ name, value }) => `${name}: ${value}`}
                                 >
                                     {sourceChartData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -649,6 +654,26 @@ export default function SVSDoneReport() {
                                 <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
                                 <ChartLegend content={<ChartLegendContent nameKey="name" />} />
                             </PieChart>
+                        </ChartContainer>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-xl bg-background/40 backdrop-blur-sm overflow-hidden">
+                    <CardHeader className="bg-muted/5 py-4 border-b">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4 text-emerald-500" />
+                            Site Visit Done by Project
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 h-[300px]">
+                        <ChartContainer config={chartConfig} className="h-full">
+                            <BarChart data={projectChartData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                                <ChartTooltip content={<ChartTooltipContent />} />
+                                <Bar dataKey="value" fill="var(--color-svs)" radius={[4, 4, 0, 0]} barSize={40} />
+                            </BarChart>
                         </ChartContainer>
                     </CardContent>
                 </Card>

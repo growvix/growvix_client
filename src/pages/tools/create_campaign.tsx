@@ -33,7 +33,6 @@ type SubSource = {
     subSourceName: string
     project?: {
         projectId: string
-        projectName: string
     }
 }
 
@@ -47,7 +46,6 @@ type CampaignConfig = {
     campaignName: string
     project?: {
         projectId: string
-        projectName: string
     }
     sources: SourceConfig[]
 }
@@ -145,7 +143,7 @@ export default function CreateCampaign() {
             if (p) {
                 setCampaignConfig(prev => ({
                     ...prev,
-                    project: { projectId: p.product_id.toString(), projectName: p.name }
+                    project: { projectId: p.product_id.toString() }
                 }))
             }
         }
@@ -248,7 +246,7 @@ export default function CreateCampaign() {
 
     const updateSubSourceProject = (sourceIdx: number, subIdx: number, val: string) => {
         const p = projects.find(x => x.product_id.toString() === val)
-        updateSubSource(sourceIdx, subIdx, 'project', p ? { projectId: p.product_id.toString(), projectName: p.name } : undefined)
+        updateSubSource(sourceIdx, subIdx, 'project', p ? { projectId: p.product_id.toString() } : undefined)
     }
 
     const removeSubSource = (sourceIdx: number, subIdx: number) => {
@@ -542,7 +540,7 @@ export default function CreateCampaign() {
                                         <div className="text-right">
                                             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Universal Project Mode</div>
                                             <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 text-sm px-3 py-1">
-                                                {campaignConfig.project.projectName}
+                                                {campaignConfig.project?.projectId ? projects.find(p => p.product_id.toString() === campaignConfig.project?.projectId)?.name || `Project #${campaignConfig.project.projectId}` : 'Unknown'}
                                             </Badge>
                                         </div>
                                     )}
@@ -550,7 +548,6 @@ export default function CreateCampaign() {
 
                                 <div className="space-y-4">
                                     <h3 className="font-semibold text-lg ml-1">Hierarchy Map</h3>
-
                                     <div className="grid gap-4">
                                         {campaignConfig.sources.map((source, sIdx) => (
                                             <div key={sIdx} className="rounded-lg border bg-card overflow-hidden shadow-sm">
@@ -569,7 +566,7 @@ export default function CreateCampaign() {
                                                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                                                 {!campaignConfig.project && sub.project && (
                                                                     <span className="hidden sm:inline-block bg-primary/5 text-primary border border-primary/20 rounded px-2 py-0.5 text-xs font-medium">
-                                                                        <span className="text-red-500">Project: </span>{sub.project.projectName}
+                                                                        <span className="text-red-500">Project: </span>{sub.project.projectId ? projects.find(p => p.product_id.toString() === sub.project!.projectId)?.name || `Project #${sub.project.projectId}` : 'Unknown'}
                                                                     </span>
                                                                 )}
                                                             </div>

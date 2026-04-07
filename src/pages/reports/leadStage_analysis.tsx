@@ -242,7 +242,7 @@ export default function LeadStageAnalysis() {
                 <CardContent className="p-0 flex flex-col gap-6">
                     
                     {/* Filter Card */}
-                    <Card className="rounded-xl border shadow-sm p-4 bg-white dark:bg-card">
+                    <Card className="rounded-xl border shadow-sm p-4 bg-background/80 backdrop-blur-md sticky top-12 z-30 ring-1 ring-border/50">
                         <div className="flex items-center justify-between border-b pb-4 mb-4">
                             <div className="flex items-center gap-2">
                                 <div className="p-2 px-3 bg-blue-600 rounded-lg text-white font-extrabold text-xs uppercase tracking-wider italic">

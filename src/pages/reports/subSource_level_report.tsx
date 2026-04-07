@@ -55,6 +55,7 @@ const SOURCES = ["META", "Google", "Incoming Calls", "Magic Bricks", "Housing.co
 const PAID_SOURCES = ["META", "Google", "Magic Bricks", "Housing.com", "99 Acres"]
 const NON_PAID_SOURCES = ["Website", "Incoming Calls"]
 const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#f472b6']
+const BUDGET_INDICES = [0, 2, 8, 10, 12]
 
 const chartConfig = {
     leads: {
@@ -89,10 +90,10 @@ const METRICS = [
     "Prospect", 
     "Unqualified", 
     "Lost", 
-    "SVS", 
-    "Cost per SVS", 
-    "SV", 
-    "Cost per SV", 
+    "SV Scheduled", 
+    "Cost per SV Scheduled", 
+    "Site Visit", 
+    "Cost per Site Visit", 
     "Booking", 
     "Cost per Booking"
 ]
@@ -131,6 +132,7 @@ export default function SubSourceLevelReport() {
     const { setBreadcrumbs } = useBreadcrumb()
     const [sourceFilter, setSourceFilter] = useState("all")
     const [subSourceFilter, setSubSourceFilter] = useState("all")
+    const [leadTypeFilter, setLeadTypeFilter] = useState("all")
     const [dateFilter, setDateFilter] = useState("")
     const [timeFilter, setTimeFilter] = useState("")
 
@@ -141,11 +143,12 @@ export default function SubSourceLevelReport() {
         ])
     }, [setBreadcrumbs])
 
-    const isFilterApplied = sourceFilter !== "all" || subSourceFilter !== "all" || dateFilter !== ""
+    const isFilterApplied = sourceFilter !== "all" || subSourceFilter !== "all" || leadTypeFilter !== "all" || dateFilter !== ""
 
     const clearFilters = () => {
         setSourceFilter("all")
         setSubSourceFilter("all")
+        setLeadTypeFilter("all")
         setDateFilter("")
         setTimeFilter("")
     }
@@ -165,11 +168,14 @@ export default function SubSourceLevelReport() {
     const { subTotals, globalSummary } = useMemo(() => {
         const totals: any = {}
         let gLeads = 0, gProspects = 0, gSV = 0, gBookings = 0
+        const leadMultiplier = leadTypeFilter === "all" ? 1.0 : leadTypeFilter === "new" ? 0.7 : 0.3
 
         Object.keys(MOCK_SUBSOURCE_DATA).forEach(source => {
             totals[source] = {}
             Object.keys(MOCK_SUBSOURCE_DATA[source]).forEach(sub => {
-                const subData = [...MOCK_SUBSOURCE_DATA[source][sub]]
+                const subData = MOCK_SUBSOURCE_DATA[source][sub].map((v: number, i: number) => 
+                    ![0, 2, 8, 10, 12].includes(i) ? Math.round(v * leadMultiplier) : v
+                )
                 totals[source][sub] = calculateRates(subData)
 
                 // Summary calculations based on view filters
@@ -177,16 +183,16 @@ export default function SubSourceLevelReport() {
                 const matchesSub = subSourceFilter === "all" || subSourceFilter === sub
                 
                 if (matchesSource && matchesSub) {
-                    gLeads += subData[1]
-                    gProspects += subData[4]
-                    gSV += subData[9]
-                    gBookings += subData[11]
+                    gLeads += Math.round(subData[1])
+                    gProspects += Math.round(subData[4])
+                    gSV += Math.round(subData[9])
+                    gBookings += Math.round(subData[11])
                 }
             })
         })
 
         return { subTotals: totals, globalSummary: { totalLeads: gLeads, totalProspects: gProspects, totalSV: gSV, totalBookings: gBookings } }
-    }, [sourceFilter, subSourceFilter])
+    }, [sourceFilter, subSourceFilter, leadTypeFilter])
 
     const pieChartData = useMemo(() => {
         const rawData = Object.keys(subTotals)
@@ -254,6 +260,11 @@ export default function SubSourceLevelReport() {
         const filteredSources = sourceList.filter(s => sourceFilter === "all" || s === sourceFilter)
         if (filteredSources.length === 0) return null
 
+        const isPaid = !title.includes("NON-PAID")
+        const hideBudget = !isPaid || leadTypeFilter !== "all"
+        
+        const displayMetrics = METRICS.filter((_, i) => !(hideBudget && BUDGET_INDICES.includes(i)))
+
         const grandTotal = Array(METRICS.length).fill(0)
         let hasVisibleData = false
 
@@ -272,8 +283,8 @@ export default function SubSourceLevelReport() {
                                 <tr className="bg-muted/10 border-b border-primary/10">
                                     <th className="font-extrabold text-[10px] uppercase tracking-widest px-6 py-4 border-r border-muted/20">Source</th>
                                     <th className="font-extrabold text-[10px] uppercase tracking-widest px-6 py-4 border-r border-muted/20">Sub-Source</th>
-                                    {METRICS.map((m, idx) => (
-                                        <th key={m} className={`font-extrabold text-[10px] uppercase tracking-widest text-center min-w-[100px] py-4 align-bottom ${idx < METRICS.length - 1 ? 'border-r border-muted/20' : ''}`}>
+                                    {displayMetrics.map((m, idx) => (
+                                        <th key={m} className={`font-extrabold text-[10px] uppercase tracking-widest text-center min-w-[100px] py-4 align-bottom ${idx < displayMetrics.length - 1 ? 'border-r border-muted/20' : ''}`}>
                                             {m}
                                         </th>
                                     ))}
@@ -301,11 +312,14 @@ export default function SubSourceLevelReport() {
                                                         <td className="px-6 py-4 text-xs italic text-muted-foreground border-r border-muted/20 ">
                                                             {sub}
                                                         </td>
-                                                        {data.map((val: number, vIdx: number) => (
-                                                            <td key={vIdx} className={`text-center px-4 py-4 text-xs font-medium ${vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 11 ? 'font-bold text-primary bg-primary/5' : ''}`}>
-                                                                {[0, 2, 8, 10, 12].includes(vIdx) ? `₹${val.toLocaleString('en-IN')}` : val.toLocaleString('en-IN')}
-                                                            </td>
-                                                        ))}
+                                                        {data.map((val: number, vIdx: number) => {
+                                                            if (hideBudget && BUDGET_INDICES.includes(vIdx)) return null
+                                                            return (
+                                                                <td key={vIdx} className={`text-center px-4 py-4 text-xs font-medium ${vIdx < displayMetrics.length && vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 11 ? 'font-bold text-primary bg-primary/5' : ''}`}>
+                                                                    {BUDGET_INDICES.includes(vIdx) ? `₹${val.toLocaleString('en-IN')}` : val.toLocaleString('en-IN')}
+                                                                </td>
+                                                            )
+                                                        })}
                                                     </tr>
                                                 )
                                             })}
@@ -318,11 +332,14 @@ export default function SubSourceLevelReport() {
                                         <td colSpan={2} className="px-6 py-4 text-xs uppercase tracking-wider  text-primary text-center">
                                             GRAND TOTAL ({title})
                                         </td>
-                                        {calculateRates(grandTotal).map((val: number, vIdx: number) => (
-                                            <td key={vIdx} className={`text-center px-4 py-4 text-xs ${vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 11 ? 'bg-primary/10 text-primary' : 'text-primary'}`}>
-                                                {[0, 2, 8, 10, 12].includes(vIdx) ? `₹${val.toLocaleString('en-IN')}` : val.toLocaleString('en-IN')}
-                                            </td>
-                                        ))}
+                                        {calculateRates(grandTotal).map((val: number, vIdx: number) => {
+                                            if (hideBudget && BUDGET_INDICES.includes(vIdx)) return null
+                                            return (
+                                                <td key={vIdx} className={`text-center px-4 py-4 text-xs ${vIdx < displayMetrics.length && vIdx < METRICS.length - 1 ? 'border-r border-muted/20' : ''} ${vIdx === 11 ? 'bg-primary/10 text-primary' : 'text-primary'}`}>
+                                                    {BUDGET_INDICES.includes(vIdx) ? `₹${val.toLocaleString('en-IN')}` : val.toLocaleString('en-IN')}
+                                                </td>
+                                            )
+                                        })}
                                     </tr>
                                 )}
                             </tbody>
@@ -335,22 +352,38 @@ export default function SubSourceLevelReport() {
 
     const handleDownloadExcel = () => {
         const wb = XLSX.utils.book_new()
-        const rows = [["Sub-Source Level Performance Report"], ["Generated At:", new Date().toLocaleString()], [], ["Source", "Sub-Source", ...METRICS]]
+        const rows: any[][] = [["Sub-Source Level Performance Report"], ["Generated At:", new Date().toLocaleString()], []]
         
         const addSection = (title: string, sourceList: string[]) => {
+            const isPaid = !title.includes("NON-PAID")
+            const hideBudget = !isPaid || leadTypeFilter !== "all"
+            const displayMetrics = METRICS.filter((_, i) => !(hideBudget && BUDGET_INDICES.includes(i)))
+
             rows.push([title])
+            rows.push(["Source", "Sub-Source", ...displayMetrics])
             const sectionTotal = Array(METRICS.length).fill(0)
             sourceList.forEach(source => {
                 SUBSOURCES[source].forEach(sub => {
                     if ((sourceFilter === "all" || source === sourceFilter) && (subSourceFilter === "all" || sub === subSourceFilter)) {
                         const data = subTotals[source][sub]
                         METRICS.forEach((_, i) => { if (![2, 8, 10, 12].includes(i)) sectionTotal[i] += data[i] })
-                        rows.push([source, sub, ...data.map((v: number, i: number) => [0, 2, 8, 10, 12].includes(i) ? `₹${v.toLocaleString('en-IN')}` : v.toLocaleString('en-IN'))])
+                        
+                        const rowData = [source, sub]
+                        data.forEach((val: number, vIdx: number) => {
+                            if (hideBudget && BUDGET_INDICES.includes(vIdx)) return
+                            rowData.push(BUDGET_INDICES.includes(vIdx) ? `₹${val.toLocaleString('en-IN')}` : val.toLocaleString('en-IN'))
+                        })
+                        rows.push(rowData)
                     }
                 })
             })
             const rates = calculateRates(sectionTotal)
-            rows.push(["GRAND TOTAL", "", ...rates.map((v: number, i: number) => [0, 2, 8, 10, 12].includes(i) ? `₹${v.toLocaleString('en-IN')}` : v.toLocaleString('en-IN'))])
+            const totalRow = ["GRAND TOTAL", ""]
+            rates.forEach((val: number, vIdx: number) => {
+                if (hideBudget && BUDGET_INDICES.includes(vIdx)) return
+                totalRow.push(BUDGET_INDICES.includes(vIdx) ? `₹${val.toLocaleString('en-IN')}` : val.toLocaleString('en-IN'))
+            })
+            rows.push(totalRow)
             rows.push([])
         }
 
@@ -373,9 +406,9 @@ export default function SubSourceLevelReport() {
                 </p>
             </div>
 
-            <Card className="border-none shadow-md bg-background/60 backdrop-blur-md">
+            <Card className="border-none shadow-md bg-background/80 backdrop-blur-md sticky top-12 z-30 ring-1 ring-border/50">
                 <CardContent className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-end">
                         <div className="flex flex-col gap-2">
                             <Label className="text-[10px] uppercase font-bold text-muted-foreground/80 flex items-center gap-2">
                                 <Filter className="h-3 w-3" />
@@ -403,6 +436,22 @@ export default function SubSourceLevelReport() {
                                 <SelectContent>
                                     <SelectItem value="all">All Subsources</SelectItem>
                                     {sourceFilter !== "all" && SUBSOURCES[sourceFilter].map(sub => <SelectItem key={sub} value={sub}>{sub}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <Label className="text-[10px] uppercase font-bold text-muted-foreground/80 flex items-center gap-2">
+                                <Users className="h-3 w-3" />
+                                Lead Type
+                            </Label>
+                            <Select value={leadTypeFilter} onValueChange={setLeadTypeFilter}>
+                                <SelectTrigger className="h-10 bg-muted/30 border-none transition-all hover:bg-muted/50">
+                                    <SelectValue placeholder="All Types" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Types</SelectItem>
+                                    <SelectItem value="new">New Lead</SelectItem>
+                                    <SelectItem value="reengaged">Re-engaged Lead</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

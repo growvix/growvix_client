@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Plus, Target, ArrowRight,Info } from 'lucide-react'
+import { Plus, Target, ArrowRight, Info } from 'lucide-react'
 import {
     Card,
     CardContent,
@@ -20,7 +20,7 @@ import {
     FieldLabel,
 } from '@/components/ui/field'
 import { useBreadcrumb } from '@/context/breadcrumb-context'
-import {Tooltip, TooltipContent, TooltipTrigger, TooltipProvider} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 
 // Helper function to get cookie value
 const getCookie = (name: string): string => {
@@ -96,7 +96,7 @@ export default function AddLeadPage() {
                 label: (
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Info className="h-4 w-4"/>
+                            <Info className="h-4 w-4" />
                         </TooltipTrigger>
                         <TooltipContent>
                             <p>Add New Lead</p>
@@ -121,7 +121,7 @@ export default function AddLeadPage() {
             })
             const allConfigs = res.data.data || []
             // Filter by user assignment
-            const myConfigs = allConfigs.filter((c: any) => 
+            const myConfigs = allConfigs.filter((c: any) =>
                 c.assigned_people?.some((p: any) => p.id === currentUserId)
             )
             setConfigs(myConfigs)
@@ -192,46 +192,64 @@ export default function AddLeadPage() {
     }
 
     return (
-        <div className="min-h-screen p-6 md:p-4 flex flex-col items-center gap-8">
+        <div className="min-h-screen p-6 md:p-4 flex flex-col items-center gap-8 bg-zinc-50/50 dark:bg-zinc-950/50">
             {/* Quick Project Config Cards */}
-            {configs.length > 0 && (
-                <div className="w-full max-w-6xl">
-                    <div className="flex items-center gap-3 mb-2 px-1">
-                        <div className="h-10 w-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-                            <Target className="h-5 w-5 text-emerald-600" />
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">Quick Project Forms</h2>
-                            <p className="text-[11px] font-bold text-zinc-600 dark:text-zinc-500 uppercase tracking-widest leading-none mt-1">Direct Entry for your assigned projects</p>
-                        </div>
+            <div className="w-full max-w-6xl">
+                <div className="flex items-center gap-3 mb-4 px-1">
+                    <div className="h-10 w-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                        <Target className="h-5 w-5 text-emerald-600" />
                     </div>
-                    
+                    <div>
+                        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Quick Project Forms</h2>
+                        <p className="text-[11px] font-bold text-zinc-600 dark:text-zinc-500 uppercase tracking-widest leading-none mt-1">Direct Entry for your assigned projects</p>
+                    </div>
+                </div>
+
+                {fetchingConfigs ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="h-32 rounded-2xl bg-zinc-100 dark:bg-zinc-800" />
+                        ))}
+                    </div>
+                ) : configs.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {configs.map((config) => (
-                            <Card 
-                                key={config._id} 
-                                className="group relative overflow-hidden rounded-2xl border-slate-100 dark:border-zinc-800 hover:border-emerald-500/30 hover:bg-white/60 dark:hover:bg-zinc-900 bg-white/50 dark:bg-zinc-900/50"
+                            <Card
+                                key={config._id}
+                                className="group relative overflow-hidden rounded-2xl border-zinc-200 dark:border-zinc-800 hover:border-emerald-500/30 hover:bg-white dark:hover:bg-zinc-900 bg-white/80 dark:bg-zinc-900/80 cursor-pointer transition-all duration-300"
                                 onClick={() => navigate(`/automation/leadcapture/leadcaptureform?id=${config._id}&mode=fill`)}
                             >
-                                <CardHeader className="p-4 pb-0">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-none font-black text-[10px] tracking-widest uppercase px-3 py-1">
-                                            {config.project_id?.type || 'Project'}
-                                        </Badge>
-                                    </div>
-                                    <CardTitle className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors duration-300">
+                                <CardHeader className="p-4">
+                                    <Badge className="w-fit mb-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-none font-bold text-[10px] tracking-widest uppercase px-2 py-0.5">
+                                        {config.project_id?.type || 'Project'}
+                                    </Badge>
+                                    <CardTitle className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                                         {config.project_id?.name || 'Lead Form'}
                                     </CardTitle>
-                                    <CardDescription className="font-semibold text-zinc-750 dark:text-zinc-200 mt-2 line-clamp-2">
+                                    <CardDescription className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-1">
                                         {config.name}
                                     </CardDescription>
                                 </CardHeader>
                             </Card>
                         ))}
                     </div>
-                </div>
-            )}
+                ) : (
+                    <Card className="rounded-3xl border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/20 shadow-none">
+                        <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+                            <div className="h-16 w-16 rounded-3xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
+                                <Info className="h-8 w-8 text-zinc-400" />
+                            </div>
+                            <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">No Forms Assigned</h3>
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2 max-w-md font-medium">
+                                You don't have any project-specific lead capture forms assigned.
+                                Please contact your administrator for project assignments, or use the manual entry form below.
+                            </p>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
 
-                    </div>
+
+        </div>
     )
 }

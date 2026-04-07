@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   BadgeCheck,
   ChevronsUpDown,
@@ -8,6 +8,12 @@ import {
   Users,
   Loader2,
   Sparkles,
+  MessageSquareWarning,
+  ImagePlus,
+  X,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Link } from "react-router-dom"
@@ -22,6 +28,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
 
 import {
   Avatar,
@@ -44,6 +56,19 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { getCookie, setCookie, deleteAllAuthCookies } from "@/utils/cookies"
+
+// Types
+interface SupportTicket {
+  _id: string
+  uuid: string
+  subject: string
+  description: string
+  screenshots: string[]
+  status: 'pending' | 'in_progress' | 'completed'
+  createdBy: { userId: string; userName: string }
+  createdAt: string
+  updatedAt: string
+}
 
 export function NavUser({
   user,
@@ -84,6 +109,18 @@ export function NavUser({
 
   // Check if we are currently impersonating
   const isAdminImpersonating = !!getCookie('admin_token');
+
+  // ─── Support Ticket State ────────────────────────────────────
+  const [showSupportDialog, setShowSupportDialog] = useState(false);
+  const [supportTab, setSupportTab] = useState<'create' | 'tickets'>('create');
+  const [ticketSubject, setTicketSubject] = useState('');
+  const [ticketDescription, setTicketDescription] = useState('');
+  const [ticketScreenshots, setTicketScreenshots] = useState<string[]>([]);
+  const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
+  const [submittingTicket, setSubmittingTicket] = useState(false);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [loadingTickets, setLoadingTickets] = useState(false);
+  const screenshotInputRef = useRef<HTMLInputElement>(null);
 
   // Reset logic when switcher opens
   useEffect(() => {
@@ -220,6 +257,130 @@ export function NavUser({
     }
   };
 
+  // ─── Support Ticket Handlers ─────────────────────────────────
+
+  const fetchTickets = async () => {
+    setLoadingTickets(true);
+    try {
+      const userId = getCookie('user_id');
+      const response = await axios.get(API.SUPPORT_TICKETS, {
+        params: { organization: org, userId }
+      });
+      setTickets(response.data.data || []);
+    } catch (error: any) {
+      console.error('Failed to fetch tickets:', error);
+    } finally {
+      setLoadingTickets(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showSupportDialog && supportTab === 'tickets') {
+      fetchTickets();
+    }
+  }, [showSupportDialog, supportTab]);
+
+  const handleScreenshotUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const fileArray = Array.from(files);
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    const invalidFile = fileArray.find(f => !allowedTypes.includes(f.type));
+    if (invalidFile) {
+      toast.error('Only image files (PNG, JPEG, JPG, WebP) are allowed');
+      return;
+    }
+
+    if (ticketScreenshots.length + fileArray.length > 5) {
+      toast.error(`Maximum 5 screenshots allowed. You can add ${5 - ticketScreenshots.length} more.`);
+      return;
+    }
+
+    setUploadingScreenshot(true);
+    const formData = new FormData();
+    fileArray.forEach(file => formData.append('images', file));
+
+    try {
+      const response = await axios.post(API.UPLOAD.FLOOR_PLANS, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const newUrls = response.data.data.urls;
+      setTicketScreenshots(prev => [...prev, ...newUrls].slice(0, 5));
+      toast.success(`${newUrls.length} screenshot(s) uploaded`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to upload screenshot');
+    } finally {
+      setUploadingScreenshot(false);
+    }
+  };
+
+  const handleSubmitTicket = async () => {
+    if (!ticketSubject.trim()) {
+      toast.error('Please enter a subject');
+      return;
+    }
+    if (!ticketDescription.trim()) {
+      toast.error('Please describe the issue');
+      return;
+    }
+
+    setSubmittingTicket(true);
+    try {
+      const userId = getCookie('user_id');
+      const userName = getCookie('userName') || 'User';
+
+      await axios.post(API.SUPPORT_TICKETS, {
+        subject: ticketSubject.trim(),
+        description: ticketDescription.trim(),
+        screenshots: ticketScreenshots,
+        userId,
+        userName,
+      }, {
+        params: { organization: org }
+      });
+
+      toast.success('Support ticket submitted successfully!');
+      // Reset form
+      setTicketSubject('');
+      setTicketDescription('');
+      setTicketScreenshots([]);
+      // Switch to tickets tab to show the new ticket
+      setSupportTab('tickets');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to submit ticket');
+    } finally {
+      setSubmittingTicket(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return (
+          <Badge variant="outline" className="text-yellow-600 border-yellow-500 bg-yellow-500/10 gap-1 text-[10px]">
+            <Clock className="h-3 w-3" />
+            Pending
+          </Badge>
+        );
+      case 'in_progress':
+        return (
+          <Badge variant="outline" className="text-blue-600 border-blue-500 bg-blue-500/10 gap-1 text-[10px]">
+            <AlertCircle className="h-3 w-3" />
+            In Progress
+          </Badge>
+        );
+      case 'completed':
+        return (
+          <Badge variant="outline" className="text-green-600 border-green-500 bg-green-500/10 gap-1 text-[10px]">
+            <CheckCircle2 className="h-3 w-3" />
+            Completed
+          </Badge>
+        );
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
   const filteredExecutives = executives.filter(exec =>
     `${exec.profile.firstName} ${exec.profile.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
     exec.profile_id?.toString().includes(searchQuery) ||
@@ -280,6 +441,18 @@ export function NavUser({
                     <span>Switch Account</span>
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setOpen(false)
+                    setOpenMobile(false)
+                    setSupportTab('create')
+                    setShowSupportDialog(true)
+                  }}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <MessageSquareWarning className="h-4 w-4" />
+                  <span>Report Issue</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link
                     to="/profile"
@@ -294,22 +467,6 @@ export function NavUser({
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
-
-
-              {/* <DropdownMenuItem asChild>
-
-                <Link
-                  to="/updates"
-                  className="flex items-center gap-2"
-                  onClick={() => {
-                    setOpen(false)
-                    setOpenMobile(false)
-                  }}
-                >
-                  <Sparkles className="h-4 w-4" />
-                  <span>Updates</span>
-                </Link>
-              </DropdownMenuItem> */}
 
 
               <DropdownMenuItem asChild>
@@ -327,6 +484,7 @@ export function NavUser({
         </SidebarMenuItem>
       </SidebarMenu>
 
+      {/* Switch Account Dialog */}
       <Dialog open={showSwitchAccount} onOpenChange={setShowSwitchAccount}>
         <DialogContent className="sm:max-w-md max-h-[80vh] overflow-hidden flex flex-col w-full">
           <DialogHeader>
@@ -375,6 +533,191 @@ export function NavUser({
               ))
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Support Issue Ticket Dialog */}
+      <Dialog open={showSupportDialog} onOpenChange={(open) => {
+        setShowSupportDialog(open);
+        if (!open) {
+          // Reset form when closing
+          setTicketSubject('');
+          setTicketDescription('');
+          setTicketScreenshots([]);
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquareWarning className="h-5 w-5 text-primary" />
+              Support
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Tabs */}
+          <div className="flex gap-1 p-1 bg-muted rounded-lg shrink-0">
+            <button
+              onClick={() => setSupportTab('create')}
+              className={cn(
+                "flex-1 text-sm font-medium py-1.5 px-3 rounded-md transition-all",
+                supportTab === 'create'
+                  ? 'bg-background shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Report Issue
+            </button>
+            <button
+              onClick={() => setSupportTab('tickets')}
+              className={cn(
+                "flex-1 text-sm font-medium py-1.5 px-3 rounded-md transition-all",
+                supportTab === 'tickets'
+                  ? 'bg-background shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              My Tickets
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {supportTab === 'create' ? (
+            <div className="flex flex-col gap-4 overflow-y-auto flex-1 pr-1">
+              {/* Subject */}
+              <div className="space-y-1.5">
+                <Label htmlFor="ticket-subject" className="text-sm font-medium">Subject *</Label>
+                <Input
+                  id="ticket-subject"
+                  placeholder="Brief summary of the issue..."
+                  value={ticketSubject}
+                  onChange={(e) => setTicketSubject(e.target.value)}
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1.5">
+                <Label htmlFor="ticket-description" className="text-sm font-medium">Description *</Label>
+                <Textarea
+                  id="ticket-description"
+                  placeholder="Describe the issue in detail. Include steps to reproduce, expected behavior, and what actually happened..."
+                  value={ticketDescription}
+                  onChange={(e) => setTicketDescription(e.target.value)}
+                  className="min-h-[150px] resize-none"
+                />
+              </div>
+
+              {/* Screenshots */}
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Screenshots (optional, max 5)</Label>
+
+                {/* Preview grid */}
+                {ticketScreenshots.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2 mb-2">
+                    {ticketScreenshots.map((url, idx) => (
+                      <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border bg-muted">
+                        <img src={url} alt={`Screenshot ${idx + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => setTicketScreenshots(prev => prev.filter((_, i) => i !== idx))}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {ticketScreenshots.length < 5 && (
+                  <div
+                    className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all group"
+                    onClick={() => screenshotInputRef.current?.click()}
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      {uploadingScreenshot ? (
+                        <div className="flex items-center gap-2 text-sm text-primary">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Uploading...
+                        </div>
+                      ) : (
+                        <>
+                          <ImagePlus className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                          <p className="text-xs text-muted-foreground">Click to upload screenshots</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <input
+                  ref={screenshotInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    handleScreenshotUpload(e.target.files);
+                    e.target.value = '';
+                  }}
+                />
+              </div>
+
+              {/* Submit */}
+              <Button
+                onClick={handleSubmitTicket}
+                disabled={submittingTicket || !ticketSubject.trim() || !ticketDescription.trim()}
+                className="w-full"
+              >
+                {submittingTicket ? (
+                  <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Submitting...</>
+                ) : (
+                  'Submit Ticket'
+                )}
+              </Button>
+            </div>
+          ) : (
+            <ScrollArea className="flex-1">
+              {loadingTickets ? (
+                <div className="flex justify-center p-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : tickets.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <MessageSquareWarning className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">No tickets submitted yet</p>
+                  <p className="text-xs mt-1">Report an issue to get started</p>
+                </div>
+              ) : (
+                <div className="space-y-3 pr-3">
+                  {tickets.map((ticket) => (
+                    <div key={ticket._id} className="border rounded-lg p-3 space-y-2 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-sm font-medium leading-tight flex-1">{ticket.subject}</h4>
+                        {getStatusBadge(ticket.status)}
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{ticket.description}</p>
+                      {ticket.screenshots && ticket.screenshots.length > 0 && (
+                        <div className="flex gap-1.5">
+                          {ticket.screenshots.map((url, idx) => (
+                            <div key={idx} className="h-10 w-10 rounded border overflow-hidden shrink-0">
+                              <img src={url} alt={`Screenshot ${idx + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(ticket.createdAt).toLocaleDateString('en-US', {
+                            year: 'numeric', month: 'short', day: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          )}
         </DialogContent>
       </Dialog>
     </>
