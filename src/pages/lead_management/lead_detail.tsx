@@ -794,6 +794,7 @@ export default function LeadDetail() {
     const [leadDetail, setLeadDetail] = useState<Lead | null>(null)
     const [activeExeIndex, setActiveExeIndex] = useState(0)
     const { id } = useParams()
+    const [activeLeadId, setActiveLeadId] = useState<string | undefined>(id);
     const navigate = useNavigate()
     const [, setLeadId] = useState<string | undefined>(undefined);
     const [stages, setStages] = useState<Stage[]>([])
@@ -836,7 +837,6 @@ export default function LeadDetail() {
     const [mergeSearchResults, setMergeSearchResults] = useState<any[]>([]);
     const [isSearchingLeads, setIsSearchingLeads] = useState(false);
     const [isMergingLead, setIsMergingLead] = useState(false);
-    const [originalLead, setOriginalLead] = useState<Lead | null>(null);
     const [isShowingSecondary, setIsShowingSecondary] = useState(false);
 
     const handleSearchLeads = async (query: string) => {
@@ -927,52 +927,18 @@ export default function LeadDetail() {
     };
 
     const handleToggleSwap = async () => {
-        if (!leadDetail?._id || !organization) return;
+        if (!leadDetail?._id || !organization || !id) return;
 
         if (isShowingSecondary || leadDetail.is_secondary) {
-            // Revert to original or go back to primary lead
-            if (originalLead) {
-                setLeadDetail(originalLead);
-                setIsShowingSecondary(false);
-            } else if (leadDetail.merged_into) {
-                setLoading(true);
-                try {
-                    const { data } = await apolloClient.query<GetLeadByIdQueryResponse, GetLeadByIdQueryVariables>({
-                        query: GET_LEAD_BY_ID,
-                        variables: { organization, id: leadDetail.merged_into.UUID },
-                        fetchPolicy: 'network-only'
-                    });
-                    if (data?.getLeadById) {
-                        setLeadDetail(data.getLeadById);
-                        setIsShowingSecondary(false);
-                    }
-                } catch (err) {
-                    console.error("Failed to load primary lead:", err);
-                } finally {
-                    setLoading(false);
-                }
-            }
+            // Revert to primary lead (ID from URL)
+            setActiveLeadId(id);
+            setIsShowingSecondary(false);
         } else {
             // Swap to first secondary lead if exists
             const mergeInfo = leadDetail.merge_id?.[0];
             if (mergeInfo) {
-                setOriginalLead(leadDetail);
-                setLoading(true);
-                try {
-                    const { data } = await apolloClient.query<GetLeadByIdQueryResponse, GetLeadByIdQueryVariables>({
-                        query: GET_LEAD_BY_ID,
-                        variables: { organization, id: mergeInfo.UUID },
-                        fetchPolicy: 'network-only'
-                    });
-                    if (data?.getLeadById) {
-                        setLeadDetail(data.getLeadById);
-                        setIsShowingSecondary(true);
-                    }
-                } catch (err) {
-                    console.error("Failed to load secondary lead:", err);
-                } finally {
-                    setLoading(false);
-                }
+                setActiveLeadId(mergeInfo.UUID);
+                setIsShowingSecondary(true);
             }
         }
     };
@@ -1152,83 +1118,39 @@ export default function LeadDetail() {
         return (parts[0][0] + parts[1][0]).toUpperCase();
     }
     useEffect(() => {
+        setActiveLeadId(id);
         setIsShowingSecondary(false);
-        setOriginalLead(null);
     }, [id]);
 
     useEffect(() => {
-        let cancelled = false
-        async function run() {
-            try {
-                if (cancelled) return
-                setLeadId(id)
-                // Set breadcrumbs after getting the lead ID
-                setBreadcrumbs([
-                    { label: "All Leads", href: "/all_leads" },
-                    { label: id ? `Lead #${id}` : "Lead" },
-                    {
-                        label: (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Info className="h-4.5 w-4.5" />
-                                    </TooltipTrigger>
-                                    <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
-                                        <p className="font-medium">Lead Details</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        )
-                    },
-                ])
-                // Fetch lead details via GraphQL
-                if (id) {
-                    const organization = getCookie('organization') || ''
-                    if (organization) {
-                        const { data } = await apolloClient.query<GetLeadByIdQueryResponse, GetLeadByIdQueryVariables>({
-                            query: GET_LEAD_BY_ID,
-                            variables: { organization, id },
-                            fetchPolicy: 'network-only'
-                        })
-                        console.log('Lead Details Response:', data)
-                        setLeadDetail(data?.getLeadById || null)
-                        setLoading(false)
-                    }
-                }
-            } catch (error) {
-                console.error('Error fetching lead details:', error)
-                setLeadId(id)
-                setBreadcrumbs([
-                    { label: "All Leads", href: "/all_leads" },
-                    { label: id ? `Lead #${id}` : "Lead" },
-                    {
-                        label: (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Info className="h-4.5 w-4.5" />
-                                    </TooltipTrigger>
-                                    <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
-                                        <p className="font-medium">Lead Details</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        )
-                    },
-                ])
-                setLoading(false)
-                toast.error(error instanceof Error ? error.message : 'Failed to fetch lead details')
-            }
+        if (id) {
+            setLeadId(id)
+            setBreadcrumbs([
+                { label: "All Leads", href: "/all_leads" },
+                { label: `Lead #${id}` },
+                {
+                    label: (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Info className="h-4.5 w-4.5" />
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-black text-white border border-slate-200 shadow-md dark:bg-white dark:text-slate-900 dark:border-slate-800">
+                                    <p className="font-medium">Lead Details</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )
+                },
+            ])
         }
-        run()
-        return () => { cancelled = true }
-    }, [id, setBreadcrumbs])
+    }, [id, setBreadcrumbs]);
     // Fetch lead details by ID with apollo
     const { data: leadData, loading: _leadLoading, error: _leadError, refetch: refetchLead } = useQuery<GetLeadByIdQueryResponse, GetLeadByIdQueryVariables>(
         GET_LEAD_BY_ID,
         {
-            variables: { organization, id: id || "" },
-            skip: !organization || !id
+            variables: { organization, id: activeLeadId || "" },
+            skip: !organization || !activeLeadId
         }
     );
 
@@ -1264,6 +1186,7 @@ export default function LeadDetail() {
             if (leadData.getLeadById.status) {
                 setSelectedStatus(leadData.getLeadById.status);
             }
+            setLoading(false);
         }
     }, [leadData]);
     useEffect(() => {
@@ -1659,9 +1582,14 @@ export default function LeadDetail() {
                                             <div className="flex items-center gap-1.5">
                                                 <Badge
                                                     variant="default"
-                                                    className="bg-black text-white dark:bg-zinc-800 dark:text-zinc-200 text-[10px] h-5 px-2 font-medium"
+                                                    className={cn(
+                                                        "text-[10px] h-5 px-2 font-medium uppercase",
+                                                        (leadDetail?.is_secondary || isShowingSecondary)
+                                                            ? "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400"
+                                                            : "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400"
+                                                    )}
                                                 >
-                                                    Merged
+                                                    {(leadDetail?.is_secondary || isShowingSecondary) ? "Secondary Lead" : "Primary Lead"}
                                                 </Badge>
                                                 <TooltipProvider>
                                                     <Tooltip>
@@ -1672,7 +1600,7 @@ export default function LeadDetail() {
                                                                 onClick={handleToggleSwap}
                                                                 className="h-5 w-5 p-0 hover:bg-transparent"
                                                             >
-                                                                <Badge variant="secondary" className="text-[10px] h-5 opacity-70 ml-2 bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200">
+                                                                <Badge variant="secondary" className="text-[10px] h-5 opacity-70 ml-2 bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 p-0 w-8 flex items-center justify-center">
                                                                     <RefreshCw className={cn("h-3.5 w-3.5 text-zinc-600 dark:text-zinc-400 transition-transform duration-300", (isShowingSecondary || leadDetail?.is_secondary) && "rotate-180")} />
                                                                 </Badge>
                                                             </Button>
