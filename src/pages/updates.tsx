@@ -148,7 +148,7 @@ export default function UpdatesPage() {
             title: "Account Management",
             description: "Master high-value client portfolios with strategic renewal intelligence, performance-driven analytics, and end-to-end relationship tracking.",
             icon: Gem,
-            badge: "New",
+            // badge: "New",
             colorClass: "text-cyan-600 dark:text-cyan-400",
             bgClass: "bg-cyan-100 dark:bg-cyan-900/40",
             hoverBorder: "hover:border-cyan-300 dark:hover:border-cyan-800",

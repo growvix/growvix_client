@@ -147,7 +147,7 @@ const STEPS = [
 const FieldSelector = ({ fieldId, isSelected, onClick, children }: any) => (
     <div
         className={cn(
-            "p-5 border-2 rounded-2xl cursor-pointer transition-all relative overflow-hidden group",
+            "p-5 border-2 rounded-lg cursor-pointer transition-all relative overflow-hidden group",
             isSelected ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-900/50" : "border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:border-slate-300 dark:hover:border-zinc-700"
         )}
         onClick={() => onClick(fieldId)}
@@ -513,7 +513,7 @@ export default function LeadCaptureForm() {
                     <div className="max-w-5xl mx-auto">
                         {currentStep === 1 && (
                             <div className="animate-in fade-in slide-in-duration-500 max-w-5xl mx-auto py-8">
-                                <div className="max-w-4xl mx-auto space-y-12 border border-slate-100 dark:border-zinc-800 p-6 rounded-3xl bg-transparent transition-all hover:border-slate-200 dark:hover:border-zinc-700 shadow-sm">
+                                <div className="max-w-4xl mx-auto space-y-12 border border-slate-100 dark:border-zinc-800 p-6 rounded-lg bg-transparent transition-all hover:border-slate-200 dark:hover:border-zinc-700 shadow-sm">
                                     {/* Dynamic Contact Section */}
                                     <section className="space-y-6 ">
                                         <div className="flex items-center justify-between">
@@ -538,7 +538,7 @@ export default function LeadCaptureForm() {
                                                 <Input
                                                     disabled={!isFillMode}
                                                     placeholder="Enter full name"
-                                                    className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm rounded-xl shadow-sm"
+                                                    className="h-12 bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm rounded-lg shadow-sm"
                                                     value={contactInfo.name}
                                                     onChange={(e) => setContactInfo({ ...contactInfo, name: e.target.value })}
                                                     required
@@ -725,7 +725,7 @@ export default function LeadCaptureForm() {
                                                             <div
                                                                 key={type}
                                                                 className={cn(
-                                                                    "px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all border",
+                                                                    "px-5 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all border",
                                                                     contactInfo.bhk === type
                                                                         ? "bg-zinc-900 text-white border-zinc-900 shadow-lg scale-105"
                                                                         : "bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400 hover:border-slate-300 dark:hover:border-zinc-700"
@@ -1689,13 +1689,13 @@ export default function LeadCaptureForm() {
                                     <div className="space-y-4">
                                         <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Current Manual Requirements</Label>
                                         {manualRequirements.length === 0 ? (
-                                            <div className="py-12 flex flex-col items-center gap-4 border-2 border-dashed border-slate-100 dark:border-zinc-800 rounded-2xl">
+                                            <div className="py-12 flex flex-col items-center gap-4 border-2 border-dashed border-slate-100 dark:border-zinc-800 rounded-lg">
                                                 <p className="text-sm text-slate-400">No custom requirements added</p>
                                             </div>
                                         ) : (
                                             <div className="space-y-3">
                                                 {manualRequirements.map((req, i) => (
-                                                    <div key={i} className="flex items-center justify-between p-4 border border-slate-100 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 shadow-sm transition-all hover:border-slate-200">
+                                                    <div key={i} className="flex items-center justify-between p-4 border border-slate-100 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm transition-all hover:border-slate-200">
                                                         <span className="font-bold text-zinc-900 dark:text-zinc-100">{req.key}</span>
                                                         <Button
                                                             variant="ghost"
@@ -1712,7 +1712,7 @@ export default function LeadCaptureForm() {
                                     </div>
 
                                     <Button
-                                        className="w-full h-11 font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl mt-6"
+                                        className="w-full h-11 font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg mt-6"
                                         onClick={() => setIsRequirementSheetOpen(false)}
                                     >
                                         Apply Requirements
