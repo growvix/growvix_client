@@ -787,9 +787,15 @@ export default function NewProject() {
         const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
         const allowedDocTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
 
+<<<<<<< HEAD
+        // 500MB size limit for brochures, 5MB for logo
+        const MAX_BROCHURE_SIZE = 500 * 1024 * 1024; // 500MB limit for brochures
+        const MAX_LOGO_SIZE = 5 * 1024 * 1024;
+=======
         // Multi-tier size limits
         const MAX_IMAGE_SIZE = 15 * 1024 * 1024; // 15MB limit for logo
         const MAX_BROCHURE_SIZE = 100 * 1024 * 1024; // 100MB limit for brochure
+>>>>>>> 14fcd4aaff39eb9e880a546e40fd86fccd6f4ffb
 
         if (type === 'logo') {
             if (!allowedImageTypes.includes(file.type)) {
@@ -1146,7 +1152,7 @@ export default function NewProject() {
                                                                             />
                                                                         </div>
                                                                         <div className="space-y-2 col-span-2">
-                                                                            <Label>Block plan images (Max 5)</Label>
+                                                                            <Label>Block Plan Images (Max 5)</Label>
                                                                             <div className="flex gap-2">
                                                                                 <Input
                                                                                     type="file"
