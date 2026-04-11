@@ -9,8 +9,8 @@ import {
   Users,
   LayoutDashboard,
   Wrench,
-  Sparkles
-
+  Sparkles,
+  MapPin
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -104,6 +104,11 @@ const data = {
         {
           title: "Third Party Integration",
           url: "/tools/third_party_integration",
+        },
+        {
+          title: "Live Tracking",
+          url: "/tools/tracking",
+          icon: MapPin,
         }
       ],
     },

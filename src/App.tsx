@@ -1,5 +1,6 @@
 
 import * as React from "react"
+import "leaflet/dist/leaflet.css";
 import { BreadcrumbProvider } from "@/context/breadcrumb-context"
 import { getCookie } from '@/utils/cookies';
 import { Toaster } from "@/components/ui/sonner"
@@ -62,6 +63,7 @@ import Campaigns from "./pages/tools/campaigns";
 import CreateCampaign from "./pages/tools/create_campaign";
 import ThirdPartyIntegration from "./pages/tools/third_party_integration";
 import TrackSourceSubsource from "./pages/tools/track_source_subsource";
+import TrackingPage from "./pages/tools/tracking";
 
 import GoogleAdsIntegrationList from "./pages/tools/google_ads_integration_list";
 import GoogleAdsIntegrationTest from "./pages/tools/google_ads_integration_test";
@@ -171,6 +173,7 @@ export default function App() {
             <Route path="/tools/third_party_integration/google_ads" element={<GoogleAdsIntegrationList />} />
             <Route path="/tools/third_party_integration/google_ads/test/:id" element={<GoogleAdsIntegrationTest />} />
             <Route path="/tools/third_party_integration/meta_ads" element={<MetaAdsIntegrationList />} />
+            <Route path="/tools/tracking" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><TrackingPage /></ProtectedRoute>} />
             <Route path="/updates" element={<UpdatesPage />} />
             <Route path="/setting/attendance" element={<AttendanceManagement />} />
             <Route path="/setting/availability" element={<AvailabilityChart />} />

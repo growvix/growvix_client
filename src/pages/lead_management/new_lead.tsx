@@ -114,14 +114,18 @@ export default function AddLeadPage() {
     const fetchConfigs = async (org: string) => {
         try {
             const token = getCookie('token')
+            const userRole = getCookie('role')
+            const isAdmin = userRole === 'admin'
+
             const res = await axios.get(`${API.LEAD_CAPTURE_CONFIGS}?organization=${org}`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
             })
             const allConfigs = res.data.data || []
-            // Filter by user assignment
-            const myConfigs = allConfigs.filter((c: any) =>
+            
+            // Admins see everything, others only see what they are assigned to
+            const myConfigs = isAdmin ? allConfigs : allConfigs.filter((c: any) =>
                 c.assigned_people?.some((p: any) => p.id === currentUserId)
             )
             setConfigs(myConfigs)

@@ -494,7 +494,7 @@ export default function EditProject() {
         const fileArray = Array.from(files)
         const currentCount = formData.layoutImages?.length || 0
         if (currentCount + fileArray.length > 5) { toast.error('Maximum 5 layout images allowed'); return }
-        
+
         const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
         const oversizedFile = fileArray.find(f => f.size > MAX_FILE_SIZE);
         if (oversizedFile) {
@@ -526,7 +526,7 @@ export default function EditProject() {
         // Frontend validation
         const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
         const allowedDocTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-        
+
         // 500MB size limit for brochures, 5MB for logo
         const MAX_BROCHURE_SIZE = 500 * 1024 * 1024; // 500MB limit for brochures
         const MAX_LOGO_SIZE = 5 * 1024 * 1024;
@@ -552,7 +552,7 @@ export default function EditProject() {
         }
 
         // Only compress logo, keep brochure as-is for quality and format preservation
-        const fileToUpload = type === 'logo' 
+        const fileToUpload = type === 'logo'
             ? await compressImage(file, { quality: 0.8, maxWidth: 1200 })
             : file;
 
@@ -807,8 +807,8 @@ export default function EditProject() {
                                                                                 {getBlockConfig(block.blockId).unitTypes.map((unitType, idx) => (
                                                                                     <div key={idx} className="grid grid-cols-6 gap-2 items-center bg-muted/50 p-2 rounded">
                                                                                         <div className="text-xs font-medium text-center">{unitType.name}</div>
-                                                                                        <Select value={String(unitType.bhk)} onValueChange={v => updateUnitType(block.blockId, idx, { bhk: parseInt(v) })}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent>{[1,2,3,4,5].map(n => <SelectItem key={n} value={String(n)}>{n} BHK</SelectItem>)}</SelectContent></Select>
-                                                                                        <Select value={String(unitType.bathrooms)} onValueChange={v => updateUnitType(block.blockId, idx, { bathrooms: parseInt(v) })}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent>{[1,2,3,4].map(n => <SelectItem key={n} value={String(n)}>{n} Bath</SelectItem>)}</SelectContent></Select>
+                                                                                        <Select value={String(unitType.bhk)} onValueChange={v => updateUnitType(block.blockId, idx, { bhk: parseInt(v) })}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent>{[1, 2, 3, 4, 5].map(n => <SelectItem key={n} value={String(n)}>{n} BHK</SelectItem>)}</SelectContent></Select>
+                                                                                        <Select value={String(unitType.bathrooms)} onValueChange={v => updateUnitType(block.blockId, idx, { bathrooms: parseInt(v) })}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent>{[1, 2, 3, 4].map(n => <SelectItem key={n} value={String(n)}>{n} Bath</SelectItem>)}</SelectContent></Select>
                                                                                         <Input type="number" className="h-8 text-xs bg-background dark:bg-[#09090b]" placeholder="sqft" value={unitType.size} onChange={e => updateUnitType(block.blockId, idx, { size: parseInt(e.target.value) || 1000 })} />
                                                                                         <Input type="number" className="h-8 text-xs bg-background dark:bg-[#09090b]" placeholder="Count" min="1" value={unitType.count} onChange={e => updateUnitType(block.blockId, idx, { count: parseInt(e.target.value) || 1 })} />
                                                                                         {getBlockConfig(block.blockId).unitTypes.length > 1 && (<Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeUnitType(block.blockId, idx)}><X className="h-3 w-3" /></Button>)}
@@ -1232,8 +1232,8 @@ export default function EditProject() {
             </Drawer>
             {/* Image Lightbox Overlay (Task 2: Using Dialog for proper portaling to prevent Drawer closing) */}
             <Dialog open={lightboxImageIndex !== null} onOpenChange={(open) => !open && setLightboxImageIndex(null)}>
-                <DialogContent 
-                    className="max-w-none sm:max-w-none w-screen h-screen bg-black/95 border-none p-0 flex flex-col items-center justify-center rounded-none z-99999 shadow-none outline-none" 
+                <DialogContent
+                    className="max-w-none sm:max-w-none w-screen h-screen bg-black/95 border-none p-0 flex flex-col items-center justify-center rounded-none z-99999 shadow-none outline-none"
                     showCloseButton={false}
                     onKeyDown={(e) => {
                         if (!editingFloor) return;
@@ -1298,11 +1298,10 @@ export default function EditProject() {
                                         {images.map((url, idx) => (
                                             <button
                                                 key={idx}
-                                                className={`h-16 w-16 rounded-lg overflow-hidden border-2 transition-all duration-300 ${
-                                                    idx === currentIndex
-                                                        ? 'border-white shadow-[0_0_20px_rgba(255,255,255,0.3)] scale-110'
-                                                        : 'border-white/20 opacity-40 hover:opacity-100 hover:border-white/50'
-                                                }`}
+                                                className={`h-16 w-16 rounded-lg overflow-hidden border-2 transition-all duration-300 ${idx === currentIndex
+                                                    ? 'border-white shadow-[0_0_20px_rgba(255,255,255,0.3)] scale-110'
+                                                    : 'border-white/20 opacity-40 hover:opacity-100 hover:border-white/50'
+                                                    }`}
                                                 onClick={() => setLightboxImageIndex(idx)}
                                             >
                                                 <img src={url} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />

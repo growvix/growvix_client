@@ -110,6 +110,12 @@ export const API = {
 
     // Support Tickets
     SUPPORT_TICKETS: `${API_URL}/api/support-tickets`,
+
+    // Location Tracking
+    LOCATION: {
+        GET_HISTORY: (userId: string) => `${API_URL}/api/location/${userId}`,
+        GET_LIVE: `${API_URL}/api/users`, // Live data is now cached in User model
+    }
 };
 
 export default API;

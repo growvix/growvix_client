@@ -14,6 +14,8 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
+  UserPlus,
+  Tag,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Link } from "react-router-dom"
@@ -58,6 +60,11 @@ import {
 import { getCookie, setCookie, deleteAllAuthCookies } from "@/utils/cookies"
 
 // Types
+interface TaggedUser {
+  userId: string
+  userName: string
+}
+
 interface SupportTicket {
   _id: string
   uuid: string
@@ -66,6 +73,7 @@ interface SupportTicket {
   screenshots: string[]
   status: 'pending' | 'in_progress' | 'completed'
   createdBy: { userId: string; userName: string }
+  taggedUsers: TaggedUser[]
   createdAt: string
   updatedAt: string
 }
@@ -121,6 +129,18 @@ export function NavUser({
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(false);
   const screenshotInputRef = useRef<HTMLInputElement>(null);
+
+  // ─── Tag Users State ────────────────────────────────────────
+  const [taggedUsers, setTaggedUsers] = useState<TaggedUser[]>([]);
+  const [orgUsers, setOrgUsers] = useState<any[]>([]);
+  const [loadingOrgUsers, setLoadingOrgUsers] = useState(false);
+  const [tagSearchQuery, setTagSearchQuery] = useState('');
+  const [showTagDropdown, setShowTagDropdown] = useState(false);
+  const tagDropdownRef = useRef<HTMLDivElement>(null);
+  const tagInputRef = useRef<HTMLInputElement>(null);
+
+  // ─── Tickets Sub-filter ─────────────────────────────────────
+  const [ticketsFilter, setTicketsFilter] = useState<'my' | 'tagged'>('my');
 
   // Reset logic when switcher opens
   useEffect(() => {
@@ -280,6 +300,48 @@ export function NavUser({
     }
   }, [showSupportDialog, supportTab]);
 
+  // Fetch org users for tagging when dialog opens on create tab
+  useEffect(() => {
+    if (showSupportDialog && supportTab === 'create' && orgUsers.length === 0) {
+      const fetchOrgUsers = async () => {
+        setLoadingOrgUsers(true);
+        try {
+          const response = await axios.get(`${API.USERS}?limit=500`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const payload = response.data.data;
+          let usersList: any[] = [];
+          if (Array.isArray(payload)) {
+            usersList = payload;
+          } else if (payload && Array.isArray(payload.users)) {
+            usersList = payload.users;
+          } else if (payload && payload.data && Array.isArray(payload.data)) {
+            usersList = payload.data;
+          }
+          // Exclude current user
+          const currentUserId = getCookie('user_id');
+          setOrgUsers(usersList.filter((u: any) => String(u._id) !== String(currentUserId)));
+        } catch (error: any) {
+          console.error('Failed to fetch org users for tagging:', error);
+        } finally {
+          setLoadingOrgUsers(false);
+        }
+      };
+      fetchOrgUsers();
+    }
+  }, [showSupportDialog, supportTab]);
+
+  // Close tag dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (tagDropdownRef.current && !tagDropdownRef.current.contains(e.target as Node)) {
+        setShowTagDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleScreenshotUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
@@ -333,6 +395,7 @@ export function NavUser({
         subject: ticketSubject.trim(),
         description: ticketDescription.trim(),
         screenshots: ticketScreenshots,
+        taggedUsers,
         userId,
         userName,
       }, {
@@ -344,6 +407,7 @@ export function NavUser({
       setTicketSubject('');
       setTicketDescription('');
       setTicketScreenshots([]);
+      setTaggedUsers([]);
       // Switch to tickets tab to show the new ticket
       setSupportTab('tickets');
     } catch (error: any) {
@@ -544,6 +608,8 @@ export function NavUser({
           setTicketSubject('');
           setTicketDescription('');
           setTicketScreenshots([]);
+          setTaggedUsers([]);
+          setTagSearchQuery('');
         }
       }}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
@@ -604,6 +670,94 @@ export function NavUser({
                   onChange={(e) => setTicketDescription(e.target.value)}
                   className="min-h-[150px] resize-none"
                 />
+              </div>
+
+              {/* Tag Users */}
+              <div className="space-y-1.5" ref={tagDropdownRef}>
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  <UserPlus className="h-3.5 w-3.5" />
+                  Tag Users (optional)
+                </Label>
+
+                {/* Selected tags */}
+                {taggedUsers.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-1.5">
+                    {taggedUsers.map((tu) => (
+                      <Badge
+                        key={tu.userId}
+                        variant="secondary"
+                        className="gap-1 pr-1 text-xs"
+                      >
+                        {tu.userName}
+                        <button
+                          type="button"
+                          onClick={() => setTaggedUsers(prev => prev.filter(u => u.userId !== tu.userId))}
+                          className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {/* Search input */}
+                <div className="relative">
+                  <Input
+                    ref={tagInputRef}
+                    placeholder="Search users to tag..."
+                    value={tagSearchQuery}
+                    onChange={(e) => {
+                      setTagSearchQuery(e.target.value);
+                      setShowTagDropdown(true);
+                    }}
+                    onFocus={() => setShowTagDropdown(true)}
+                  />
+
+                  {/* Dropdown */}
+                  {showTagDropdown && (
+                    <div className="absolute z-50 mt-1 w-full max-h-[160px] overflow-y-auto border rounded-lg bg-popover shadow-lg">
+                      {loadingOrgUsers ? (
+                        <div className="flex justify-center p-3">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : (() => {
+                        const filtered = orgUsers.filter(u => {
+                          const name = `${u.profile?.firstName || ''} ${u.profile?.lastName || ''}`.trim();
+                          const alreadyTagged = taggedUsers.some(t => t.userId === u._id);
+                          if (alreadyTagged) return false;
+                          if (!tagSearchQuery) return true;
+                          return name.toLowerCase().includes(tagSearchQuery.toLowerCase()) ||
+                            (u.role || '').toLowerCase().includes(tagSearchQuery.toLowerCase());
+                        });
+                        if (filtered.length === 0) {
+                          return <p className="text-xs text-muted-foreground p-3 text-center">No users found</p>;
+                        }
+                        return filtered.map(u => {
+                          const name = `${u.profile?.firstName || ''} ${u.profile?.lastName || ''}`.trim() || 'Unknown';
+                          return (
+                            <button
+                              key={u._id}
+                              type="button"
+                              className="flex items-center justify-between w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
+                              onClick={() => {
+                                setTaggedUsers(prev => [...prev, { userId: u._id, userName: name }]);
+                                setTagSearchQuery('');
+                                setShowTagDropdown(false);
+                                tagInputRef.current?.focus();
+                              }}
+                            >
+                              <span className="font-medium">{name}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold uppercase tracking-wider">
+                                {u.role || 'user'}
+                              </span>
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Screenshots */}
@@ -675,48 +829,122 @@ export function NavUser({
               </Button>
             </div>
           ) : (
-            <ScrollArea className="flex-1">
-              {loadingTickets ? (
-                <div className="flex justify-center p-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : tickets.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <MessageSquareWarning className="h-10 w-10 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">No tickets submitted yet</p>
-                  <p className="text-xs mt-1">Report an issue to get started</p>
-                </div>
-              ) : (
-                <div className="space-y-3 pr-3">
-                  {tickets.map((ticket) => (
-                    <div key={ticket._id} className="border rounded-lg p-3 space-y-2 hover:bg-muted/30 transition-colors">
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="text-sm font-medium leading-tight flex-1">{ticket.subject}</h4>
-                        {getStatusBadge(ticket.status)}
+            <div className="flex flex-col flex-1 overflow-hidden">
+              {/* Sub-filter tabs */}
+              <div className="flex gap-1 p-0.5 bg-muted/60 rounded-md shrink-0 mb-3">
+                <button
+                  onClick={() => setTicketsFilter('my')}
+                  className={cn(
+                    "flex-1 text-xs font-medium py-1.5 px-2 rounded transition-all",
+                    ticketsFilter === 'my'
+                      ? 'bg-background shadow-sm text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  My Tickets
+                </button>
+                <button
+                  onClick={() => setTicketsFilter('tagged')}
+                  className={cn(
+                    "flex-1 text-xs font-medium py-1.5 px-2 rounded transition-all flex items-center justify-center gap-1",
+                    ticketsFilter === 'tagged'
+                      ? 'bg-background shadow-sm text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <Tag className="h-3 w-3" />
+                  Tagged
+                </button>
+              </div>
+
+              <ScrollArea className="flex-1">
+                {loadingTickets ? (
+                  <div className="flex justify-center p-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (() => {
+                  const currentUserId = getCookie('user_id');
+                  const filtered = tickets.filter(ticket => {
+                    if (ticketsFilter === 'my') {
+                      return ticket.createdBy.userId === currentUserId;
+                    } else {
+                      return (
+                        ticket.createdBy.userId !== currentUserId &&
+                        ticket.taggedUsers?.some(tu => tu.userId === currentUserId)
+                      );
+                    }
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <MessageSquareWarning className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                        <p className="text-sm">
+                          {ticketsFilter === 'my' ? 'No tickets submitted yet' : 'No tagged tickets'}
+                        </p>
+                        <p className="text-xs mt-1">
+                          {ticketsFilter === 'my' ? 'Report an issue to get started' : 'You haven\'t been tagged on any tickets'}
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground line-clamp-2">{ticket.description}</p>
-                      {ticket.screenshots && ticket.screenshots.length > 0 && (
-                        <div className="flex gap-1.5">
-                          {ticket.screenshots.map((url, idx) => (
-                            <div key={idx} className="h-10 w-10 rounded border overflow-hidden shrink-0">
-                              <img src={url} alt={`Screenshot ${idx + 1}`} className="w-full h-full object-cover" />
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3 pr-3">
+                      {filtered.map((ticket) => (
+                        <div key={ticket._id} className="border rounded-lg p-3 space-y-2 hover:bg-muted/30 transition-colors">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="text-sm font-medium leading-tight flex-1">{ticket.subject}</h4>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {ticketsFilter === 'tagged' && (
+                                <Badge variant="outline" className="text-purple-600 border-purple-500 bg-purple-500/10 gap-1 text-[10px]">
+                                  <Tag className="h-2.5 w-2.5" />
+                                  Tagged
+                                </Badge>
+                              )}
+                              {getStatusBadge(ticket.status)}
                             </div>
-                          ))}
+                          </div>
+                          {ticketsFilter === 'tagged' && (
+                            <p className="text-[10px] text-muted-foreground">
+                              Created by: <span className="font-medium">{ticket.createdBy.userName || 'Unknown'}</span>
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground line-clamp-2">{ticket.description}</p>
+                          {ticket.taggedUsers && ticket.taggedUsers.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {ticket.taggedUsers.map((tu, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-[10px] py-0 gap-0.5">
+                                  <UserPlus className="h-2.5 w-2.5" />
+                                  {tu.userName}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                          {ticket.screenshots && ticket.screenshots.length > 0 && (
+                            <div className="flex gap-1.5">
+                              {ticket.screenshots.map((url, idx) => (
+                                <div key={idx} className="h-10 w-10 rounded border overflow-hidden shrink-0">
+                                  <img src={url} alt={`Screenshot ${idx + 1}`} className="w-full h-full object-cover" />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-muted-foreground">
+                              {new Date(ticket.createdAt).toLocaleDateString('en-US', {
+                                year: 'numeric', month: 'short', day: 'numeric',
+                                hour: '2-digit', minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
                         </div>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground">
-                          {new Date(ticket.createdAt).toLocaleDateString('en-US', {
-                            year: 'numeric', month: 'short', day: 'numeric',
-                            hour: '2-digit', minute: '2-digit'
-                          })}
-                        </span>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
+                  );
+                })()}
+              </ScrollArea>
+            </div>
           )}
         </DialogContent>
       </Dialog>

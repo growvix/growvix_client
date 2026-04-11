@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from "react"
 import axios from "axios"
 import { API, API_URL } from "@/config/api"
 import { type ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal, X, ChevronsUpDown, Check, Pencil, Trash2, Info } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, X, ChevronsUpDown, Check, Pencil, Trash2, Info, MapPin } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getCookie, getPermissions } from "@/utils/cookies"
@@ -96,6 +97,7 @@ interface UserData {
     role: string
     department?: string
     isActive: boolean
+    isTrackingAssigned?: boolean
     createdAt?: string
     teams?: { teamId: string; teamName: string }[]
     permissions?: string[]
@@ -486,6 +488,42 @@ export default function UserManagement() {
                         ))}
                     </div>
                 )
+            },
+        },
+        {
+            accessorKey: "isTrackingAssigned",
+            header: "Tracking",
+            meta: {
+                label: "Tracking",
+            },
+            cell: ({ row }) => {
+                const user = row.original;
+                const [checked, setChecked] = useState(user.isTrackingAssigned || false);
+
+                const handleToggle = async (val: boolean) => {
+                    setChecked(val);
+                    try {
+                        const token = getCookie("token");
+                        await axios.patch(
+                            `${API_URL}/api/users/${user._id}/tracking`,
+                            { isTrackingAssigned: val },
+                            { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        toast.success(`Tracking ${val ? "enabled" : "disabled"} for ${user.profile.firstName}`);
+                    } catch (err: any) {
+                        setChecked(!val);
+                        toast.error("Failed to update tracking assignment");
+                    }
+                };
+
+                return (
+                    <div className="flex items-center justify-center">
+                        <Switch 
+                            checked={checked} 
+                            onCheckedChange={handleToggle}
+                        />
+                    </div>
+                );
             },
         },
         {

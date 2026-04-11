@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DatePicker } from "@/components/ui/date-picker"
 import { format } from "date-fns"
-import { 
-    XCircle, 
-    RotateCcw, 
+import {
+    XCircle,
+    RotateCcw,
     Download,
     Building2,
     Users,
@@ -29,6 +29,13 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import {
     Command,
     CommandEmpty,
     CommandGroup,
@@ -38,14 +45,14 @@ import {
 } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
 import * as XLSX from "xlsx"
-import { 
-    useReactTable, 
-    getCoreRowModel, 
-    getSortedRowModel, 
-    getFilteredRowModel, 
-    flexRender, 
-    type SortingState, 
-    type ColumnFiltersState, 
+import {
+    useReactTable,
+    getCoreRowModel,
+    getSortedRowModel,
+    getFilteredRowModel,
+    flexRender,
+    type SortingState,
+    type ColumnFiltersState,
     type VisibilityState,
     type ColumnDef
 } from "@tanstack/react-table"
@@ -81,15 +88,15 @@ const GET_ALL_PROJECTS = gql`
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { 
-    PieChart, 
-    Pie, 
-    Cell, 
-    BarChart, 
-    Bar, 
-    XAxis, 
-    YAxis, 
-    CartesianGrid, 
+import {
+    PieChart,
+    Pie,
+    Cell,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
 } from 'recharts'
 import {
     ChartContainer,
@@ -111,6 +118,7 @@ type LostData = {
     sales_users: string[]
     last_note: string
     last_call: string
+    leadType: "new" | "reengaged"
 }
 
 type Filters = {
@@ -119,6 +127,7 @@ type Filters = {
     project: string
     team: "All" | "Pre-Sales Team" | "Sales Team"
     users: string[]
+    leadType: string
 }
 
 const chartConfig = {
@@ -143,13 +152,14 @@ export default function LostReport() {
     // State
     const [data, setData] = useState<LostData[]>([])
     const [allUsers, setAllUsers] = useState<{ _id: string, name: string }[]>([])
-    
+
     const [filters, setFilters] = useState<Filters>({
         campaign: "all",
         source: "all",
         project: "all",
         team: "All",
         users: [],
+        leadType: "all",
     })
 
     const [sorting, setSorting] = useState<SortingState>([])
@@ -217,7 +227,7 @@ export default function LostReport() {
         const projectsList = PROJECTS.length > 0 ? PROJECTS : ["P1 - Sky High", "P2 - Emerald Valley"]
         const sources = ["Meta", "Google", "Website", "Social Media"]
         const campaigns = ["Online", "Offline"]
- 
+
         const mockData: LostData[] = []
         for (let i = 1; i <= 60; i++) {
             mockData.push({
@@ -229,11 +239,12 @@ export default function LostReport() {
                 pre_sales_users: [mockUsersList[Math.floor(Math.random() * mockUsersList.length)]],
                 sales_users: [mockUsersList[Math.floor(Math.random() * mockUsersList.length)]],
                 last_note: "Budget mismatched. Opted for other project.",
-                last_call: format(new Date(2026, 3, Math.floor(Math.random() * 20) + 1), "dd/MM/yyyy HH:mm")
+                last_call: format(new Date(2026, 3, Math.floor(Math.random() * 20) + 1), "dd/MM/yyyy HH:mm"),
+                leadType: Math.random() > 0.5 ? "new" : "reengaged"
             })
         }
         setData(mockData)
-    }, [allUsers, PROJECTS]) 
+    }, [allUsers, PROJECTS])
 
     // Handle Team Filter Column Visibility
     useEffect(() => {
@@ -251,7 +262,8 @@ export default function LostReport() {
             if (filters.campaign !== "all" && item.campaign !== filters.campaign) return false
             if (filters.source !== "all" && item.source !== filters.source) return false
             if (filters.project !== "all" && item.project !== filters.project) return false
-            
+            if (filters.leadType !== "all" && item.leadType !== filters.leadType) return false
+
             // Team-based filtering
             if (filters.team === "Pre-Sales Team") {
                 if (!item.pre_sales_users || item.pre_sales_users.length === 0) return false
@@ -260,10 +272,10 @@ export default function LostReport() {
             }
 
             if (filters.users.length > 0) {
-                const relevantUsers = filters.team === "Pre-Sales Team" 
-                    ? item.pre_sales_users 
-                    : filters.team === "Sales Team" 
-                        ? item.sales_users 
+                const relevantUsers = filters.team === "Pre-Sales Team"
+                    ? item.pre_sales_users
+                    : filters.team === "Sales Team"
+                        ? item.sales_users
                         : [...item.pre_sales_users, ...item.sales_users]
                 const matches = filters.users.some(u => relevantUsers.includes(u))
                 if (!matches) return false
@@ -423,7 +435,7 @@ export default function LostReport() {
         filteredData.forEach(item => {
             rows.push([item.campaign, item.source, item.project, item.lead, item.pre_sales_users.join(", "), item.sales_users.join(", "), item.last_note, item.last_call])
         })
-        
+
         rows.push([])
         rows.push(["GRAND TOTAL", "", "", filteredData.length.toLocaleString('en-IN')])
 
@@ -439,10 +451,11 @@ export default function LostReport() {
             project: "all",
             team: "All",
             users: [],
+            leadType: "all",
         })
     }
 
-    const isFilterApplied = filters.campaign !== "all" || filters.source !== "all" || filters.project !== "all" || filters.team !== "All" || filters.users.length > 0
+    const isFilterApplied = filters.campaign !== "all" || filters.source !== "all" || filters.project !== "all" || filters.team !== "All" || filters.users.length > 0 || filters.leadType !== "all"
 
     const toggleUserFilter = (name: string) => {
         setFilters(prev => {
@@ -472,63 +485,139 @@ export default function LostReport() {
 
             <Card className="border-none shadow-md bg-background/80 backdrop-blur-md sticky top-12 z-30 ring-1 ring-border/50">
                 <CardContent className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end transition-all duration-300">
-                    
-                    {isCampaignVisible && (
-                        <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                <Globe className="h-3 w-3" /> Campaign Type
-                            </Label>
-                            <Popover open={campaignOpen} onOpenChange={setCampaignOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button variant="outline" className="w-full justify-between font-normal h-10 border-none bg-muted/30 text-xs">
-                                        <span className="truncate">{filters.campaign === "all" ? "All" : filters.campaign}</span>
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[150px] p-0">
-                                    <Command>
-                                        <CommandGroup>
-                                            <CommandItem onSelect={() => { setFilters(f => ({ ...f, campaign: "all" })); setCampaignOpen(false) }}>
-                                                <Check className={cn("mr-2 h-4 w-4", filters.campaign === "all" ? "opacity-100" : "opacity-0")} />
-                                                All
-                                            </CommandItem>
-                                            {["Online", "Offline"].map(c => (
-                                                <CommandItem key={c} onSelect={() => { setFilters(f => ({ ...f, campaign: c })); setCampaignOpen(false) }}>
-                                                    <Check className={cn("mr-2 h-4 w-4", filters.campaign === c ? "opacity-100" : "opacity-0")} />
-                                                    {c}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-end transition-all duration-300">
 
-                    {isSourceVisible && (
+                        {isCampaignVisible && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
+                                    <Globe className="h-3 w-3" /> Campaign Type
+                                </Label>
+                                <Popover open={campaignOpen} onOpenChange={setCampaignOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-between font-normal h-10 border-none bg-muted/30 text-xs">
+                                            <span className="truncate">{filters.campaign === "all" ? "All" : filters.campaign}</span>
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[150px] p-0">
+                                        <Command>
+                                            <CommandGroup>
+                                                <CommandItem onSelect={() => { setFilters(f => ({ ...f, campaign: "all" })); setCampaignOpen(false) }}>
+                                                    <Check className={cn("mr-2 h-4 w-4", filters.campaign === "all" ? "opacity-100" : "opacity-0")} />
+                                                    All
+                                                </CommandItem>
+                                                {["Online", "Offline"].map(c => (
+                                                    <CommandItem key={c} onSelect={() => { setFilters(f => ({ ...f, campaign: c })); setCampaignOpen(false) }}>
+                                                        <Check className={cn("mr-2 h-4 w-4", filters.campaign === c ? "opacity-100" : "opacity-0")} />
+                                                        {c}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                        )}
+
+                        {isSourceVisible && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
+                                    <Search className="h-3 w-3" /> Source
+                                </Label>
+                                <Popover open={sourceOpen} onOpenChange={setSourceOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-between font-normal h-10 border-none bg-muted/30 text-xs">
+                                            {filters.source === "all" ? "All Sources" : filters.source}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[180px] p-0">
+                                        <Command>
+                                            <CommandGroup>
+                                                <CommandItem onSelect={() => { setFilters(f => ({ ...f, source: "all" })); setSourceOpen(false) }}>
+                                                    <Check className={cn("mr-2 h-4 w-4", filters.source === "all" ? "opacity-100" : "opacity-0")} />
+                                                    All Sources
+                                                </CommandItem>
+                                                {["Meta", "Google", "Website", "Social Media"].map(s => (
+                                                    <CommandItem key={s} onSelect={() => { setFilters(f => ({ ...f, source: s })); setSourceOpen(false) }}>
+                                                        <Check className={cn("mr-2 h-4 w-4", filters.source === s ? "opacity-100" : "opacity-0")} />
+                                                        {s}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                        )}
+
+                        {isProjectVisible && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
+                                    <Building2 className="h-3 w-3" /> Project
+                                </Label>
+                                <Popover open={projectOpen} onOpenChange={setProjectOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-between font-normal h-10 border-none bg-muted/30 text-xs">
+                                            {filters.project === "all" ? "All Projects" : filters.project}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[200px] p-0">
+                                        <Command>
+                                            <CommandGroup>
+                                                <CommandItem onSelect={() => { setFilters(f => ({ ...f, project: "all" })); setProjectOpen(false) }}>
+                                                    <Check className={cn("mr-2 h-4 w-4", filters.project === "all" ? "opacity-100" : "opacity-0")} />
+                                                    All Projects
+                                                </CommandItem>
+                                                {PROJECTS.map(p => (
+                                                    <CommandItem key={p} onSelect={() => { setFilters(f => ({ ...f, project: p })); setProjectOpen(false) }}>
+                                                        <Check className={cn("mr-2 h-4 w-4", filters.project === p ? "opacity-100" : "opacity-0")} />
+                                                        {p}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                        )}
+
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                <Search className="h-3 w-3" /> Source
+                                <Users className="h-3 w-3" />
+                                Lead Type
                             </Label>
-                            <Popover open={sourceOpen} onOpenChange={setSourceOpen}>
+                            <Select value={filters.leadType} onValueChange={(val) => setFilters(f => ({ ...f, leadType: val }))}>
+                                <SelectTrigger className="h-10 w-full border-none hover:bg-muted/50 transition-colors text-xs">
+                                    <SelectValue placeholder="All Types" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Types</SelectItem>
+                                    <SelectItem value="new">New Lead</SelectItem>
+                                    <SelectItem value="reengaged">Re-engaged Lead</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
+                                <Users className="h-3 w-3" /> Team Filter
+                            </Label>
+                            <Popover open={teamOpen} onOpenChange={setTeamOpen}>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline" className="w-full justify-between font-normal h-10 border-none bg-muted/30 text-xs">
-                                        {filters.source === "all" ? "All Sources" : filters.source}
+                                    <Button variant="outline" className="w-full justify-between font-normal h-10 border-none bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-xs font-bold">
+                                        {filters.team}
                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[180px] p-0">
                                     <Command>
                                         <CommandGroup>
-                                            <CommandItem onSelect={() => { setFilters(f => ({ ...f, source: "all" })); setSourceOpen(false) }}>
-                                                <Check className={cn("mr-2 h-4 w-4", filters.source === "all" ? "opacity-100" : "opacity-0")} />
-                                                All Sources
-                                            </CommandItem>
-                                            {["Meta", "Google", "Website", "Social Media"].map(s => (
-                                                <CommandItem key={s} onSelect={() => { setFilters(f => ({ ...f, source: s })); setSourceOpen(false) }}>
-                                                    <Check className={cn("mr-2 h-4 w-4", filters.source === s ? "opacity-100" : "opacity-0")} />
-                                                    {s}
+                                            {["All", "Pre-Sales Team", "Sales Team"].map(t => (
+                                                <CommandItem key={t} onSelect={() => { setFilters(f => ({ ...f, team: t as any })); setTeamOpen(false) }}>
+                                                    <Check className={cn("mr-2 h-4 w-4", filters.team === t ? "opacity-100" : "opacity-0")} />
+                                                    {t}
                                                 </CommandItem>
                                             ))}
                                         </CommandGroup>
@@ -536,131 +625,72 @@ export default function LostReport() {
                                 </PopoverContent>
                             </Popover>
                         </div>
-                    )}
 
-                    {isProjectVisible && (
-                        <div className="space-y-2">
+                        <div className="space-y-2 text-left">
                             <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                <Building2 className="h-3 w-3" /> Project
+                                <UserCircle className="h-3 w-3" /> User Filter
                             </Label>
-                            <Popover open={projectOpen} onOpenChange={setProjectOpen}>
+                            <Popover open={userOpen} onOpenChange={setUserOpen}>
                                 <PopoverTrigger asChild>
                                     <Button variant="outline" className="w-full justify-between font-normal h-10 border-none bg-muted/30 text-xs">
-                                        {filters.project === "all" ? "All Projects" : filters.project}
+                                        <span className="truncate">{filters.users.length === 0 ? "All Users" : `${filters.users.length} Selected`}</span>
                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[200px] p-0">
+                                <PopoverContent className="w-[220px] p-0">
                                     <Command>
-                                        <CommandGroup>
-                                            <CommandItem onSelect={() => { setFilters(f => ({ ...f, project: "all" })); setProjectOpen(false) }}>
-                                                <Check className={cn("mr-2 h-4 w-4", filters.project === "all" ? "opacity-100" : "opacity-0")} />
-                                                All Projects
-                                            </CommandItem>
-                                            {PROJECTS.map(p => (
-                                                <CommandItem key={p} onSelect={() => { setFilters(f => ({ ...f, project: p })); setProjectOpen(false) }}>
-                                                    <Check className={cn("mr-2 h-4 w-4", filters.project === p ? "opacity-100" : "opacity-0")} />
-                                                    {p}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
+                                        <CommandInput placeholder="Search user..." />
+                                        <CommandList>
+                                            <CommandGroup>
+                                                {allUsers.map(u => (
+                                                    <CommandItem key={u._id} onSelect={() => toggleUserFilter(u.name)}>
+                                                        <Check className={cn("mr-2 h-4 w-4", filters.users.includes(u.name) ? "opacity-100" : "opacity-0")} />
+                                                        {u.name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
                                     </Command>
                                 </PopoverContent>
                             </Popover>
                         </div>
-                    )}
-
-                    <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                            <Users className="h-3 w-3" /> Team Filter
-                        </Label>
-                        <Popover open={teamOpen} onOpenChange={setTeamOpen}>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" className="w-full justify-between font-normal h-10 border-none bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-xs font-bold">
-                                    {filters.team}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[180px] p-0">
-                                <Command>
-                                    <CommandGroup>
-                                        {["All", "Pre-Sales Team", "Sales Team"].map(t => (
-                                            <CommandItem key={t} onSelect={() => { setFilters(f => ({ ...f, team: t as any })); setTeamOpen(false) }}>
-                                                <Check className={cn("mr-2 h-4 w-4", filters.team === t ? "opacity-100" : "opacity-0")} />
-                                                {t}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
                     </div>
 
-                    <div className="space-y-2 text-left">
-                        <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                            <UserCircle className="h-3 w-3" /> User Filter
-                        </Label>
-                        <Popover open={userOpen} onOpenChange={setUserOpen}>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" className="w-full justify-between font-normal h-10 border-none bg-muted/30 text-xs">
-                                    <span className="truncate">{filters.users.length === 0 ? "All Users" : `${filters.users.length} Selected`}</span>
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[220px] p-0">
-                                <Command>
-                                    <CommandInput placeholder="Search user..." />
-                                    <CommandList>
-                                        <CommandGroup>
-                                            {allUsers.map(u => (
-                                                <CommandItem key={u._id} onSelect={() => toggleUserFilter(u.name)}>
-                                                    <Check className={cn("mr-2 h-4 w-4", filters.users.includes(u.name) ? "opacity-100" : "opacity-0")} />
-                                                    {u.name}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                </div>
-
-                <div className="flex justify-between items-center gap-3 pt-2">
-                    <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Search lead..." value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} className="pl-9 h-9 w-[250px] bg-muted/30 border-none" />
+                    <div className="flex justify-between items-center gap-3 pt-2">
+                        <div className="flex items-center gap-3">
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input placeholder="Search lead..." value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} className="pl-9 h-9 w-[250px] bg-muted/30 border-none" />
+                            </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" className="h-9 border-none bg-muted/30 text-xs">
+                                        Columns <ChevronDown className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {table.getAllColumns().filter(col => col.getCanHide()).map(column => (
+                                        <DropdownMenuCheckboxItem key={column.id} className="capitalize" checked={column.getIsVisible()} onCheckedChange={(value) => column.toggleVisibility(!!value)}>
+                                            {(column.columnDef.meta as any)?.label || column.id}
+                                        </DropdownMenuCheckboxItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-9 border-none bg-muted/30 text-xs">
-                                    Columns <ChevronDown className="ml-2 h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                {table.getAllColumns().filter(col => col.getCanHide()).map(column => (
-                                    <DropdownMenuCheckboxItem key={column.id} className="capitalize" checked={column.getIsVisible()} onCheckedChange={(value) => column.toggleVisibility(!!value)}>
-                                        {(column.columnDef.meta as any)?.label || column.id}
-                                    </DropdownMenuCheckboxItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
 
-                    <div className="flex items-center gap-3">
-                        {isFilterApplied && (
-                            <Button variant="ghost" onClick={clearFilters} className="text-xs h-9 hover:bg-destructive/10 hover:text-destructive">
-                                <RotateCcw className="h-4 w-4 mr-2" /> Reset
+                        <div className="flex items-center gap-3">
+                            {isFilterApplied && (
+                                <Button variant="ghost" onClick={clearFilters} className="text-xs h-9 hover:bg-destructive/10 hover:text-destructive">
+                                    <RotateCcw className="h-4 w-4 mr-2" /> Reset
+                                </Button>
+                            )}
+                            <Button onClick={handleDownloadExcel} variant="outline" className="h-9 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 font-bold shadow-sm">
+                                <Download className="h-4 w-4 mr-2" /> Export
                             </Button>
-                        )}
-                        <Button onClick={handleDownloadExcel} variant="outline" className="h-9 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 font-bold shadow-sm">
-                            <Download className="h-4 w-4 mr-2" /> Export
-                        </Button>
+                        </div>
                     </div>
-                </div>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
